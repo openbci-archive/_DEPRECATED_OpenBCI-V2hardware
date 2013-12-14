@@ -1,3 +1,7 @@
+# Make sure we use PySide (fixes OS X issue)
+import os
+os.environ['QT_API'] = 'pyside'
+
 # Set up Traits toolkit.
 from traits.etsconfig.etsconfig import ETSConfig
 ETSConfig.toolkit = 'qt4'
