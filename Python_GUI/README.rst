@@ -25,7 +25,10 @@ Install Python, as discussed in 'Requirements'.
 
 Extract or check out the source code and, in that directory, call:
 
->> python run.py
+>> pythonw run.py
+
+(Note that on a Mac, it is necessary to use pythonw or python.app , not bare 'python', to avoid
+a window-system-related issue.
 
 To create a binary Windows installer install cx_freeze, and then run:
 
