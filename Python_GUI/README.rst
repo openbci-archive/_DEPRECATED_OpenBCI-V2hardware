@@ -23,16 +23,16 @@ Installation / Use
 
 Install Python, as discussed in 'Requirements'.
 
-Extract or check out the source code and, in that directory, call:
+Extract or check out the source code and, in that directory, call:::
 
->> pythonw run.py
+    >> pythonw run.py
 
-(Note that on a Mac, it is necessary to use pythonw or python.app , not bare 'python', to avoid
+(Note that on a Mac, it is necessary to use `pythonw run.py` or `python.app run.py` , not bare 'python', to avoid
 a window-system-related issue.
 
-To create a binary Windows installer install cx_freeze, and then run:
+To create a binary Windows installer install cx_freeze, and then run:::
 
->> python setup.py bdist_msi
+    >> python setup.py bdist_msi
 
 The installer will be located in a "dist" subdirectory.
 
