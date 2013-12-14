@@ -27,7 +27,7 @@ Extract or check out the source code and, in that directory, call:::
 
     >> pythonw run.py
 
-(Note that on a Mac, it is necessary to use `pythonw run.py` or `python.app run.py` , not bare 'python', to avoid
+(Note that on a Mac, it is necessary to use ``pythonw run.py`` or ``python.app run.py`` , not bare ``python``, to avoid
 a window-system-related issue.
 
 To create a binary Windows installer install cx_freeze, and then run:::
