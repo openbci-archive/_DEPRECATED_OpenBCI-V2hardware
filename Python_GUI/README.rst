@@ -17,7 +17,6 @@ At a minimum, you need:
   * Enthought Tool Suite (ETS)
   * PyQt or PySide
   * matplotlib
-  * PySerial
 
 Installation / Use
 ------------------
