@@ -19,7 +19,7 @@ import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
 
-boolean useSyntheticData = true; //flip this to false when using OpenBCI, flip to true to develop this GUI without the OpenBCI board
+boolean useSyntheticData = false; //flip this to false when using OpenBCI, flip to true to develop this GUI without the OpenBCI board
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
