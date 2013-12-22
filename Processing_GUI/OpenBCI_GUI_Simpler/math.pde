@@ -36,8 +36,34 @@ float mean(float[] data, int Nback) {
   return sum(data,Nback)/Nback;
 }
 
+float mean(float[] data, int[] inds) {
+  return sum(data,inds) / (inds[1]-inds[0]+1);
+}
+
+float meanFFT(FFT data, float[] bounds_Hz) {
+  float freq_Hz=0;
+  float sum=0;
+  int count=0;
+  for (int i=0; i<data.specSize();i++) {
+    freq_Hz = data.indexToFreq(i);
+    if ((freq_Hz >= bounds_Hz[0]) & (freq_Hz <= bounds_Hz[1])) {
+      sum += data.getBand(i);
+      count++;
+    }
+  }
+  return (sum/((float)count));
+}
+
 float sum(float[] data) {
   return sum(data, data.length);
+}
+
+float sum(float[] data, int[] inds) {
+  float sum = 0;
+  for (int i=min(inds[0],data.length-1); i < max(inds[1],data.length); i++) {
+    sum+= data[i];
+  }
+  return sum;
 }
 
 float sum(float[] data, int Nback) {
@@ -101,4 +127,5 @@ void removeMean(float[] filty, int Nback) {
     filty[i] -= meanVal;
   }
 }
+
 

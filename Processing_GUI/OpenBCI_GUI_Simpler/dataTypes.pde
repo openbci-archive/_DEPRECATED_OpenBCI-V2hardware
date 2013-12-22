@@ -50,3 +50,15 @@ public class filterConstants {
     name = name_given;
   };
 };
+
+public class DetectionData_FreqDomain {
+  public float inband_uV = 0.0f;
+  public float inband_freq_Hz = 0.0f;
+  public float guard_uV = 0.0f;
+  public float thresh_uV = 0.0f;
+  public boolean isDetected = false;
+  
+  DetectionData_FreqDomain() {
+  }
+};
+

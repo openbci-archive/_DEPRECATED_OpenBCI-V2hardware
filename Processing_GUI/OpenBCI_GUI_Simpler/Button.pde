@@ -13,7 +13,7 @@
 String stopButton_pressToStop_txt = "Press to Stop";
 String stopButton_pressToStart_txt = "Press to Start";
 class Button {
-  int but_x, but_y, but_dx, but_dy;      // Position of square button
+  public int but_x, but_y, but_dx, but_dy;      // Position of square button
   //int rectSize = 90;     // Diameter of rect
   color color_pressed = color(51);
   color color_highlight = color(102);
