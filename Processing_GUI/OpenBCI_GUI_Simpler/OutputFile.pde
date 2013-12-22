@@ -45,6 +45,10 @@ class OutputFile_rawtxt {
     output.flush();
   }
 
+  //call this function to write the data.  
+  //It writes all of the data provided in yLittleBuff_uV.
+  //It also writes a "sampleIndex" to the file so that the last sample written to the file
+  //has the sampleIndex that equals the given "indexOfLastValue".
   public void writeRawData_txt(float[][] yLittleBuff_uV,int indexOfLastValue) {
     int nchan = yLittleBuff_uV.length;
     int nsamp = yLittleBuff_uV[0].length;

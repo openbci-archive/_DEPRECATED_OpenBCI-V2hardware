@@ -6,7 +6,7 @@ Here are some graphical user interfaces for OpenBCI, as written for Processing. 
 
 * OpenBCI_GUI is the heavyweight GUI that shows data for 8 (or more!) EEG channels.  It has a traditional time-domain display, a frequency-domain display, and an illustration of a head that lights up based on the intensity of the EEG energy. 
 
-* OpenBCI_GUI_Simpler is a lighter GUI that just shows the data for fewer EEG channels.  It has a frequency domain plot and a time domain plot.
+* OpenBCI_GUI_Simpler is a lighter GUI that just shows the data for fewer EEG channels.  It has a frequency domain plot and a time domain / spectrogram plot.
 
 
 
@@ -25,6 +25,8 @@ http://www.gwoptics.org/processing/gwoptics_p5lib/
 
 Updates
 --------
+
+2013-12-22 OpenBCI_GUI_Simpler: Added spectrogram plot.
 
 2013-11-15 OpenBCI_GUI_Simpler: First Upload
 
