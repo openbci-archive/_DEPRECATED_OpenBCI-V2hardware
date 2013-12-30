@@ -2,9 +2,9 @@
 void ADS_POR(){                 
   delay(50);		        // recommended power up sequence requiers Tpor (~32mS)	
 //  pinMode(RESET_PIN,OUTPUT);
-  pinMode(RESET_PIN,LOW);
+  digitalWrite(RESET_PIN,LOW);
   delayMicroseconds(4);	        // toggle reset pin
-  pinMode(RESET_PIN,HIGH);
+  digitalWrite(RESET_PIN,HIGH);
   delayMicroseconds(20);	// recommended to wait 18 Tclk before using device (~8uS); 
 }
 

@@ -28,7 +28,7 @@ void setup(){
   ADS.setMode(DSPI_MODE1);
   
   pinMode(RESET_PIN,OUTPUT);
-  pinMode(DRDY,INPUT);
+  pinMode(DRDY_PIN,INPUT);
   ADS_POR();            // try not to do anything before this, for proper POR sequence
   verbose = true;       // set up for serial feedback
   Serial.begin(115200);
@@ -96,7 +96,7 @@ void ADStest(int numSamples){
   while(sampleCounter < numSamples){  // take only as many samples as you need
   Serial.print("numSamples = ");
   Serial.println(numSamples);
-    while(digitalRead(DRDY) == 1){            // watch the DRDY pin
+    while(digitalRead(DRDY_PIN) == 1){            // watch the DRDY pin
       }
       Serial.println("hi");
     updateChannelData();          // update the channelData array 
