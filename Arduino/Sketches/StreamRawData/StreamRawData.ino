@@ -10,12 +10,21 @@
  */
 typedef long int int32;
 
-#include <ADS1299Manager.h>
-ADS1299Manager ADSManager; //Uses SPI bus and pins to say data is ready.  Uses Pins 13,12,11,10,9,8,4
+#define N_CHANNELS_PER_OPENBCI (8)  //number of channels on a single OpenBCI board
 
-//define how I'd like my channels setup
-#define MAX_N_CHANNELS (8)  //must be less than or equal to length of channelData in ADS1299 object!!
-int nActiveChannels = 8;   //how many active channels would I like?
+//for using a single OpenBCI board
+#include <ADS1299Manager.h>  //for a single OpenBCI board
+ADS1299Manager ADSManager; //Uses SPI bus and pins to say data is ready.  Uses Pins 13,12,11,10,9,8,4
+#define MAX_N_CHANNELS (N_CHANNELS_PER_OPENBCI)   //use this for a single OpenBCI board
+int nActiveChannels = 8;   //how many active channels would I like? 
+
+//for using two daisy-chained OpenBCI boards
+//#include <ADS1299DaisyManager.h>  //for daisy chaining
+//ADS1299DaisyManager ADSManager; //Uses SPI bus and pins to say data is ready.  Uses Pins 13,12,11,10,9,8,4
+//#define MAX_N_CHANNELS (2*N_CHANNELS_PER_OPENBCI)   //use this for daisy chaining
+//int nActiveChannels = 16;   //how many active channels would I like?  
+
+//other settings for OpenBCI
 byte gainCode = ADS_GAIN24;   //how much gain do I want
 byte inputType = ADSINPUT_NORMAL;   //here's the normal way to setup the channels
 //byte inputType = ADSINPUT_SHORTED;  //here's another way to setup the channels
@@ -32,6 +41,7 @@ boolean startBecauseOfSerial = false;
 #define OUTPUT_NOTHING (0)
 #define OUTPUT_TEXT (1)
 #define OUTPUT_BINARY (2)
+#define OUTPUT_BINARY_SYNTHETIC (3)
 #define OUTPUT_BINARY_4CHAN (4)
 #define OUTPUT_BINARY_OPENEEG (6)
 #define OUTPUT_BINARY_OPENEEG_SYNTHETIC (7)
@@ -47,11 +57,11 @@ int outputType;
 Biquad_multiChan stopDC_filter(MAX_N_CHANNELS,bq_type_highpass,HP_CUTOFF_HZ / SAMPLE_RATE_HZ, FILTER_Q, FILTER_PEAK_GAIN_DB); //one for each channel because the object maintains the filter states
 //Biquad_multiChan stopDC_filter(MAX_N_CHANNELS,bq_type_bandpass,10.0 / SAMPLE_RATE_HZ, 6.0, FILTER_PEAK_GAIN_DB); //one for each channel because the object maintains the filter states
 #define NOTCH_FREQ_HZ (60.0)
-#define NOTCH_Q (4.0)              //pretty shap notch
+#define NOTCH_Q (4.0)              //pretty sharp notch
 #define NOTCH_PEAK_GAIN_DB (0.0)  //doesn't matter for this filter type
 Biquad_multiChan notch_filter1(MAX_N_CHANNELS,bq_type_notch,NOTCH_FREQ_HZ / SAMPLE_RATE_HZ, NOTCH_Q, NOTCH_PEAK_GAIN_DB); //one for each channel because the object maintains the filter states
 Biquad_multiChan notch_filter2(MAX_N_CHANNELS,bq_type_notch,NOTCH_FREQ_HZ / SAMPLE_RATE_HZ, NOTCH_Q, NOTCH_PEAK_GAIN_DB); //one for each channel because the object maintains the filter states
-boolean useFilters = false;
+boolean useFilters = false;  //enable or disable as you'd like...turn off if you're daisy chaining!
 
 
 void setup() {
@@ -63,7 +73,7 @@ void setup() {
   ADSManager.initialize(OpenBCI_version);  //must do this VERY early in the setup...preferably first
 
   // setup the serial link to the PC
-  Serial.begin(115200);
+  Serial.begin(115200);  //use 115200 for a single OpenBCI board, use 2*115200 for daisy chaining, 115200/2 for OpenEEG
   Serial.println(F("ADS1299-Arduino UNO - Stream Raw Data")); //read the string from Flash to save RAM
   Serial.print(F("Configured as OpenBCI_Version code = "));Serial.println(OpenBCI_version);
   Serial.flush();
@@ -74,11 +84,16 @@ void setup() {
   }
 
   //print state of all registers
-  ADSManager.printAllRegisters();Serial.flush();
+  //ADSManager.printAllRegisters();Serial.flush();
 
   // setup hardware to allow a jumper or button to start the digitaltransfer
   pinMode(PIN_STARTBINARY,INPUT); digitalWrite(PIN_STARTBINARY,HIGH); //activate pullup
   //pinMode(PIN_STARTBINARY_OPENEEG,INPUT); digitalWrite(PIN_STARTBINARY_OPENEEG,HIGH);  //activate pullup
+  
+  //look out for daisy chaining and disable filtering because it'll likely take too much computation
+  if (nActiveChannels > 8) useFilters = false;
+  if (useFilters) Serial.print(F("Configured to do some filtering here on the Arduino."));
+  
   
   // tell the controlling program that we're ready to start!
   Serial.println(F("Press '?' to query and print ADS1299 register settings again")); //read it straight from flash
@@ -95,13 +110,14 @@ void loop(){
   if (digitalRead(PIN_STARTBINARY)==LOW) {
     //button is pressed (or pin is jumpered to ground)
     startBecauseOfPin = true;
-    startRunning(OUTPUT_BINARY_OPENEEG_SYNTHETIC);
-    if (firstReport) { Serial.println(F("Starting Binary_OpenEEG Based on Pin")); firstReport=false;}
+    //startRunning(OUTPUT_BINARY_OPENEEG_SYNTHETIC);
+    startRunning(OUTPUT_BINARY_OPENEEG);
+    //if (firstReport) { Serial.println(F("Starting Binary_OpenEEG Based on Pin")); firstReport=false;}
   } else {
     if (startBecauseOfPin) {
       startBecauseOfPin = false;
       stopRunning();
-      if (firstReport == false) { Serial.println(F("Stopping Binary Based on Pin")); firstReport=true;}
+      //if (firstReport == false) { Serial.println(F("Stopping Binary Based on Pin")); firstReport=true;}
     }
   }
   
@@ -128,19 +144,22 @@ void loop(){
           //if ((sampleCounter % 250) == 1) { Serial.print(F("Free RAM = ")); Serial.println(freeRam()); }; //print memory status
           break;
         case OUTPUT_BINARY:
-          ADSManager.writeChannelDataAsBinary(8,sampleCounter);  //print all channels, whether active or not
+          ADSManager.writeChannelDataAsBinary(MAX_N_CHANNELS,sampleCounter);  //print all channels, whether active or not
           break;
+        case OUTPUT_BINARY_SYNTHETIC:
+          ADSManager.writeChannelDataAsBinary(MAX_N_CHANNELS,sampleCounter,true);  //print all channels, whether active or not
+          break; 
         case OUTPUT_BINARY_4CHAN:
-          ADSManager.writeChannelDataAsBinary(4,sampleCounter);  //print all channels, whether active or not
+          ADSManager.writeChannelDataAsBinary(4,sampleCounter);  //print 4 channels, whether active or not
           break; 
         case OUTPUT_BINARY_OPENEEG:
-          ADSManager.writeChannelDataAsOpenEEG_P2(sampleCounter);  //print all channels, whether active or not
+          ADSManager.writeChannelDataAsOpenEEG_P2(sampleCounter);  //this format accepts 6 channels, so that's what it does
           break; 
         case OUTPUT_BINARY_OPENEEG_SYNTHETIC:
-          ADSManager.writeChannelDataAsOpenEEG_P2(sampleCounter,true);  //print all channels, whether active or not
+          ADSManager.writeChannelDataAsOpenEEG_P2(sampleCounter,true);  //his format accepts 6 channels, so that's what it does
           break;           
         default:
-          ADSManager.printChannelDataAsText(8,sampleCounter);  //print all channels, whether active or not
+          ADSManager.printChannelDataAsText(MAX_N_CHANNELS,sampleCounter);  //print all channels, whether active or not
       }
     //}
     
@@ -225,6 +244,7 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         break;
       case 'b':
         toggleRunState(OUTPUT_BINARY);
+        //toggleRunState(OUTPUT_BINARY_SYNTHETIC);
         startBecauseOfSerial = is_running;
         if (is_running) Serial.println(F("Arduino: Starting binary..."));
         break;

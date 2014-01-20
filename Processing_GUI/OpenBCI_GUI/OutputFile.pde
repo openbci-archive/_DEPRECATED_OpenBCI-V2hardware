@@ -66,5 +66,9 @@ class OutputFile_rawtxt {
       output.flush();
     }
   }
+  
+  public void closeFile() {
+    output.close();
+  }
 };
 

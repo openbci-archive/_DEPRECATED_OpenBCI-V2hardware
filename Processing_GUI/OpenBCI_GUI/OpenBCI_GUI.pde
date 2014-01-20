@@ -23,7 +23,7 @@ boolean useSyntheticData = false; //flip this to false when using OpenBCI
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
-String openBCI_portName = "COM20";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+String openBCI_portName = "COM8";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the Arduino
@@ -57,6 +57,13 @@ double[] b2 = new double[]{ 9.650809863447347e-001, -2.424683201757643e-001, 1.9
 double[] a2 = new double[]{    1.000000000000000e+000,   -2.467782611297853e-001,    1.944171784691352e+000,   -2.381583792217435e-001,    9.313816821269039e-001}; 
 filterConstants filtCoeff_notch =  new filterConstants(b2,a2,"Notch 1-50Hz");
 
+////The code below causes no filtering of the data
+//double[] b = new double[] {1.0};
+//double[] a = new double[] {1.0};
+//filterConstants filtCoeff_bp =  new filterConstants(b,a,"No Filter");
+//double[] b2 = new double[] {1.0};
+//double[] a2 = new double[] {1.0};
+//filterConstants filtCoeff_notch =  new filterConstants(b2,a2,"No Filter");
 
 
 //fft constants
@@ -66,7 +73,7 @@ FFT fftBuff[] = new FFT[nchan];   //from the minim library
 
 //plotting constants
 gui_headFftMontage gui;
-float vertScale_uV = 100.0f;
+float vertScale_uV = 200.0f;
 float displayTime_sec = 5f;
 float dataBuff_len_sec = displayTime_sec+2f;
 
@@ -160,10 +167,8 @@ void setup() {
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV);
 
-  //open the data filte for writing
-  fileoutput = new OutputFile_rawtxt(fs_Hz);
-  output_fname = fileoutput.fname;
-  println("openBCI: opened output file: " + output_fname);
+  //open the data file for writing
+  openNewLogFile();
 
   // Open the serial port to the Arduino that has the OpenBCI
   if (useSyntheticData == false) {
@@ -392,7 +397,9 @@ void stopButtonWasPressed() {
     println("openBCI_GUI: stopButton was pressed...stopping data transfer...");
     if (openBCI != null) openBCI.stopDataTransfer();
   } 
-  else {
+  else { //not running
+    openNewLogFile();  //open a new log file
+    
     println("openBCI_GUI: startButton was pressed...starting data transfer...");
     if (openBCI != null) openBCI.startDataTransfer(); //use whatever was the previous data transfer mode (TXT vs BINARY)
   }
@@ -450,3 +457,12 @@ void deactivateChannel(int Ichan) {
   gui.chanButtons[Ichan].setIsActive(true); //a deactivated channel is a dark-colored ACTIVE button
 }
 
+void openNewLogFile() {
+  //close the file if it's open
+  if (fileoutput != null) fileoutput.closeFile();
+  
+  //open the new file
+  fileoutput = new OutputFile_rawtxt(fs_Hz);
+  output_fname = fileoutput.fname;
+  println("openBCI: openNewLogFile: opened output file: " + output_fname);
+}

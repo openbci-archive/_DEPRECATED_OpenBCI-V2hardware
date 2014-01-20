@@ -29,7 +29,7 @@ class headPlot {
   headPlot(float x,float y,float w,float h,int win_x,int win_y) {
     nose_x = new int[3];
     nose_y = new int[3];
-    electrode_xy = new float[8][2];  //8 electrodes assumed
+    electrode_xy = new float[8][2];  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
     ref_electrode_xy = new float[2];
     font = createFont("Arial",16);
     
@@ -87,17 +87,33 @@ class headPlot {
 
     //define the electrodes
     float elec_relDiam = 0.15f;
-    float[][] elec_relXY = new float[8][2];
+    float[][] elec_relXY = new float[8][2]; //change to 16!!!
       elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*0.75f;
       elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1];
-      elec_relXY[2][0] = -0.25f;            elec_relXY[2][1] = -0.025f;
+      elec_relXY[2][0] = -0.2f;            elec_relXY[2][1] = 0f;
       elec_relXY[3][0] = -elec_relXY[2][0];  elec_relXY[3][1] = elec_relXY[2][1];
-      elec_relXY[4][0] = -0.33f;              elec_relXY[4][1] = 0.25f;
+      
+      elec_relXY[4][0] = -0.325f;            elec_relXY[4][1] = 0.275f;
       elec_relXY[5][0] = -elec_relXY[4][0];  elec_relXY[5][1] = elec_relXY[4][1];
-      elec_relXY[6][0] = -0.15f;             elec_relXY[6][1] = +0.5f - elec_relDiam*0.75f;
-      elec_relXY[7][0] = -elec_relXY[6][0];  elec_relXY[7][1] = elec_relXY[6][1];  
+      
+      elec_relXY[6][0] = -0.125f;             elec_relXY[6][1] = +0.5f - elec_relDiam*0.75f;
+      elec_relXY[7][0] = -elec_relXY[6][0];  elec_relXY[7][1] = elec_relXY[6][1];
+   
+//      elec_relXY[8][0] = 0.0f;  elec_relXY[8][1] = 0.0f;
+//      elec_relXY[9][0] = 0.f;    elec_relXY[9][1] = +0.2f;
+//      
+//      elec_relXY[10][0] = -0.18f;              elec_relXY[10][1] = -0.15f;
+//      elec_relXY[11][0] = -elec_relXY[10][0];  elec_relXY[11][1] = elec_relXY[10][1];
+//      
+//      elec_relXY[12][0] = -0.4f;               elec_relXY[12][1] = 0f  ;
+//      elec_relXY[13][0] = -elec_relXY[12][0];  elec_relXY[13][1] = elec_relXY[12][1];  
+//      
+//      elec_relXY[14][0] = -0.18f;  elec_relXY[14][1] = +0.15f;  
+//      elec_relXY[15][0] = -elec_relXY[14][0];  elec_relXY[15][1] = elec_relXY[14][1];  
+
+      
     float[] ref_elec_relXY = new float[2];
-      ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = -0.25f;   
+      ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = -0.325f;   
 
     elec_diam = (int)(elec_relDiam*((float)circ_diam));
     for (int i=0; i < elec_relXY.length; i++) {

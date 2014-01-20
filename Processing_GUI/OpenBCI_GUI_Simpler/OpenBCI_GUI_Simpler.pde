@@ -23,7 +23,7 @@ boolean useSyntheticData = false; //flip this to false when using OpenBCI, flip 
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
-String openBCI_portName = "COM13";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+String openBCI_portName = "COM8";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the Arduino
@@ -58,13 +58,15 @@ DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nch
 
 //fft constants
 int Nfft = 256*2; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
-float fft_smooth_fac = 0.9f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
+float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
+//int Nfft = 256; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
+//float fft_smooth_fac = 0.5f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
 
 //plotting constants
 gui_Manager gui;
 float vertScale_uV = 200.0f;  //here's the Y-axis limits on the time-domain plot
-float displayTime_sec = 10.0f;   //here's the X-axis limit on the time-domain plot
+float displayTime_sec = 6.0f;   //here's the X-axis limit on the time-domain plot
 float dataBuff_len_sec = displayTime_sec+2f;
 
 //program constants
@@ -202,9 +204,7 @@ void setup() {
   }
   
   //open the data file for writing
-  fileoutput = new OutputFile_rawtxt(fs_Hz);
-  output_fname = fileoutput.fname;
-  println("openBCI: opened output file: " + output_fname);
+  openNewLogFile();
 
   //start
   isRunning=true;
@@ -438,6 +438,8 @@ void stopButtonWasPressed() {
     if (openBCI != null) openBCI.stopDataTransfer();
   } 
   else {
+    openNewLogFile();  //open a new log file
+    
     println("openBCI_GUI: startButton was pressed...starting data transfer...");
     if (openBCI != null) openBCI.startDataTransfer(); //use whatever was the previous data transfer mode (TXT vs BINARY)
   }
@@ -609,3 +611,15 @@ void detectInFreqDomain(FFT[] fftBuff,float[] inband_Hz, float[] guard_Hz, Detec
     results[Ichan].isDetected = isDetected;
   }
 }
+
+
+void openNewLogFile() {
+  //close the file if it's open
+  if (fileoutput != null) fileoutput.closeFile();
+  
+  //open the new file
+  fileoutput = new OutputFile_rawtxt(fs_Hz);
+  output_fname = fileoutput.fname;
+  println("openBCI: openNewLogFile: opened output file: " + output_fname);
+}
+

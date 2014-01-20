@@ -26,6 +26,15 @@ http://www.gwoptics.org/processing/gwoptics_p5lib/
 Updates
 --------
 
+2014-01-20 OpenBCI_GUI_Simpler: 
+               : Added spectrogram plotting option
+               : Added initial Alpha wave detector
+               : Starts a new file with each start/stop
+
+2014-01-20 OpenBCI_GUI: 
+               : Added colored lines for different traces.
+               : Starts a new file with each start/stop
+
 2013-12-22 OpenBCI_GUI_Simpler: Added spectrogram plot.
 
 2013-11-15 OpenBCI_GUI_Simpler: First Upload

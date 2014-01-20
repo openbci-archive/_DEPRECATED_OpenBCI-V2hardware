@@ -212,7 +212,10 @@ void ADS1299Manager::printChannelDataAsText(int N, long int sampleNumber)
 //   sampleNumber is a number that, if greater than zero, will be printed at the start of the line
 int32 val;
 byte *val_ptr = (byte *)(&val);
-void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber)
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber){
+	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,false);
+}
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean useSyntheticData)
 {
 	//check the inputs
 	if ((N < 1) || (N > 8)) return;
@@ -235,7 +238,14 @@ void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber)
 	//print each channel
 	for (int chan = 0; chan < N; chan++ )
 	{
-		val = (long)(channelData[chan]);
+		//get this channel's data
+		if (useSyntheticData) {
+			val = makeSyntheticSample(sampleNumber,chan);
+			//val = sampleNumber;
+		} else {
+			//get the real EEG data for this channel
+			val = channelData[chan];
+		}
 		Serial.write(val_ptr,4); //4 bytes long
 	}
 	
@@ -254,8 +264,8 @@ void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber)
 void ADS1299Manager::writeChannelDataAsOpenEEG_P2(long sampleNumber) {
 	ADS1299Manager::writeChannelDataAsOpenEEG_P2(sampleNumber,false);
 }
-#define synthetic_amplitude_counts (8950)   //counts peak-to-peak...should be 100 uV pk-pk  (100e-6 / (4.5 / 24 / 2^24))
 void ADS1299Manager::writeChannelDataAsOpenEEG_P2(long sampleNumber,boolean useSyntheticData) {
+	static int count = -1;
 	byte sync0 = 0xA5;
 	byte sync1 = 0x5A;
 	byte version = 2;
@@ -263,7 +273,9 @@ void ADS1299Manager::writeChannelDataAsOpenEEG_P2(long sampleNumber,boolean useS
 	Serial.write(sync0);
 	Serial.write(sync1);
 	Serial.write(version);
-	Serial.write((byte) sampleNumber);
+	byte foo = (byte)sampleNumber;
+	if (foo == sync0) foo--;
+	Serial.write(foo);
 	
 	long val32; //32-bit
 	int val_i16;  //16-bit
@@ -273,11 +285,12 @@ void ADS1299Manager::writeChannelDataAsOpenEEG_P2(long sampleNumber,boolean useS
 	{
 		//get this channel's data
 		if (useSyntheticData) {
-			//generate 10 uV pk-pk signal
-			long time_samp_255 = (long)((sampleNumber) & (0x000000FF));  //make an 8-bit ramp waveform
-			time_samp_255 = (long)((time_samp_255*(long)(chan+1)) & (0x000000FF)); //each channel is faster than the previous
-			time_samp_255 += 256L*2L;  //make zero mean...empirically tuned via BrainBay visualization
-			val32 = (synthetic_amplitude_counts * time_samp_255) / 255L; //scaled zero-mean ramp 
+			//generate XX uV pk-pk signal
+			//long time_samp_255 = (long)((sampleNumber) & (0x000000FF));  //make an 8-bit ramp waveform
+			//time_samp_255 = (long)((time_samp_255*(long)(chan+1)) & (0x000000FF)); //each channel is faster than the previous
+			//time_samp_255 += 256L*2L;  //make zero mean...empirically tuned via BrainBay visualization
+			//val32 = (synthetic_amplitude_counts * time_samp_255) / 255L; //scaled zero-mean ramp 
+			val32 = makeSyntheticSample(sampleNumber,chan) + 127L + 256L*2L;  //make zero mean...empirically tuned via BrainBay visualization
 		} else {
 			//get the real EEG data for this channel
 			val32 = channelData[chan];
@@ -287,17 +300,39 @@ void ADS1299Manager::writeChannelDataAsOpenEEG_P2(long sampleNumber,boolean useS
 		val32 = val32 / (32);  //shrink to fit within a 16-bit number
 		val32 = constrain(val32,min_int16,max_int16);  //constrain to fit in 16 bits
 		val_u16 = (unsigned int) (val32 & (0x0000FFFF));  //truncate and cast
+		if (val_u16 > 1023) val_u16 = 1023;
 	
 		//Serial.write(val16_ptr,2); //low byte than high byte on Arduino
-		Serial.write((byte)((val_u16 >> 8) & 0x00FF)); //high byte
-		Serial.write((byte)(val_u16 & 0x00FF)); //low byte
+		//Serial.write((byte)((val_u16 >> 8) & 0x00FF)); //high byte
+		//Serial.write((byte)(val_u16 & 0x00FF)); //low byte
+		foo = (byte)((val_u16 >> 8) & 0x00FF); //high byte
+		if (foo == sync0) foo--;
+		Serial.write(foo);
+		foo = (byte)(val_u16 & 0x00FF); //high byte
+		if (foo == sync0) foo--;
+		Serial.write(foo);
+
+
 		
 	}
-	byte switches = 0b00000000;  //the last thing required by the P2 data protocol
+	//byte switches = 0b00000000;  //the last thing required by the P2 data protocol
+	byte switches = 0x07;
+	count++; if (count >= 18) count=0;
+	if (count >= 9) {
+		switches = 0x0F;
+	}	
 	Serial.write(switches);
 }
-	
 
+#define synthetic_amplitude_counts (8950L)   //counts peak-to-peak...should be 200 uV pk-pk  2.0*(100e-6 / (4.5 / 24 / 2^24))
+long int ADS1299Manager::makeSyntheticSample(long sampleNumber,int chan) {
+	//generate XX uV pk-pk signal
+	long time_samp_255 = (long)((sampleNumber) & (0x000000FF));  //make an 8-bit ramp waveform
+	time_samp_255 = (long)((time_samp_255*(long)(chan+1)) & (0x000000FF)); //each channel is faster than the previous
+	//time_samp_255 += 256L*2L;  //make zero mean...empirically tuned via BrainBay visualization
+	time_samp_255 -= 127L;
+	return (synthetic_amplitude_counts * time_samp_255) / 255L; //scaled zero-mean ramp 
+};
 
 //print out the state of all the control registers
 void ADS1299Manager::printAllRegisters(void)   
