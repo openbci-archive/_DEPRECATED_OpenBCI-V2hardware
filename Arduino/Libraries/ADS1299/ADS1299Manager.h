@@ -69,6 +69,7 @@ class ADS1299Manager : public ADS1299 {
     int isDataAvailable(void);
     void printChannelDataAsText(int N, long int sampleNumber);
     void writeChannelDataAsBinary(int N, long int sampleNumber);
+    void writeChannelDataAsBinary(int N, long int sampleNumber, boolean useSyntheticData);
     void writeChannelDataAsOpenEEG_P2(long int sampleNumber);
     void writeChannelDataAsOpenEEG_P2(long int sampleNumber, boolean useSyntheticData);
     void printAllRegisters(void);
@@ -78,6 +79,7 @@ class ADS1299Manager : public ADS1299 {
     boolean use_neg_inputs;
     boolean use_SRB2[OPENBCI_NCHAN];
     boolean use_SRB1(void);
+    long int makeSyntheticSample(long sampleNumber,int chan);
 };
 
 #endif
