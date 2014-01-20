@@ -195,13 +195,15 @@ class gui_Manager {
     
     g.setYAxisMin(-vertScale_uV);
     g.setYAxisMax(vertScale_uV);
-    if (vertScale_uV > 120.0F) {
-      g.setYAxisTickSpacing(50);
-      g.setYAxisMinorTicks(2);
-    } else {
-      g.setYAxisTickSpacing(25);
-      g.setYAxisMinorTicks(5);
-    }
+//    if (vertScale_uV > 120.0F) {
+//      g.setYAxisTickSpacing(50);
+//      g.setYAxisMinorTicks(2);
+//    } else {
+      //g.setYAxisTickSpacing(25);
+      //g.setYAxisMinorTicks(5);
+      g.setYAxisTickSpacing((int)(vertScale_uV/5));
+      g.setYAxisMinorTicks((int)(vertScale_uV/10));
+    //}
     g.setYAxisLabelAccuracy(0);
     g.setYAxisLabel("EEG Amplitude (uV)");
     g.setYAxisLabelFont(fontInfo.fontName,fontInfo.axisLabel_size, true);
