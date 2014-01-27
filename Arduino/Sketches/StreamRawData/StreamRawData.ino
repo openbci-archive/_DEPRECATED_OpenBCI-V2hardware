@@ -3,6 +3,8 @@
  Developed by Chip Audette (Fall 2013) for use with OpenBCI
  Builds upon work by Joel Murphy and Conor Russomanno (Summer 2013)
  
+ Modified January 2014.
+ 
  This example uses the ADS1299 Arduino Library, a software bridge between the ADS1299 TI chip and 
  Arduino. See http://www.ti.com/product/ads1299 for more information about the device and the README
  folder in the ADS1299 directory for more information about the library.
