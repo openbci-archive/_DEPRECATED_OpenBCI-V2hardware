@@ -9,6 +9,7 @@
 // for normal operation.
 //
 // Created: Chip Audette, Oct 2013
+// Modified: through Jan 2014
 //
 // Note: this class does not care whether you are using V1 or V2 of the OpenBCI
 // board because the Arduino itself handles the differences between the two.  The
@@ -17,6 +18,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 //import processing.serial.*;
+//import java.io.OutputStream;
 
 String command_stop = "s";
 String command_startText = "x";
@@ -36,6 +38,10 @@ final int STATE_COMINIT = 1;
 final int STATE_NORMAL = 2;
 final int COM_INIT_MSEC = 4000; //you may need to vary this for your computer or your Arduino
 
+int[] measured_packet_length = {0,0,0,0,0};
+int measured_packet_length_ind = 0;
+int known_packet_length_bytes = 0;
+
 final byte BYTE_START = byte(0xA0);
 final byte BYTE_END = byte(0xC0);
 final byte CHAR_END = byte(0xA0);  //line feed?
@@ -54,14 +60,17 @@ class openBCI_ADS1299 {
   dataPacket_ADS1299 dataPacket;
   boolean isNewDataPacketAvailable = false;
   int num_channels;
+  //OutputStream output; //for debugging  WEA 2014-01-26
   
-  //constructor..."num_channels" must be the size of the data payload coming from the 
-  //Arduino, not the number of channels that you actually want.
+  //constructor
   openBCI_ADS1299(PApplet applet, String comPort, int baud, int num_channels) {
     serialBuff = new byte[LEN_SERIAL_BUFF_CHAR];  //allocate the serial buffer
     dataPacket = new dataPacket_ADS1299(num_channels);
     if (serial_openBCI != null) closeSerialPort();
     openSerialPort(applet, comPort, baud);
+    
+    //open file for raw bytes
+    //output = createOutput("rawByteDumpFromProcessing.bin");  //for debugging  WEA 2014-01-26
   }
   
   //manage the serial port  
@@ -127,26 +136,52 @@ class openBCI_ADS1299 {
   }
   
   //read from the serial port
-  int read() {  return read(false); } //if given no arguments, assume no echoing of the incoming characters
-  int read(boolean echoChar) {  //here is the main read() method
+  int read() {  return read(false); }
+  int read(boolean echoChar) {
     //get the byte
     byte inByte = byte(serial_openBCI.read());
     if (echoChar) print(char(inByte));
+//    try {
+//     output.write(inByte);   //for debugging  WEA 2014-01-26
+//    } catch (IOException e) {
+//      //System.err.println("Caught IOException: " + e.getMessage());
+//      //do nothing
+//    }
+    
+    
     
     //accumulate the data in the buffer
-    serialBuff[curBuffIndex] = inByte; //buffer the indiviudal incoming bytes
+    serialBuff[curBuffIndex] = inByte;
+    //println("openBCI_ADS1299: curBuffIndex = " + curBuffIndex);
         
-    //increment the byte buffer index for the next time
+    //increment the buffer index for the next time
     curBuffIndex++;     
           
-    //is the data packet complete?  has the end byte arrived?  If so, interpret the data
+    //is the data packet complete?
     switch (dataMode) {
       case DATAMODE_BIN:
-        if (inByte == BYTE_END) interpretBinaryMessage();
+        if (inByte == BYTE_END) {
+          if (known_packet_length_bytes <= 0) {
+            measured_packet_length[measured_packet_length_ind++]=measurePacketLength();
+            if (measured_packet_length_ind >= measured_packet_length.length) {
+              known_packet_length_bytes = medianDestructive(measured_packet_length);
+            }
+          } else {
+            //have we gotten enough data?
+            if (curBuffIndex >= known_packet_length_bytes) {
+              if (serialBuff[curBuffIndex - known_packet_length_bytes] == BYTE_START) {
+                interpretBinaryMessage();
+              } else {
+                //garbage.  reset
+                curBuffIndex = 0;
+              }
+            }
+          }
+        }  
         break;
-      case DATAMODE_BIN_4CHAN:
-        if (inByte == BYTE_END) interpretBinaryMessage();
-        break;
+//      case DATAMODE_BIN_4CHAN:
+//        if (inByte == BYTE_END) interpretBinaryMessage();
+//        break;
       case DATAMODE_TXT:
         if (inByte == CHAR_END) interpretTextMessage();
         break; 
@@ -196,31 +231,36 @@ class openBCI_ADS1299 {
   //interpret the data
   int interpretBinaryMessage() {
     //assume curBuffIndex has already been incremented to the next open spot
-    int startInd = curBuffIndex-1;
     int endInd = curBuffIndex-1;
+    int startInd = curBuffIndex-known_packet_length_bytes;
+
     
     //println("openBCI_ADS1299: interpretBinaryMessage: interpretting...");
      
-    //roll backwards through the byte buffer to find the start of the packet
+    //check to see whether the data is valid to interpret
     while ((startInd >= 0) && (serialBuff[startInd] != BYTE_START)) {
       startInd--;
     }
     if (startInd < 0) {
       //didn't find the start byte..so ignore this data packet
+      println("openBCI_ADS1299: interpretBinaryMessage: badly formatted packet. Dropping.");
     } else if ((endInd - startInd + 1) < 3) {
       //data packet isn't long enough to hold any data...so ignore this data packet
+      println("openBCI_ADS1299: interpretBinaryMessage: badly formatted packet. Dropping.");
     } else {
+      //so the data is valid to interpret.  Let's do so.
+      
+      //the first field after the header is the number of bytes in the payload
       int n_bytes = int(serialBuff[startInd + 1]); //this is the number of bytes in the payload
       
-      
       // check to see if the payload is at least the minimum length
-      if (n_bytes < 4*MIN_PAYLOAD_LEN_INT32) { //why did I do "4*MIN_PAYLOAD_LEN_INT32"?  this looks suspect.  CHIP 2013-11-15
-        //bad data.  ignore this packet.
+      if (n_bytes < 4*MIN_PAYLOAD_LEN_INT32) {
+        //bad data.  ignore this packet;
       } else {
         //check to see if the payload length matches the measured packet size
-        if ((startInd + 1 + n_bytes + 1) != endInd) { //this rule looks OK.  CHIP 2013-11-5
+        if ((startInd + 1 + n_bytes + 1) != endInd) {
           //bad data.  ignore this packet
-        } else {  //and here's the normal branch where the packet must be the right size.
+        } else {
           //println("openBCI_ADS1299: interpretBinaryMessage: good packet!");
           int startIndPayload = startInd+1+1;
           int nInt32 = n_bytes / 4;
@@ -275,4 +315,29 @@ class openBCI_ADS1299 {
     dataPacket.copyTo(target);
     return 0;
   }
+  
+  int measurePacketLength() {
+    
+    //assume curBuffIndex has already been incremented to the next open spot
+    int startInd = curBuffIndex-1;
+    int endInd = curBuffIndex-1;
+
+    //roll backwards to find the start of the packet
+    while ((startInd >= 0) && (serialBuff[startInd] != BYTE_START)) {
+      startInd--;
+    }
+    if (startInd < 0) {
+      //didn't find the start byte..so ignore this data packet
+      return 0;
+    } else if ((endInd - startInd + 1) < 3) {
+      //data packet isn't long enough to hold any data...so ignore this data packet
+      return 0;
+    } else {
+      //int n_bytes = int(serialBuff[startInd + 1]); //this is the number of bytes in the payload
+      //println("openBCI_ADS1299: measurePacketLength = " + (endInd-startInd+1));
+      return endInd-startInd+1;
+    }
+  }
+      
+    
 }

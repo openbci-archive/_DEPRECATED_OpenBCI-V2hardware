@@ -1,3 +1,12 @@
+///////////////////////////////////////////////
+//
+// Created: Chip Audette, Oct 2013
+// Modified: through Jan 2014
+//
+// No warranty.  Use at your own risk.  Use for whatever you'd like.
+// 
+///////////////////////////////////////////////
+
 
 import ddf.minim.analysis.*; //for FFT
 

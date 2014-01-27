@@ -3,7 +3,7 @@
 //
 // GUI for controlling the ADS1299-based OpenBCI Shield
 //
-// Created: Chip Audette, Oct-Nov 2013
+// Created: Chip Audette, Oct 2013 - Jan 2014
 //
 // Requires gwoptics graphing library for processing.  Built on V0.5.0
 // http://www.gwoptics.org/processing/gwoptics_p5lib/
@@ -23,10 +23,10 @@ boolean useSyntheticData = false; //flip this to false when using OpenBCI
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
-String openBCI_portName = "COM8";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
-int openBCI_baud = 115200; //baud rate from the Arduino
+int openBCI_baud = 115200*2; //baud rate from the Arduino
 int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //use this for when daisy-chaining two OpenBCI boards
 //int openBCI_baud = 2*115200; //baud rate from the Arduino
@@ -452,7 +452,7 @@ void activateChannel(int Ichan) {
   gui.chanButtons[Ichan].setIsActive(false); //an active channel is a light-colored NOT-ACTIVE button
 }  
 void deactivateChannel(int Ichan) {
-  println("OpenBCI_GUI: deactivating chnnel " + (Ichan+1));
+  println("OpenBCI_GUI: deactivating channel " + (Ichan+1));
   if (openBCI != null) openBCI.changeChannelState(Ichan, false); //de-activate
   gui.chanButtons[Ichan].setIsActive(true); //a deactivated channel is a dark-colored ACTIVE button
 }

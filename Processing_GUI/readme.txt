@@ -26,6 +26,11 @@ http://www.gwoptics.org/processing/gwoptics_p5lib/
 Updates
 --------
 
+2014-01-26 OpenBCI_GUI and OpenBCI_GUI_Simpler:
+               : Improved handling of incoming serial binary data.
+                 Now it rejects fewer packets.
+               : Updated the date in the file headers.
+
 2014-01-20 OpenBCI_GUI_Simpler: 
                : Added spectrogram plotting option
                : Added initial Alpha wave detector
