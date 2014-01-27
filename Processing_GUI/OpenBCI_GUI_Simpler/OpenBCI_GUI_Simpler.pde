@@ -4,7 +4,7 @@
 // GUI for controlling the ADS1299-based OpenBCI Shield
 // This is the simpler-looking version of our GUI.
 //
-// Created: Chip Audette, Oct-Nov 2013
+// Created: Chip Audette, Oct 2013 - Jan 2014
 //
 // Requires gwoptics graphing library for processing.  Built on V0.5.0
 // http://www.gwoptics.org/processing/gwoptics_p5lib/
@@ -23,10 +23,10 @@ boolean useSyntheticData = false; //flip this to false when using OpenBCI, flip 
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
-String openBCI_portName = "COM8";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
-int openBCI_baud = 115200; //baud rate from the Arduino
+int openBCI_baud = 115200*2; //baud rate from the Arduino
 int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 
 //which channels active and which not?
@@ -65,7 +65,7 @@ FFT fftBuff[] = new FFT[nchan];   //from the minim library
 
 //plotting constants
 gui_Manager gui;
-float vertScale_uV = 200.0f;  //here's the Y-axis limits on the time-domain plot
+float vertScale_uV = 500.0f;  //here's the Y-axis limits on the time-domain plot
 float displayTime_sec = 6.0f;   //here's the X-axis limit on the time-domain plot
 float dataBuff_len_sec = displayTime_sec+2f;
 
@@ -502,7 +502,7 @@ void activateChannel(int Ichan) {
   if (Ichan < gui.chanButtons.length) gui.chanButtons[Ichan].setIsActive(false); //an active channel is a light-colored NOT-ACTIVE button
 }  
 void deactivateChannel(int Ichan) {
-  println("OpenBCI_GUI: deactivating chnnel " + (Ichan+1));
+  println("OpenBCI_GUI: deactivating channel " + (Ichan+1));
   if (openBCI != null) openBCI.changeChannelState(Ichan, false); //de-activate
   if (Ichan < gui.chanButtons.length) gui.chanButtons[Ichan].setIsActive(true); //a deactivated channel is a dark-colored ACTIVE button
 }
@@ -622,4 +622,3 @@ void openNewLogFile() {
   output_fname = fileoutput.fname;
   println("openBCI: openNewLogFile: opened output file: " + output_fname);
 }
-

@@ -22,6 +22,13 @@ float mean(float[] data) {
   return mean(data,data.length);
 }
 
+int medianDestructive(int[] data) {
+  sort(data);
+  int midPoint = data.length / 2;
+  return data[midPoint];
+}
+  
+
 //////////////////////////////////////////////////
 //
 // Some functions to implement some math and some filtering.  These functions
@@ -101,4 +108,5 @@ void removeMean(float[] filty, int Nback) {
     filty[i] -= meanVal;
   }
 }
+
 
