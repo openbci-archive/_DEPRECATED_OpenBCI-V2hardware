@@ -1,4 +1,3 @@
-
 ///////////////////////////////////////////////
 //
 // GUI for controlling the ADS1299-based OpenBCI Shield
@@ -55,7 +54,7 @@ double[] a = new double[]{ 1.0f, -2.355934631131582e+000, 1.941257088655214e+000
 filterConstants filtCoeff_bp =  new filterConstants(b,a,"Bandpass 1-50Hz");
 double[] b2 = new double[]{ 9.650809863447347e-001, -2.424683201757643e-001, 1.945391494128786e+000, -2.424683201757643e-001, 9.650809863447347e-001};
 double[] a2 = new double[]{    1.000000000000000e+000,   -2.467782611297853e-001,    1.944171784691352e+000,   -2.381583792217435e-001,    9.313816821269039e-001}; 
-filterConstants filtCoeff_notch =  new filterConstants(b2,a2,"Notch 1-50Hz");
+filterConstants filtCoeff_notch =  new filterConstants(b2,a2,"Notch 60Hz");
 
 ////The code below causes no filtering of the data
 //double[] b = new double[] {1.0};
