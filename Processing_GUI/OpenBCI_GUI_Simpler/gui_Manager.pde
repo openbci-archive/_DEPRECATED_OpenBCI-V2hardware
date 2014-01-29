@@ -21,6 +21,9 @@ import org.gwoptics.graphics.graph2D.traces.Blank2DTrace;
 import org.gwoptics.graphics.graph2D.backgrounds.*;
 import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange() 
+import ddf.minim.*;  // To make sound.  Following minim example "frequencyModulation"
+import ddf.minim.ugens.*;  // To make sound.  Following minim example "frequencyModulation"
+
 
 class PlotFontInfo {
     String fontName = "Sans Serif";
@@ -384,6 +387,9 @@ class gui_Manager {
   }
   public void setDetectionData_freqDomain(DetectionData_FreqDomain[] data) {
     fftTrace.setDetectionData_freqDomain(data);
+  }
+  public void setAudioOscillator(Oscil wave) {
+    fftTrace.setAudioOscillator(wave);
   }
   
   public void setShowSpectrogram(boolean show) {

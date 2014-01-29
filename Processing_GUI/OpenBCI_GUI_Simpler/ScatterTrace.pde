@@ -29,6 +29,9 @@ import org.gwoptics.graphics.graph2D.Graph2D;
 import org.gwoptics.graphics.graph2D.LabelPos;
 import org.gwoptics.graphics.graph2D.traces.Blank2DTrace;
 import org.gwoptics.graphics.graph2D.backgrounds.*;
+import ddf.minim.*;  // To make sound.  Following minim example "frequencyModulation"
+import ddf.minim.ugens.*;  // To make sound.  Following minim example "frequencyModulation"
+
    
 
 class ScatterTrace extends Blank2DTrace {
@@ -113,6 +116,7 @@ class ScatterTrace_FFT extends Blank2DTrace {
   private float[] badBand_Hz = {-1.0f, -1.0f};
   private boolean showFFTFilteringData = false;
   private DetectionData_FreqDomain[] detectionData;
+  private Oscil wave;
 
   public ScatterTrace_FFT() {
   }
@@ -143,6 +147,9 @@ class ScatterTrace_FFT extends Blank2DTrace {
   }
   public void setDetectionData_freqDomain(DetectionData_FreqDomain[] data) {
     detectionData = data.clone();
+  }
+  public void setAudioOscillator(Oscil wave_given) {
+    wave = wave_given;
   }
 
   //here is the fucntion that gets called with every call to the GUI's own draw() fucntion
@@ -245,14 +252,50 @@ class ScatterTrace_FFT extends Blank2DTrace {
             }
           }
         }     
-      }       
+      } //end of loop over channels
+
+      //update the audio
+      if (showFFTFilteringData & (wave != null)) {
+        //find if any channels have detected, and which is the strongest SNR
+        float maxExcessSNR = -100.0f;
+        for (int Ichan=0; Ichan < detectionData.length; Ichan++) {  
+          if (detectionData[Ichan].isDetected) {
+            //how much above the threshold are we
+            maxExcessSNR = max(maxExcessSNR,(detectionData[Ichan].inband_uV)/(detectionData[Ichan].thresh_uV));
+          }
+        }
+        float audioFreq_Hz = calcDesiredAudioFrequency(maxExcessSNR);
+        if (audioFreq_Hz > 0) {
+          wave.amplitude.setLastValue(0.8);  //turn on 
+          wave.frequency.setLastValue(audioFreq_Hz);  //set the desired frequency
+          println("ScatterTrace: excessSNR = " + maxExcessSNR  + ", freq = " + audioFreq_Hz + " Hz");
+        } else {
+          //turn off
+          wave.amplitude.setLastValue(0.0);
+        }
+      } else {
+        //ensure that the audio is off
+        wave.amplitude.setLastValue(0);  
+      }    
     }
-      
 
     //restore whatever was the previous style
     pr.canvas.popStyle(); 
   }
-
+  
+  float calcDesiredAudioFrequency(float excessSNR) {
+    //set some constants
+    final float excessSNRRange[] = { 1.0f, 3.0f };  //not dB, just linear units
+    final float freqRange_Hz[] =  {200.0f, 600.0f };
+    
+    //compute the desired snr
+    float outputFreq_Hz = -1.0f;
+    if (excessSNR >= excessSNRRange[0]) {
+      excessSNR = constrain(excessSNR,excessSNRRange[0],excessSNRRange[1]);
+      outputFreq_Hz = map(excessSNR,excessSNRRange[0],excessSNRRange[1],freqRange_Hz[0],freqRange_Hz[1]);
+    }
+    return outputFreq_Hz;
+  }
 } //end of class
 
 

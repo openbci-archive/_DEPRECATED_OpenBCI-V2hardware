@@ -14,10 +14,12 @@
 ///////////////////////////////////////////////
 
 
-import processing.serial.*;
+import processing.serial.*;  //for serial communication to Arduino/OpenBCI
 import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
+import ddf.minim.*;  // To make sound.  Following minim example "frequencyModulation"
+import ddf.minim.ugens.*;  // To make sound.  Following minim example "frequencyModulation"
 
 boolean useSyntheticData = false; //flip this to false when using OpenBCI, flip to true to develop this GUI without the OpenBCI board
 
@@ -58,7 +60,7 @@ DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nch
 
 //fft constants
 int Nfft = 256*2; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
-float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
+float fft_smooth_fac = 0.8f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
 //int Nfft = 256; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
 //float fft_smooth_fac = 0.5f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
@@ -84,6 +86,11 @@ final int nDataBackBuff = (int)fs_Hz; //how many samples might get stuck in our 
 dataPacket_ADS1299 dataPacketBuff[] = new dataPacket_ADS1299[nDataBackBuff]; //allocate a big array, but doesn't call constructor.  Still need to call the constructor!
 int curDataPacketInd = -1;
 int lastReadDataPacketInd = -1;
+
+//constants for sound generation for alpha detection
+Minim minim;
+AudioOutput audioOut;  //was just "out" in the Minim example
+Oscil wave;
 
 void appendAndShift(float[] data, float[] newData) {
   int nshift = newData.length;
@@ -202,6 +209,13 @@ void setup() {
   for (int Ichan=0; Ichan<OpenBCI_Nchannels;Ichan++) {
     if (Ichan < nchan_active_at_startup) { activateChannel(Ichan); } else { deactivateChannel(Ichan);  }
   }
+  
+  // initialize the minim and audioOut objects
+  minim = new Minim( this );
+  audioOut   = minim.getLineOut(); 
+  wave = new Oscil( 200, 0.0, Waves.TRIANGLE );  // make the Oscil we will hear.  Arguments are frequency, amplitude, and waveform
+  wave.patch( audioOut );
+  gui.setAudioOscillator(wave);
   
   //open the data file for writing
   openNewLogFile();
@@ -453,6 +467,7 @@ void stopButtonWasPressed() {
   } 
   else {
     gui.stopButton.setString(stopButton_pressToStart_txt);
+    wave.amplitude.setLastValue(0); //turn off audio
   }
 }
 
