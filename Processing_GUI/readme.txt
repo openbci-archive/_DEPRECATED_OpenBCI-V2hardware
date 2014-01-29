@@ -26,6 +26,11 @@ http://www.gwoptics.org/processing/gwoptics_p5lib/
 Updates
 --------
 
+2014-01-29 OpenBCI_GUI_Simpler:
+               : Added audio tone as output to Alpha Detection.
+                 Now you can know that you're making alpha even when
+                 your eyes are closed!
+
 2014-01-26 OpenBCI_GUI and OpenBCI_GUI_Simpler:
                : Improved handling of incoming serial binary data.
                  Now it rejects fewer packets.
