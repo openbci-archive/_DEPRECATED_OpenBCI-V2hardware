@@ -33,10 +33,10 @@ class OutputFile_rawtxt {
     output = createWriter(fname);
   
     //add the header
-    wrriteHeader(fs_Hz);
+    writeHeader(fs_Hz);
   }
 
-  public void wrriteHeader(float fs_Hz) {
+  public void writeHeader(float fs_Hz) {
     output.println("%OpenBCI Raw EEG Data");
     output.println("%");
     output.println("%Sample Rate = " + fs_Hz + " Hz");
@@ -45,29 +45,49 @@ class OutputFile_rawtxt {
     output.flush();
   }
 
-  public void writeRawData_txt(float[][] yLittleBuff_uV,int indexOfLastValue) {
-    int nchan = yLittleBuff_uV.length;
-    int nsamp = yLittleBuff_uV[0].length;
+//  public void writeRawData_txt(float[][] yLittleBuff_uV,int indexOfLastValue) {
+//    int nchan = yLittleBuff_uV.length;
+//    int nsamp = yLittleBuff_uV[0].length;
+//  
+//    //println("writeRawData: nchan, nsamp = " + nchan + " " + nsamp);
+//  
+//    if (output != null) {
+//      for (int i=0; i < nsamp; i++) {
+//        output.print(Integer.toString(indexOfLastValue - nsamp + i));
+//        
+//        for (int Ichan = 0; Ichan < nchan; Ichan++) {
+//           output.print(", ");
+//           //output.print(Float.toString(yLittleBuff_uV[Ichan][i]));
+//           output.print(String.format("%.2f",yLittleBuff_uV[Ichan][i]));
+//         }
+//      
+//        output.println();
+//      }
+//      //output.flush();
+//    }
+//  }
   
-    //println("writeRawData: nchan, nsamp = " + nchan + " " + nsamp);
-  
+  public void writeRawData_dataPacket(dataPacket_ADS1299 data,float scale_to_uV) {
+    int nchan = data.values.length;
+   
     if (output != null) {
-      for (int i=0; i < nsamp; i++) {
-        output.print(Integer.toString(indexOfLastValue - nsamp + i));
-        
-         for (int Ichan = 0; Ichan < nchan; Ichan++) {
-           output.print(", ");
-           //output.print(Float.toString(yLittleBuff_uV[Ichan][i]));
-           output.print(String.format("%.2f",yLittleBuff_uV[Ichan][i]));
-         }
-      
-        output.println();
+      output.print(Integer.toString(data.sampleIndex));
+      for (int Ichan = 0; Ichan < nchan; Ichan++) {
+        output.print(", ");
+        if (abs(scale_to_uV-1.0) < 1e-6) {
+          output.print(Integer.toString(data.values[Ichan]));
+        } else {
+          output.print(String.format("%.2f",scale_to_uV * float(data.values[Ichan])));
+        }
       }
-      output.flush();
+      output.println();
+      //output.flush();
     }
   }
   
+  
   public void closeFile() {
+    output.flush();
     output.close();
   }
 };

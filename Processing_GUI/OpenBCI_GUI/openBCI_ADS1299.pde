@@ -18,7 +18,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 //import processing.serial.*;
-//import java.io.OutputStream;
+import java.io.OutputStream; //for logging raw bytes to an output file
 
 String command_stop = "s";
 String command_startText = "x";
@@ -29,9 +29,9 @@ String command_deactivateFilters = "f";
 String[] command_deactivate_channel = {"1", "2", "3", "4", "5", "6", "7", "8"};
 String[] command_activate_channel = {"q", "w", "e", "r", "t", "y", "u", "i"};
 
-final int DATAMODE_TXT = 0;
+//final int DATAMODE_TXT = 0;
 final int DATAMODE_BIN = 1;
-final int DATAMODE_BIN_4CHAN = 4;
+//final int DATAMODE_BIN_4CHAN = 4;
 
 final int STATE_NOCOM = 0;
 final int STATE_COMINIT = 1;
@@ -60,7 +60,7 @@ class openBCI_ADS1299 {
   dataPacket_ADS1299 dataPacket;
   boolean isNewDataPacketAvailable = false;
   int num_channels;
-  //OutputStream output; //for debugging  WEA 2014-01-26
+  OutputStream output; //for debugging  WEA 2014-01-26
   
   //constructor
   openBCI_ADS1299(PApplet applet, String comPort, int baud, int num_channels) {
@@ -118,14 +118,14 @@ class openBCI_ADS1299 {
         serial_openBCI.write(command_startBinary + "\n");
         println("Processing: OpenBCI_ADS1299: starting binary");
         break;
-      case DATAMODE_BIN_4CHAN:
-        serial_openBCI.write(command_startBinary_4chan + "\n");
-        println("Processing: OpenBCI_ADS1299: starting binary 4-channel");
-        break;      
-      case DATAMODE_TXT:
-        serial_openBCI.write(command_startText + "\n");
-        println("Processing: OpenBCI_ADS1299: starting text");
-        break;
+//      case DATAMODE_BIN_4CHAN:
+//        serial_openBCI.write(command_startBinary_4chan + "\n");
+//        println("Processing: OpenBCI_ADS1299: starting binary 4-channel");
+//        break;      
+//      case DATAMODE_TXT:
+//        serial_openBCI.write(command_startText + "\n");
+//        println("Processing: OpenBCI_ADS1299: starting text");
+//        break;
     }
     return 0;
   }
@@ -141,61 +141,109 @@ class openBCI_ADS1299 {
     //get the byte
     byte inByte = byte(serial_openBCI.read());
     if (echoChar) print(char(inByte));
-//    try {
-//     output.write(inByte);   //for debugging  WEA 2014-01-26
-//    } catch (IOException e) {
-//      //System.err.println("Caught IOException: " + e.getMessage());
-//      //do nothing
+    
+    //write raw unprocessed bytes to a binary data dump file
+//    if (output != null) {
+//      try {
+//       output.write(inByte);   //for debugging  WEA 2014-01-26
+//      } catch (IOException e) {
+//        //System.err.println("Caught IOException: " + e.getMessage());
+//        //do nothing
+//      }
 //    }
     
-    
-    
-    //accumulate the data in the buffer
-    serialBuff[curBuffIndex] = inByte;
-    //println("openBCI_ADS1299: curBuffIndex = " + curBuffIndex);
-        
-    //increment the buffer index for the next time
-    curBuffIndex++;     
-          
-    //is the data packet complete?
-    switch (dataMode) {
-      case DATAMODE_BIN:
-        if (inByte == BYTE_END) {
-          if (known_packet_length_bytes <= 0) {
-            measured_packet_length[measured_packet_length_ind++]=measurePacketLength();
-            if (measured_packet_length_ind >= measured_packet_length.length) {
-              known_packet_length_bytes = medianDestructive(measured_packet_length);
-            }
-          } else {
-            //have we gotten enough data?
-            if (curBuffIndex >= known_packet_length_bytes) {
-              if (serialBuff[curBuffIndex - known_packet_length_bytes] == BYTE_START) {
-                interpretBinaryMessage();
-              } else {
-                //garbage.  reset
-                curBuffIndex = 0;
-              }
-            }
-          }
-        }  
-        break;
-//      case DATAMODE_BIN_4CHAN:
-//        if (inByte == BYTE_END) interpretBinaryMessage();
-//        break;
-      case DATAMODE_TXT:
-        if (inByte == CHAR_END) interpretTextMessage();
-        break; 
-      default:
-        //don't accumulate...just reset back to the first place in the buffer
-        curBuffIndex=0;
-        break;
-    }
-
-    //check to make sure that the buffer index hasn't gone too far
-    if (curBuffIndex >= serialBuff.length) curBuffIndex = serialBuff.length-1;
+    //try to interpret the bytes
+//    if (dataMode == DATAMODE_BIN) {
+      readBinaryStream(inByte);  //new 2014-02-02 WEA
+//    } else { 
+//      //non binary stream
+//    }
 
     return int(inByte);
   }
+
+  /***** Borrowed from Chris Viegl from his OpenBCI parser for BrainBay
+  Packet Parser for OpenBCI (1-N channel binary format):
+
+  4-byte (long) integers are stored in 'little endian' formant in AVRs
+  so this protocol parser expects the lower bytes first.
+
+  Start Indicator: 0xA0
+  Packet_length  : 1 byte  (length = 4 bytes per active channel + 4 bytes framenumber)
+  Framenumber    : 4 bytes (currently not used - will be a sequential counter ?)
+  Channel 1 data  : 4 bytes 
+  ...
+  Channel N data  : 4 bytes
+  End Indcator:    0xC0
+  **********************************************************************/
+  int channelsInPacket = 0;
+  int localByteCounter=0;
+  int localChannelCounter=0;
+  int PACKET_readstate = 0;
+  byte[] localByteBuffer = {0,0,0,0};
+  void readBinaryStream(byte actbyte)
+  { 
+    //println("openBCI_ADS1299: PACKET_readstate " + PACKET_readstate);
+    switch (PACKET_readstate) {
+      case 0:  
+           if (actbyte == byte(0xA0)) {          // look for start indicator
+            //println("openBCI_ADS1299: found 0xA0");
+            PACKET_readstate++;
+           } 
+           break;
+      case 1:  
+           channelsInPacket = ((int)actbyte) / 4 - 1;   // get number of channels
+           //println("openBCI_ADS1299: channelsInPacket = " + channelsInPacket);
+           if ((channelsInPacket<1) || (channelsInPacket>16)) {
+            PACKET_readstate=0;
+            println("openBCI_ADS1299: given number of channels (" + channelsInPacket + ") is not acceptable.  Ignoring packet.");
+           } else { 
+            localByteCounter=0; //prepare for next usage of localByteCounter
+            PACKET_readstate++;
+           }
+           break;
+      case 2: 
+          //don't know if this branch is correct.  Untested as of 2014-02-02
+          localByteBuffer[localByteCounter] = actbyte;
+          localByteCounter++;
+          if (localByteCounter==4) {
+            dataPacket.sampleIndex = interpretAsInt32(localByteBuffer); //added WEA
+            //println("openBCI_ADS1299: sampleIndex  = " + dataPacket.sampleIndex);
+            localByteCounter=0;//prepare for next usage of localByteCounter
+            localChannelCounter=0; //prepare for next usage of localChannelCounter
+            PACKET_readstate++;
+          } 
+          break;
+      case 3: // get channel values 
+          localByteBuffer[localByteCounter] = actbyte;
+          localByteCounter++;
+          if (localByteCounter==4) {
+            dataPacket.values[localChannelCounter] = interpretAsInt32(localByteBuffer);
+            //println("openBCI_ADS1299: received chan  = " + localChannelCounter);
+            localChannelCounter++;
+            if (localChannelCounter==channelsInPacket) {  
+              // all channels arrived !
+              PACKET_readstate++;
+              isNewDataPacketAvailable = true;  //tell the rest of the code that the data packet is complete
+            } else { 
+              //prepare for next data channel
+              localByteCounter=0; //prepare for next usage of localByteCounter
+            }
+          }
+          break;
+      case 4:
+        if (actbyte == byte(0xC0)) {    // if correct end delimiter found:
+          PACKET_readstate=0;  // look for next packet
+          //println("openBCI_ADS1299: found 0xC0");
+          //isNewDataPacketAvailable = true; //original place for this.  but why not put it in the previous case block
+        }
+        break;
+      default: 
+          println("openBCI_ADS1299: Unknown byte: " + actbyte + " ...continuing");
+          PACKET_readstate=0;  // look for next packet
+    }
+  } // end of readBinaryStream
+
 
   //activate or deactivate an EEG channel...channel counting is zero through nchan-1
   public void changeChannelState(int Ichan,boolean activate) {

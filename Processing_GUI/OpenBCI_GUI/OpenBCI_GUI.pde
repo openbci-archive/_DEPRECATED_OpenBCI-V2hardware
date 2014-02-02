@@ -25,7 +25,7 @@ openBCI_ADS1299 openBCI;
 String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
-int openBCI_baud = 115200*2; //baud rate from the Arduino
+int openBCI_baud = 115200; //baud rate from the Arduino
 int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //use this for when daisy-chaining two OpenBCI boards
 //int openBCI_baud = 2*115200; //baud rate from the Arduino
@@ -33,7 +33,7 @@ int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 
 
 //data constants
-float fs_Hz = 250f;
+float fs_Hz = 250f;  //sample rate used by OpenBCI board
 float dataBuffX[];
 float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is a new channel so that dataBuffY[3][] is channel 4
 float dataBuffY_filtY_uV[][];
@@ -41,7 +41,7 @@ float data_std_uV[];
 int nchan = OpenBCI_Nchannels;
 float scale_fac_uVolts_per_count = (4.5f / 24.0f / pow(2, 24)) * 1000000.f * 2.0f; //factor of 2 added 2013-11-10 to match empirical tests in my office on Friday
 int prev_time_millis = 0;
-final int nPointsPerUpdate = 30;
+final int nPointsPerUpdate = 50; //update screen after this many data points.  
 float yLittleBuff[] = new float[nPointsPerUpdate];
 
 //filter constants
@@ -74,7 +74,7 @@ FFT fftBuff[] = new FFT[nchan];   //from the minim library
 gui_headFftMontage gui;
 float vertScale_uV = 200.0f;
 float displayTime_sec = 5f;
-float dataBuff_len_sec = displayTime_sec+2f;
+float dataBuff_len_sec = displayTime_sec+3f; //needs to be wider than actual display so that filter startup is hidden
 
 //program constants
 boolean isRunning=false;
@@ -87,7 +87,7 @@ OutputFile_rawtxt fileoutput;
 String output_fname;
 
 //openBCI data packet
-final int nDataBackBuff = (int)fs_Hz;
+final int nDataBackBuff = 3*(int)fs_Hz;
 dataPacket_ADS1299 dataPacketBuff[] = new dataPacket_ADS1299[nDataBackBuff]; //allocate the array, but doesn't call constructor.  Still need to call the constructor!
 int curDataPacketInd = -1;
 int lastReadDataPacketInd = -1;
@@ -272,8 +272,6 @@ void draw() {
       //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
       gui.update();
       
-      //write data to file
-      if (output_fname != null) fileoutput.writeRawData_txt(yLittleBuff_uV,dataPacketBuff[lastReadDataPacketInd].sampleIndex);
     } 
     else {
       //not enough data has arrived yet.  do nothing more
@@ -293,8 +291,12 @@ void serialEvent(Serial port) {
     openBCI.read(echoBytes);
     openBCI_byteCount++;
     if (openBCI.isNewDataPacketAvailable) {
+      //copy packet into buffer of data packets
       curDataPacketInd = (curDataPacketInd+1) % dataPacketBuff.length;
       openBCI.copyDataPacketTo(dataPacketBuff[curDataPacketInd]);
+      
+      //write this chunk of data to file
+      fileoutput.writeRawData_dataPacket(dataPacketBuff[curDataPacketInd],scale_fac_uVolts_per_count);
     }
   } 
   else {
@@ -395,6 +397,7 @@ void stopButtonWasPressed() {
   if (isRunning) {
     println("openBCI_GUI: stopButton was pressed...stopping data transfer...");
     if (openBCI != null) openBCI.stopDataTransfer();
+    closeLogFile();
   } 
   else { //not running
     openNewLogFile();  //open a new log file
@@ -458,10 +461,14 @@ void deactivateChannel(int Ichan) {
 
 void openNewLogFile() {
   //close the file if it's open
-  if (fileoutput != null) fileoutput.closeFile();
+  if (fileoutput != null) closeLogFile();
   
   //open the new file
   fileoutput = new OutputFile_rawtxt(fs_Hz);
   output_fname = fileoutput.fname;
   println("openBCI: openNewLogFile: opened output file: " + output_fname);
+}
+
+void closeLogFile() {
+  fileoutput.closeFile();
 }
