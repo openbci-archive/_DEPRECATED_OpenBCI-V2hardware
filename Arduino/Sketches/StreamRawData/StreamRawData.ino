@@ -75,7 +75,7 @@ void setup() {
   ADSManager.initialize(OpenBCI_version);  //must do this VERY early in the setup...preferably first
 
   // setup the serial link to the PC
-  Serial.begin(115200*2);  //Need 115200 for 16-channels, only need 115200 for 8-channels but let's do 115200*2 for consistency
+  Serial.begin(115200);  //Need 115200 for 16-channels, only need 115200 for 8-channels but let's do 115200*2 for consistency
   Serial.println(F("ADS1299-Arduino UNO - Stream Raw Data")); //read the string from Flash to save RAM
   Serial.print(F("Configured as OpenBCI_Version code = "));Serial.println(OpenBCI_version);
   Serial.flush();
