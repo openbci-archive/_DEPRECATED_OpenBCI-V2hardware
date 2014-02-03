@@ -71,7 +71,7 @@ float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smo
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
 
 //plotting constants
-gui_headFftMontage gui;
+gui_Manager gui;
 float vertScale_uV = 200.0f;
 float displayTime_sec = 5f;
 float dataBuff_len_sec = displayTime_sec+3f; //needs to be wider than actual display so that filter startup is hidden
@@ -162,7 +162,7 @@ void setup() {
   initializeFFTObjects(fftBuff, dataBuffY_uV, Nfft, fs_Hz);
 
   //initilize the GUI
-  gui = new gui_headFftMontage(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV);
+  gui = new gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV);
 
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV);

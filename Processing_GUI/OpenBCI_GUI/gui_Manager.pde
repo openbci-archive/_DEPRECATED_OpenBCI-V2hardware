@@ -30,7 +30,7 @@ class plotFontInfo {
     int buttonLabel_size = 12;
 };
 
-class gui_headFftMontage {
+class gui_Manager {
   ScatterTrace sTrace;
   ScatterTrace_FFT fftTrace;
   Graph2D gMontage, gFFT;
@@ -44,7 +44,7 @@ class gui_headFftMontage {
   float vertScale_uV = 200.f; //this defines the Y-scale on the montage plots...this is the vertical space between traces
   float montage_yoffsets[];
   
-  gui_headFftMontage(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float yScale_uV) {  
+  gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float yScale_uV) {  
     
      //define some layout parameters
     int axes_x, axes_y;
