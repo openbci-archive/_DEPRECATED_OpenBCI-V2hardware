@@ -26,6 +26,10 @@ http://www.gwoptics.org/processing/gwoptics_p5lib/
 Updates
 --------
 
+2014-02-02 OpenBCI_GUI and OpenBCI_GUI_Simpler:
+		: More refinements in handling of incoming serial binary data.
+                  Most stable at 115200 bps
+
 2014-01-29 OpenBCI_GUI_Simpler:
                : Added audio tone as output to Alpha Detection.
                  Now you can know that you're making alpha even when

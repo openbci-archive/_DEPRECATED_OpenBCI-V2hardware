@@ -228,8 +228,8 @@ void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean u
 	
 		
 	//print the sample number, if not disabled
-	//val = sampleNumber;
-	val = 1L;	
+	val = sampleNumber;
+	//val = 1L;	
 	//ptr = (uint8_t *)(&val);  //pretend that it is a string buffer so that Serial.write works easier
 	//if (sampleNumber >= 0) {
 		Serial.write(val_ptr,4); //4 bytes long

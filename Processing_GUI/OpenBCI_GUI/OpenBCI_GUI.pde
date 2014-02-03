@@ -25,7 +25,7 @@ openBCI_ADS1299 openBCI;
 String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
-int openBCI_baud = 115200*2; //baud rate from the Arduino
+int openBCI_baud = 115200; //baud rate from the Arduino
 int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //use this for when daisy-chaining two OpenBCI boards
 //int openBCI_baud = 2*115200; //baud rate from the Arduino
@@ -33,7 +33,7 @@ int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 
 
 //data constants
-float fs_Hz = 250f;
+float fs_Hz = 250f;  //sample rate used by OpenBCI board
 float dataBuffX[];
 float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is a new channel so that dataBuffY[3][] is channel 4
 float dataBuffY_filtY_uV[][];
@@ -41,7 +41,7 @@ float data_std_uV[];
 int nchan = OpenBCI_Nchannels;
 float scale_fac_uVolts_per_count = (4.5f / 24.0f / pow(2, 24)) * 1000000.f * 2.0f; //factor of 2 added 2013-11-10 to match empirical tests in my office on Friday
 int prev_time_millis = 0;
-final int nPointsPerUpdate = 30;
+final int nPointsPerUpdate = 50; //update screen after this many data points.  
 float yLittleBuff[] = new float[nPointsPerUpdate];
 
 //filter constants
@@ -71,13 +71,14 @@ float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smo
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
 
 //plotting constants
-gui_headFftMontage gui;
+gui_Manager gui;
 float vertScale_uV = 200.0f;
 float displayTime_sec = 5f;
-float dataBuff_len_sec = displayTime_sec+2f;
+float dataBuff_len_sec = displayTime_sec+3f; //needs to be wider than actual display so that filter startup is hidden
 
 //program constants
 boolean isRunning=false;
+boolean redrawScreenNow = true;
 int openBCI_byteCount = 0;
 int inByte = -1;    // Incoming serial data
 
@@ -87,7 +88,7 @@ OutputFile_rawtxt fileoutput;
 String output_fname;
 
 //openBCI data packet
-final int nDataBackBuff = (int)fs_Hz;
+final int nDataBackBuff = 3*(int)fs_Hz;
 dataPacket_ADS1299 dataPacketBuff[] = new dataPacket_ADS1299[nDataBackBuff]; //allocate the array, but doesn't call constructor.  Still need to call the constructor!
 int curDataPacketInd = -1;
 int lastReadDataPacketInd = -1;
@@ -161,7 +162,7 @@ void setup() {
   initializeFFTObjects(fftBuff, dataBuffY_uV, Nfft, fs_Hz);
 
   //initilize the GUI
-  gui = new gui_headFftMontage(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV);
+  gui = new gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV);
 
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV);
@@ -191,7 +192,6 @@ int prevBytes = 0;
 int prevMillis=millis();
 int byteRate_perSec = 0;
 void draw() {
-  //newData = false;
   if (isRunning) {
     if (useSyntheticData) {  //use synthetic data (for GUI debugging) or use real data from the Serial stream
       lastReadDataPacketInd = 0;
@@ -211,17 +211,14 @@ void draw() {
     else {
       openBCI.updateState();
 
-      //is data waiting in the buffer from the serial port?
-      if (curDataPacketInd != lastReadDataPacketInd) {
-        //gather the data into the "little buffer"
-        while ( (curDataPacketInd != lastReadDataPacketInd) && (pointCounter < nPointsPerUpdate)) {
-          lastReadDataPacketInd = (lastReadDataPacketInd+1) % dataPacketBuff.length;
-          for (int Ichan=0; Ichan < nchan; Ichan++) {
-            //scale the data into engineering units..."microvolts"
-            yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
-          } 
-          pointCounter++;
-        }
+      //gather any new data into the "little buffer"
+      while ( (curDataPacketInd != lastReadDataPacketInd) && (pointCounter < nPointsPerUpdate)) {
+        lastReadDataPacketInd = (lastReadDataPacketInd+1) % dataPacketBuff.length;  //increment to read the next packet
+        for (int Ichan=0; Ichan < nchan; Ichan++) {   //loop over each cahnnel
+          //scale the data into engineering units ("microvolts") and save to the "little buffer"
+          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan] * scale_fac_uVolts_per_count;
+        } 
+        pointCounter++; //increment counter for "little buffer"
       }
     }
 
@@ -250,11 +247,10 @@ void draw() {
         fooData_raw = Arrays.copyOfRange(fooData_raw, fooData_raw.length-Nfft, fooData_raw.length);   //just grab the most recent block of data
         fftBuff[Ichan].forward(fooData_raw); //compute FFT on this channel of data
         
-        //average the FFT with previous FFT data
+        //average the FFT with previous FFT data...log average
         double min_val = 0.01d;
         double foo;
-        for (int I=0; I < fftBuff[Ichan].specSize(); I++) {
-          
+        for (int I=0; I < fftBuff[Ichan].specSize(); I++) {   //loop over each fft bin
           if (prevFFTdata[I] < min_val) prevFFTdata[I] = (float)min_val; //make sure we're not too small for the log calls
           foo = fftBuff[Ichan].getBand(I); if (foo < min_val) foo = min_val; //make sure this value isn't too small
           foo =   (1.0d-fft_smooth_fac) * java.lang.Math.log(java.lang.Math.pow(foo,2));
@@ -263,7 +259,7 @@ void draw() {
           fftBuff[Ichan].setBand(I,foo_val);
         }
     
-        //compute the stddev for the head plot
+        //compute the stddev of the signal...for the head plot
         float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
         fooData_filt = Arrays.copyOfRange(fooData_filt, fooData_filt.length-Nfft, fooData_filt.length);   //just grab the most recent block of data
         data_std_uV[Ichan]=std(fooData_filt);
@@ -271,19 +267,24 @@ void draw() {
 
       //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
       gui.update();
-      
-      //write data to file
-      if (output_fname != null) fileoutput.writeRawData_txt(yLittleBuff_uV,dataPacketBuff[lastReadDataPacketInd].sampleIndex);
+      redrawScreenNow=true;
     } 
     else {
       //not enough data has arrived yet.  do nothing more
     }
+    
+    //either way, update the title of the figure;
+    frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", Writing to " + output_fname);
+  }
+  
+  if (redrawScreenNow) {
+    //redraw the screen...not every time, get paced by when data is being plotted
+    redrawScreenNow = false;  //reset for next time
+    background(0);
+    gui.draw();
   }
 
-  //redraw the screen...not every time, get paced by when data is being plotted
-  background(0);
-  gui.draw();
-  frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", Writing to " + output_fname);
+
 }
 
 void serialEvent(Serial port) {
@@ -293,8 +294,12 @@ void serialEvent(Serial port) {
     openBCI.read(echoBytes);
     openBCI_byteCount++;
     if (openBCI.isNewDataPacketAvailable) {
-      curDataPacketInd = (curDataPacketInd+1) % dataPacketBuff.length;
-      openBCI.copyDataPacketTo(dataPacketBuff[curDataPacketInd]);
+      //copy packet into buffer of data packets
+      curDataPacketInd = (curDataPacketInd+1) % dataPacketBuff.length; //this is also used to let the rest of the code that it may be time to do something
+      openBCI.copyDataPacketTo(dataPacketBuff[curDataPacketInd]);  //resets isNewDataPacketAvailable to false
+      
+      //write this chunk of data to file
+      fileoutput.writeRawData_dataPacket(dataPacketBuff[curDataPacketInd],scale_fac_uVolts_per_count);
     }
   } 
   else {
@@ -374,12 +379,14 @@ void mousePressed() {
   if (gui.stopButton.updateIsMouseHere()) { 
     stopButtonWasPressed(); 
     gui.stopButton.setIsActive(true);
+    redrawScreenNow = true;
   }
 
   //check the channel buttons
   for (int Ibut = 0; Ibut < gui.chanButtons.length; Ibut++) {
     if (gui.chanButtons[Ibut].updateIsMouseHere()) { 
       toggleChannelState(Ibut);
+      redrawScreenNow = true;
     }
   }
 }
@@ -387,6 +394,7 @@ void mousePressed() {
 void mouseReleased() {
   //gui.stopButton.updateMouseIsReleased();
   gui.stopButton.setIsActive(false);
+  redrawScreenNow = true;
 }
 
 //execute this function whenver the stop button is pressed
@@ -395,6 +403,7 @@ void stopButtonWasPressed() {
   if (isRunning) {
     println("openBCI_GUI: stopButton was pressed...stopping data transfer...");
     if (openBCI != null) openBCI.stopDataTransfer();
+    closeLogFile();
   } 
   else { //not running
     openNewLogFile();  //open a new log file
@@ -458,10 +467,15 @@ void deactivateChannel(int Ichan) {
 
 void openNewLogFile() {
   //close the file if it's open
-  if (fileoutput != null) fileoutput.closeFile();
+  println("OpenBCI_GUI: closing log file");
+  if (fileoutput != null) closeLogFile();
   
   //open the new file
   fileoutput = new OutputFile_rawtxt(fs_Hz);
   output_fname = fileoutput.fname;
   println("openBCI: openNewLogFile: opened output file: " + output_fname);
+}
+
+void closeLogFile() {
+  fileoutput.closeFile();
 }
