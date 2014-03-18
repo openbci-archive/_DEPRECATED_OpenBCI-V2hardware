@@ -43,3 +43,11 @@ public class filterConstants {
     name = name_given;
   };
 };
+
+public class graphDataPoint {
+  public double x;
+  public double y;
+  public String x_units;
+  public String y_units;
+};
+

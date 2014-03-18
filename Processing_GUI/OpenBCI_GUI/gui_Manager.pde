@@ -66,9 +66,9 @@ class gui_Manager {
       (1.0f-left_right_split)-gutter_left-gutter_right, 
       available_top2bot
     }; //from left, from top, width, height
-    axes_x = int(float(win_x)*axisMontage_relPos[2]);
-    axes_y = int(float(win_y)*axisMontage_relPos[3]);
-    gMontage = new Graph2D(parent, axes_x, axes_y, false);  //last argument is wheter the axes cross at zero
+    axes_x = int(float(win_x)*axisMontage_relPos[2]);  //width of the axis in pixels
+    axes_y = int(float(win_y)*axisMontage_relPos[3]);  //height of the axis in pixels
+    gMontage = new Graph2D(parent, axes_x, axes_y, false);  //last argument is whether the axes cross at zero
     setupMontagePlot(gMontage, win_x, win_y, axisMontage_relPos,displayTime_sec,fontInfo);
   
     //setup the FFT plot...bottom on left side
@@ -79,9 +79,9 @@ class gui_Manager {
       left_right_split-gutter_left-gutter_right, 
       available_top2bot*(1.0f-up_down_split) - gutter_topbot
     }; //from left, from top, width, height
-    axes_x = int(float(win_x)*axisFFT_relPos[2]);
-    axes_y = int(float(win_y)*axisFFT_relPos[3]);
-    gFFT = new Graph2D(parent, axes_x, axes_y, false);  //last argument is wheter the axes cross at zero
+    axes_x = int(float(win_x)*axisFFT_relPos[2]);  //width of the axis in pixels
+    axes_y = int(float(win_y)*axisFFT_relPos[3]);  //height of the axis in pixels
+    gFFT = new Graph2D(parent, axes_x, axes_y, false);  //last argument is whether the axes cross at zero
     setupFFTPlot(gFFT, win_x, win_y, axisFFT_relPos,fontInfo);
     
     //setup the head plot...top on the left side
@@ -226,6 +226,27 @@ class gui_Manager {
     
     //link the data to the head plot
     headPlot1.setIntensityData_byRef(dataBuffY_std);
+  }
+  
+  public boolean isMouseOnFFT(int mouse_x, int mouse_y) {
+    graphDataPoint dataPoint = new graphDataPoint();
+    getFFTdataPoint(mouse_x,mouse_y,dataPoint);
+    if ( (dataPoint.x >= gFFT.getXAxis().getMinValue()) &
+         (dataPoint.x <= gFFT.getXAxis().getMaxValue()) &
+         (dataPoint.y >= gFFT.getYAxis().getMinValue()) &
+         (dataPoint.y <= gFFT.getYAxis().getMaxValue()) ) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  public void getFFTdataPoint(int mouse_x,int mouse_y,graphDataPoint dataPoint) {
+    int rel_x = mouse_x - int(gFFT.position.x);
+    int rel_y = gFFT.getYAxis().getLength() - (mouse_y - int(gFFT.position.y));
+    dataPoint.x = gFFT.getXAxis().positionToValue(rel_x);
+    dataPoint.y = gFFT.getYAxis().positionToValue(rel_y);
+    dataPoint.x_units = "Hz";
+    dataPoint.y_units = "uV/sqrt(Hz)";
   }
   
   public void update() {
