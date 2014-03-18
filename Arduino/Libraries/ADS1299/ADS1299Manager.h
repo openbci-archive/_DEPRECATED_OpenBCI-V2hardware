@@ -51,6 +51,16 @@
 #define ADSTESTSIG_DCSIG (0b00000011)
 #define ADSTESTSIG_NOCHANGE (0b11111111)
 
+//Lead-off signal choices
+#define LOFF_MAG_6NA (0b00000000)
+#define LOFF_MAG_24NA (0b00000100)
+#define LOFF_MAG_6UA (0b00001000)
+#define LOFF_MAG_24UA (0b00001100)
+#define LOFF_FREQ_DC (0b00000000)
+#define LOFF_FREQ_7p8HZ (0b00000001)
+#define LOFF_FREQ_31p2HZ (0b00000010)
+#define LOFF_FREQ_FS_4 (0b00000011)
+
 //binary communication codes for each packet
 #define PCKT_START 0xA0
 #define PCKT_END 0xC0
@@ -63,7 +73,10 @@ class ADS1299Manager : public ADS1299 {
     void reset(void);                                          //reset all the ADS1299's settings.  Call however you'd like
     void activateChannel(int N, byte gainCode,byte inputCode); //setup the channel 1-8
     void deactivateChannel(int N);                            //disable given channel 1-8
-    void configureInternalTestSignal(byte amplitudeCode, byte freqCode);  
+    void configureLeadOffDetection(byte amplitudeCode, byte freqCode);  //configure the lead-off detection signal parameters
+    void activateChannelLeadOffDetection(int N);     // activate lead-on detection 1-8
+    void deactivateChannelLeadOffDetection(int N);   // deactivate lead-on detection 1-8
+    void configureInternalTestSignal(byte amplitudeCode, byte freqCode);  //configure the test signal parameters
     void start(void);
     void stop(void);
     int isDataAvailable(void);

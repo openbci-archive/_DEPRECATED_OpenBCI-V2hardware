@@ -70,13 +70,13 @@ void ADS1299Manager::deactivateChannel(int N)
   byte reg, config;
 	
   //check the inputs
-  if ((N < 1) || (N > 8)) return;
+  if ((N < 1) || (N > OPENBCI_NCHAN)) return;
   
   //proceed...first, disable any data collection
   ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
 
   //shut down the channel
-  N = constrain(N-1,0,7);  //subtracts 1 so that we're counting from 0, not 1
+  N = constrain(N-1,0,OPENBCI_NCHAN-1);  //subtracts 1 so that we're counting from 0, not 1
   reg = CH1SET+(byte)N;
   config = ADS1299::RREG(reg); delay(1);
   bitSet(config,7);  //left-most bit (bit 7) = 1, so this shuts down the channel
@@ -99,14 +99,14 @@ void ADS1299Manager::deactivateChannel(int N)
 void ADS1299Manager::activateChannel(int N,byte gainCode,byte inputCode) 
 {
    //check the inputs
-  if ((N < 1) || (N > 8)) return;
+  if ((N < 1) || (N > OPENBCI_NCHAN)) return;
   
   //proceed...first, disable any data collection
   ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
 
   //active the channel using the given gain.  Set MUX for normal operation
   //see ADS1299 datasheet, PDF p44
-  N = constrain(N-1,0,7);  //shift down by one
+  N = constrain(N-1,0,OPENBCI_NCHAN-1);  //shift down by one
   byte configByte = 0b00000000;  //left-most zero (bit 7) is to activate the channel
   gainCode = gainCode & 0b01110000;  //bitwise AND to get just the bits we want and set the rest to zero
   configByte = configByte | gainCode; //bitwise OR to set just the gain bits high or low and leave the rest alone
@@ -133,6 +133,83 @@ void ADS1299Manager::activateChannel(int N,byte gainCode,byte inputCode)
   ADS1299::WREG(CONFIG3,0b11101100); delay(1); 
 };
 
+
+//deactivate the given channel's lead-off detection...note: stops data colleciton to issue its commands
+//  N is the channel number: 1-8
+// 
+void ADS1299Manager::deactivateChannelLeadOffDetection(int N)
+{
+  byte reg, config;
+	
+  //check the inputs
+  if ((N < 1) || (N > OPENBCI_NCHAN)) return;
+  N = constrain(N-1,0,OPENBCI_NCHAN-1);  //shift down by one
+  
+  //proceed...first, disable any data collection
+  ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
+
+  //shut down the lead-off signal on the positive side
+  reg = LOFF_SENSP;  //are we using the P inptus or the N inputs?
+  config = ADS1299::RREG(reg); //get the current bias settings
+  bitClear(config,N);                   //set this channel's bit
+  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  
+  //shut down the lead-off signal on the negative side
+  reg = LOFF_SENSN;  //are we using the P inptus or the N inputs?
+  config = ADS1299::RREG(reg); //get the current bias settings
+  bitClear(config,N);                   //set this channel's bit
+  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  
+}; 
+
+//activate the given channel's lead-off detection...note: stops data colleciton to issue its commands
+//  N is the channel number: 1-8
+// 
+void ADS1299Manager::activateChannelLeadOffDetection(int N)
+{
+  byte reg, config;
+	
+  //check the inputs
+  if ((N < 1) || (N > OPENBCI_NCHAN)) return;
+  N = constrain(N-1,0,OPENBCI_NCHAN-1);  //shift down by one
+  
+  //proceed...first, disable any data collection
+  ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
+
+  //shut down the lead-off signal on the positive side
+  reg = LOFF_SENSP;  //are we using the P inptus or the N inputs?
+  config = ADS1299::RREG(reg); //get the current lead-off settings
+  bitSet(config,N);                   //set this channel's bit
+  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  
+  //shut down the lead-off signal on the negative side
+  reg = LOFF_SENSN;  //are we using the P inptus or the N inputs?
+  config = ADS1299::RREG(reg); //get the current lead-off settings
+  bitSet(config,N);                   //set this channel's bit
+  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  
+}; 
+
+void ADS1299Manager::configureLeadOffDetection(byte amplitudeCode, byte freqCode)
+{
+	amplitudeCode &= 0b00001100;  //only these two bits should be used
+	freqCode &= 0b00000011;  //only these two bits should be used
+	
+	//get the current configuration of he byte
+	byte reg, config;
+	reg = LOFF;
+	config = ADS1299::RREG(reg); //get the current bias settings
+	
+	//reconfigure the byte to get what we want
+	config &= 0b11110000;  //clear out the last four bits
+	config |= amplitudeCode;  //set the amplitude
+	config |= freqCode;    //set the frequency
+	
+	//send the config byte back to the hardware
+	ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+	
+}
+
 void ADS1299Manager::setSRB1(boolean desired_state) {
 	if (desired_state) {
 		ADS1299::WREG(MISC1,0b00100000); delay(1);  //ADS1299 datasheet, PDF p46
@@ -140,6 +217,8 @@ void ADS1299Manager::setSRB1(boolean desired_state) {
 		ADS1299::WREG(MISC1,0b00000000); delay(1);  //ADS1299 datasheet, PDF p46
 	}
 }
+
+
 
 
 //Configure the test signals that can be inernally generated by the ADS1299
@@ -186,7 +265,7 @@ void ADS1299Manager::stop(void)
 void ADS1299Manager::printChannelDataAsText(int N, long int sampleNumber)
 {
 	//check the inputs
-	if ((N < 1) || (N > 8)) return;
+	if ((N < 1) || (N > OPENBCI_NCHAN)) return;
 	
 	//print the sample number, if not disabled
 	if (sampleNumber > 0) {
@@ -203,7 +282,6 @@ void ADS1299Manager::printChannelDataAsText(int N, long int sampleNumber)
 	
 	//print end of line
 	Serial.println();
-	
 };
 
 
@@ -218,7 +296,7 @@ void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber){
 void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean useSyntheticData)
 {
 	//check the inputs
-	if ((N < 1) || (N > 8)) return;
+	if ((N < 1) || (N > OPENBCI_NCHAN)) return;
 	
 	// Write header
 	Serial.write( (byte) PCKT_START);

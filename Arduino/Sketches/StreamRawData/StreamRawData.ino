@@ -85,8 +85,11 @@ void setup() {
     ADSManager.activateChannel(chan, gainCode, inputType);
   }
 
+  //setup the lead-off detection parameters
+  ADSManager.configureLeadOffDetection(LOFF_MAG_6NA, LOFF_FREQ_31p2HZ);
+
   //print state of all registers
-  //ADSManager.printAllRegisters();Serial.flush();
+  ADSManager.printAllRegisters();Serial.flush();
 
   // setup hardware to allow a jumper or button to start the digitaltransfer
   pinMode(PIN_STARTBINARY,INPUT); digitalWrite(PIN_STARTBINARY,HIGH); //activate pullup
@@ -192,6 +195,7 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
     char inChar = (char)Serial.read();
     switch (inChar)
     {
+      //turn channels on and off
       case '1':
         changeChannelState_maintainRunningState(1,DEACTIVATE); break;
       case '2':
@@ -224,6 +228,42 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         changeChannelState_maintainRunningState(7,ACTIVATE); break;
       case 'i':
         changeChannelState_maintainRunningState(8,ACTIVATE); break;
+        
+      //turn lead-off detection on and off
+      case '!':
+        changeChannelLeadOffDetection_maintainRunningState(1,DEACTIVATE); break;
+      case '@':
+        changeChannelLeadOffDetection_maintainRunningState(2,DEACTIVATE); break;
+      case '#':
+        changeChannelLeadOffDetection_maintainRunningState(3,DEACTIVATE); break;
+      case '$':
+        changeChannelLeadOffDetection_maintainRunningState(4,DEACTIVATE); break;
+      case '%':
+        changeChannelLeadOffDetection_maintainRunningState(5,DEACTIVATE); break;
+      case '^':
+        changeChannelLeadOffDetection_maintainRunningState(6,DEACTIVATE); break;
+      case '&':
+        changeChannelLeadOffDetection_maintainRunningState(7,DEACTIVATE); break;
+      case '*':
+        changeChannelLeadOffDetection_maintainRunningState(8,DEACTIVATE); break;
+      case 'Q':
+        changeChannelLeadOffDetection_maintainRunningState(1,ACTIVATE); break;
+      case 'W':
+        changeChannelLeadOffDetection_maintainRunningState(2,ACTIVATE); break;
+      case 'E':
+        changeChannelLeadOffDetection_maintainRunningState(3,ACTIVATE); break;
+      case 'R':
+        changeChannelLeadOffDetection_maintainRunningState(4,ACTIVATE); break;
+      case 'T':
+        changeChannelLeadOffDetection_maintainRunningState(5,ACTIVATE); break;
+      case 'Y':
+        changeChannelLeadOffDetection_maintainRunningState(6,ACTIVATE); break;
+      case 'U':
+        changeChannelLeadOffDetection_maintainRunningState(7,ACTIVATE); break;
+      case 'I':
+        changeChannelLeadOffDetection_maintainRunningState(8,ACTIVATE); break;
+        
+      //control test signals
       case '0':
         activateAllChannelsToTestCondition(ADSINPUT_SHORTED,ADSTESTSIG_NOCHANGE,ADSTESTSIG_NOCHANGE); break;
       case '-':
@@ -239,6 +279,8 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         activateAllChannelsToTestCondition(ADSINPUT_TESTSIG,ADSTESTSIG_AMP_2X,ADSTESTSIG_PULSE_SLOW); break;
       case ']':
         activateAllChannelsToTestCondition(ADSINPUT_TESTSIG,ADSTESTSIG_AMP_2X,ADSTESTSIG_PULSE_FAST); break;
+        
+      //other commands
       case 'n':
         toggleRunState(OUTPUT_NOTHING);
         startBecauseOfSerial = is_running;
@@ -326,6 +368,32 @@ int changeChannelState_maintainRunningState(int chan, int start)
     startRunning(cur_outputType);
   }
 }
+
+int changeChannelLeadOffDetection_maintainRunningState(int chan, int start)
+{
+  boolean is_running_when_called = is_running;
+  int cur_outputType = outputType;
+  
+  //must stop running to change channel settings
+  stopRunning();
+  if (start == true) {
+    Serial.print(F("Activating channel "));
+    Serial.print(chan);
+    Serial.println(" Lead-Off Detection");
+    ADSManager.activateChannelLeadOffDetection(chan);
+  } else {
+    Serial.print(F("Deactivating channel "));
+    Serial.print(chan);
+    Serial.println(" Lead-Off Detection");
+    ADSManager.deactivateChannelLeadOffDetection(chan);
+  }
+  
+  //restart, if it was running before
+  if (is_running_when_called == true) {
+    startRunning(cur_outputType);
+  }
+}
+
 
 int activateAllChannelsToTestCondition(int testInputCode, byte amplitudeCode, byte freqCode)
 {
