@@ -177,10 +177,10 @@ void ADS1299Manager::activateChannelLeadOffDetection(int N)
   ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
 
   //shut down the lead-off signal on the positive side
-  reg = LOFF_SENSP;  //are we using the P inptus or the N inputs?
-  config = ADS1299::RREG(reg); //get the current lead-off settings
-  bitSet(config,N);                   //set this channel's bit
-  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+ // reg = LOFF_SENSP;  //are we using the P inptus or the N inputs?
+ // config = ADS1299::RREG(reg); //get the current lead-off settings
+ // bitSet(config,N);                   //set this channel's bit
+ // ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
   
   //shut down the lead-off signal on the negative side
   reg = LOFF_SENSN;  //are we using the P inptus or the N inputs?
