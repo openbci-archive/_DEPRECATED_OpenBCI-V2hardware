@@ -39,6 +39,9 @@ class gui_Manager {
   plotFontInfo fontInfo;
   headPlot headPlot1;
   Button[] chanButtons;
+  boolean showImpedanceButtons;
+  Button[] impedanceButtonsP;
+  Button[] impedanceButtonsN;
   
   float fftYOffset[];
   float vertScale_uV = 200.f; //this defines the Y-scale on the montage plots...this is the vertical space between traces
@@ -104,10 +107,29 @@ class gui_Manager {
     if (nchan > 10) w -= (nchan-8)*2; //make the buttons skinnier
     chanButtons = new Button[nchan];
     for (int Ibut = 0; Ibut < nchan; Ibut++) {
-      x = ((int)(3*gutter_between_buttons*win_x)) + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
+      //x = ((int)(3*gutter_between_buttons*win_x)) + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
+      x = calcButtonXLocation(Ibut, win_x, w, gutter_between_buttons);
       chanButtons[Ibut] = new Button(x,y,w,h,"Ch " + (Ibut+1),fontInfo.buttonLabel_size);
+    }
+
+    //setup the impedance measurement (lead-off) control buttons
+    showImpedanceButtons = false; //by default, do not show the buttons
+    w = w;  //use same width as for buttons above
+    h = h/2;  //use buttons with half the height
+    impedanceButtonsP = new Button[nchan];
+    for (int Ibut = 0; Ibut < nchan; Ibut++) {
+      x = calcButtonXLocation(Ibut, win_x, w, gutter_between_buttons);
+      impedanceButtonsP[Ibut] = new Button(x,y-5,w,h,"Imp P" + (Ibut+1),fontInfo.buttonLabel_size);
+    }    
+    impedanceButtonsN = new Button[nchan];
+    for (int Ibut = 0; Ibut < nchan; Ibut++) {
+      x = calcButtonXLocation(Ibut, win_x, w, gutter_between_buttons);
+      impedanceButtonsN[Ibut] = new Button(x,y+h,w,h,"Imp N" + (Ibut+1),fontInfo.buttonLabel_size);
     }    
   } 
+  private int calcButtonXLocation(int Ibut,int win_x,int w, float gutter_between_buttons) {
+    return ((int)(3*gutter_between_buttons*win_x)) + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
+  }
     
   public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, plotFontInfo fontInfo) {
   
@@ -260,8 +282,17 @@ class gui_Manager {
     gMontage.draw(); //println("completed montage draw..."); 
     gFFT.draw(); //println("completed FFT draw..."); 
     stopButton.draw();
-    for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
-      chanButtons[Ichan].draw();
+    if (showImpedanceButtons == false) {
+      //show channel buttons
+      for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
+        chanButtons[Ichan].draw();
+      }
+    } else {
+      //show impedance buttons
+      for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
+        impedanceButtonsP[Ichan].draw();
+        impedanceButtonsN[Ichan].draw();
+      }      
     }
   }
   

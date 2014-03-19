@@ -142,6 +142,9 @@ void setup() {
   size(win_x, win_y, P2D);
   //if (frame != null) frame.setResizable(true);  //make window resizable
 
+  //attach exit handler
+  //prepareExitHandler();
+
   //prepare data variables
   dataBuffX = new float[(int)(dataBuff_len_sec * fs_Hz)];
   dataBuffY_uV = new float[nchan][dataBuffX.length];
@@ -150,7 +153,6 @@ void setup() {
   for (int i=0; i<nDataBackBuff;i++) { 
     dataPacketBuff[i] = new dataPacket_ADS1299(nchan);
   }
-
 
   //initialize the data
   prepareData(dataBuffX, dataBuffY_uV, fs_Hz);
@@ -312,7 +314,7 @@ void serialEvent(Serial port) {
 void keyPressed() {
   //note that the Processing variable "key" is the keypress as an ASCII character
   //note that the Processing variable "keyCode" is the keypress as a JAVA keycode.  This differs from ASCII  
-  println("OpenBCI_GUI: keyPressed: key = " + key + ", int(key) = " + int(key) + ", keyCode = " + keyCode);
+  //println("OpenBCI_GUI: keyPressed: key = " + key + ", int(key) = " + int(key) + ", keyCode = " + keyCode);
   
   if ((int(key) >=32) && (int(key) <= 126)) {  //32 through 126 represent all the usual printable ASCII characters
     parseKey(key);
@@ -321,6 +323,8 @@ void keyPressed() {
   }
 }
 void parseKey(char val) {
+  int Ichan; boolean activate; int code_P_N_Both;
+  
   //assumes that val is a usual printable ASCII character (ASCII 32 through 126)
   switch (val) {
     case '1':
@@ -374,6 +378,113 @@ void parseKey(char val) {
     case 's':
       stopButtonWasPressed();
       break;
+      
+    //change the state of the impedance measurements...activate the P-channels
+    case '!':
+      Ichan = 1; activate = true; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case '@':
+      Ichan = 2; activate = true; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case '#':
+      Ichan = 3; activate = true; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case '$':
+      Ichan = 4; activate = true; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case '%':
+      Ichan = 5; activate = true; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case '^':
+      Ichan = 6; activate = true; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case '&':
+      Ichan = 7; activate = true; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case '*':
+      Ichan = 8; activate = true; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+      
+    //change the state of the impedance measurements...deactivate the P-channels
+    case 'Q':
+      Ichan = 1; activate = false; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'W':
+      Ichan = 2; activate = false; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'E':
+      Ichan = 3; activate = false; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'R':
+      Ichan = 4; activate = false; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'T':
+      Ichan = 5; activate = false; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'Y':
+      Ichan = 6; activate = false; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'U':
+      Ichan = 7; activate = false; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'I':
+      Ichan = 8; activate = false; code_P_N_Both = 0;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+      
+      
+    //change the state of the impedance measurements...activate the N-channels
+    case 'A':
+      Ichan = 1; activate = true; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'S':
+      Ichan = 2; activate = true; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'D':
+      Ichan = 3; activate = true; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'F':
+      Ichan = 4; activate = true; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'G':
+      Ichan = 5; activate = true; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'H':
+      Ichan = 6; activate = true; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'J':
+      Ichan = 7; activate = true; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'K':
+      Ichan = 8; activate = true; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+      
+    //change the state of the impedance measurements...deactivate the N-channels
+    case 'Z':
+      Ichan = 1; activate = false; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'X':
+      Ichan = 2; activate = false; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'C':
+      Ichan = 3; activate = false; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'V':
+      Ichan = 4; activate = false; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'B':
+      Ichan = 5; activate = false; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'N':
+      Ichan = 6; activate = false; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case 'M':
+      Ichan = 7; activate = false; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+    case '<':
+      Ichan = 8; activate = false; code_P_N_Both = 1;  setChannelImpedanceState(Ichan-1,activate,code_P_N_Both);
+      break;
+
+      
     case 'm':
      println("OpenBCI_GUI: 'm' was pressed...taking screenshot...");
      saveFrame("OpenBCI-####.jpg");    // take a shot of that!
@@ -391,7 +502,8 @@ void parseKeycode(int val) {
       println("OpenBCI_GUI: parseKeycode(" + val + "): received BACKSPACE keypress.  Ignoring...");
       break;   
     case 9:
-      println("OpenBCI_GUI: parseKeycode(" + val + "): received TAB keypress.  Ignoring...");
+      println("OpenBCI_GUI: parseKeycode(" + val + "): received TAB keypress.  Toggling Impedance Control...");
+      gui.showImpedanceButtons = !gui.showImpedanceButtons;
       break;    
     case 10:
       println("OpenBCI_GUI: parseKeycode(" + val + "): received ENTER keypress.  Ignoring...");
@@ -400,7 +512,7 @@ void parseKeycode(int val) {
       println("OpenBCI_GUI: parseKeycode(" + val + "): received SHIFT keypress.  Ignoring...");
       break;
     case 17:
-      println("OpenBCI_GUI: parseKeycode(" + val + "): received CTRL keypress.  Ignoring...");
+      //println("OpenBCI_GUI: parseKeycode(" + val + "): received CTRL keypress.  Ignoring...");
       break;
     case 18:
       println("OpenBCI_GUI: parseKeycode(" + val + "): received ALT keypress.  Ignoring...");
@@ -494,13 +606,28 @@ void mousePressed() {
     redrawScreenNow = true;
   }
 
-  //check the channel buttons
-  for (int Ibut = 0; Ibut < gui.chanButtons.length; Ibut++) {
-    if (gui.chanButtons[Ibut].updateIsMouseHere()) { 
-      toggleChannelState(Ibut);
-      redrawScreenNow = true;
+  //check the buttons
+  if (gui.showImpedanceButtons == false) {
+    //check the channel buttons
+    for (int Ibut = 0; Ibut < gui.chanButtons.length; Ibut++) {
+      if (gui.chanButtons[Ibut].updateIsMouseHere()) { 
+        toggleChannelState(Ibut);
+        redrawScreenNow = true;
+      }
+    }
+  } else {
+    for (int Ibut = 0; Ibut < gui.impedanceButtonsP.length; Ibut++) {
+      if (gui.impedanceButtonsP[Ibut].updateIsMouseHere()) { 
+        toggleChannelImpedanceState(gui.impedanceButtonsP[Ibut],Ibut,0);
+        redrawScreenNow = true;
+      }
+      if (gui.impedanceButtonsN[Ibut].updateIsMouseHere()) { 
+        toggleChannelImpedanceState(gui.impedanceButtonsN[Ibut],Ibut,1);
+        redrawScreenNow = true;
+      }
     }
   }
+  
   
   //check the graphs
   if (gui.isMouseOnFFT(mouseX,mouseY)) {
@@ -590,6 +717,34 @@ void deactivateChannel(int Ichan) {
   gui.chanButtons[Ichan].setIsActive(true); //a deactivated channel is a dark-colored ACTIVE button
 }
 
+void toggleChannelImpedanceState(Button but, int Ichan, int code_P_N_Both) {
+  boolean newstate = false;
+  println("OpenBCI_GUI: toggleChannelImpedanceState: Ichan " + Ichan + ", code_P_N_Both " + code_P_N_Both);
+  if ((Ichan >= 0) && (Ichan < gui.impedanceButtonsP.length)) {
+
+    //find what state we were, because that sets what state we need
+    newstate = !(but.isActive()); //toggle the state
+
+    //set the desired impedance state
+    setChannelImpedanceState(Ichan,newstate,code_P_N_Both);
+  }
+}
+void setChannelImpedanceState(int Ichan,boolean newstate,int code_P_N_Both) {
+  if ((Ichan >= 0) && (Ichan < gui.impedanceButtonsP.length)) {
+    //change the state of the OpenBCI channel itself
+    openBCI.changeImpedanceState(Ichan,newstate,code_P_N_Both);
+    
+    //now update the button state
+    if ((code_P_N_Both == 0) || (code_P_N_Both == 2)) {
+      //set the P channel
+      gui.impedanceButtonsP[Ichan].setIsActive(newstate);
+    } else if ((code_P_N_Both == 1) || (code_P_N_Both == 2)) {
+      //set the N channel
+      gui.impedanceButtonsN[Ichan].setIsActive(newstate);
+    }
+  }
+}
+
 void openNewLogFile() {
   //close the file if it's open
   println("OpenBCI_GUI: closing log file");
@@ -604,3 +759,31 @@ void openNewLogFile() {
 void closeLogFile() {
   fileoutput.closeFile();
 }
+
+
+// here's a function to catch whenever the window is being closed, so that
+// it stops OpenBCI
+// from: http://forum.processing.org/one/topic/run-code-on-exit.html
+//
+// must add "prepareExitHandler();" in setup() for Processing sketches 
+//private void prepareExitHandler () {
+//  Runtime.getRuntime().addShutdownHook(
+//    new Thread(new Runnable() {
+//        public void run () {
+//          //System.out.println("SHUTDOWN HOOK");
+//          println("OpenBCI_GUI: executing shutdown code...");
+//          try {
+//            stopRunning();
+//            if (openBCI != null) {
+//              openBCI.closeSerialPort();
+//            }
+//            stop();
+//          } catch (Exception ex) {
+//            ex.printStackTrace(); // not much else to do at this point
+//          }
+//        }
+//      }
+//    )
+//  );
+//}  
+
