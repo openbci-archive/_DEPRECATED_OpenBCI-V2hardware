@@ -231,37 +231,69 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         
       //turn lead-off detection on and off
       case '!':
-        changeChannelLeadOffDetection_maintainRunningState(1,DEACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(1,ACTIVATE,PCHAN); break;
       case '@':
-        changeChannelLeadOffDetection_maintainRunningState(2,DEACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(2,ACTIVATE,PCHAN); break;
       case '#':
-        changeChannelLeadOffDetection_maintainRunningState(3,DEACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(3,ACTIVATE,PCHAN); break;
       case '$':
-        changeChannelLeadOffDetection_maintainRunningState(4,DEACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(4,ACTIVATE,PCHAN); break;
       case '%':
-        changeChannelLeadOffDetection_maintainRunningState(5,DEACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(5,ACTIVATE,PCHAN); break;
       case '^':
-        changeChannelLeadOffDetection_maintainRunningState(6,DEACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(6,ACTIVATE,PCHAN); break;
       case '&':
-        changeChannelLeadOffDetection_maintainRunningState(7,DEACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(7,ACTIVATE,PCHAN); break;
       case '*':
-        changeChannelLeadOffDetection_maintainRunningState(8,DEACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(8,ACTIVATE,PCHAN); break;
       case 'Q':
-        changeChannelLeadOffDetection_maintainRunningState(1,ACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(1,DEACTIVATE,PCHAN); break;
       case 'W':
-        changeChannelLeadOffDetection_maintainRunningState(2,ACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(2,DEACTIVATE,PCHAN); break;
       case 'E':
-        changeChannelLeadOffDetection_maintainRunningState(3,ACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(3,DEACTIVATE,PCHAN); break;
       case 'R':
-        changeChannelLeadOffDetection_maintainRunningState(4,ACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(4,DEACTIVATE,PCHAN); break;
       case 'T':
-        changeChannelLeadOffDetection_maintainRunningState(5,ACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(5,DEACTIVATE,PCHAN); break;
       case 'Y':
-        changeChannelLeadOffDetection_maintainRunningState(6,ACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(6,DEACTIVATE,PCHAN); break;
       case 'U':
-        changeChannelLeadOffDetection_maintainRunningState(7,ACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(7,DEACTIVATE,PCHAN); break;
       case 'I':
-        changeChannelLeadOffDetection_maintainRunningState(8,ACTIVATE); break;
+        changeChannelLeadOffDetection_maintainRunningState(8,DEACTIVATE,PCHAN); break;
+       case 'A':
+        changeChannelLeadOffDetection_maintainRunningState(1,ACTIVATE,NCHAN); break;
+      case 'S':
+        changeChannelLeadOffDetection_maintainRunningState(2,ACTIVATE,NCHAN); break;
+      case 'D':
+        changeChannelLeadOffDetection_maintainRunningState(3,ACTIVATE,NCHAN); break;
+      case 'F':
+        changeChannelLeadOffDetection_maintainRunningState(4,ACTIVATE,NCHAN); break;
+      case 'G':
+        changeChannelLeadOffDetection_maintainRunningState(5,ACTIVATE,NCHAN); break;
+      case 'H':
+        changeChannelLeadOffDetection_maintainRunningState(6,ACTIVATE,NCHAN); break;
+      case 'J':
+        changeChannelLeadOffDetection_maintainRunningState(7,ACTIVATE,NCHAN); break;
+      case 'K':
+        changeChannelLeadOffDetection_maintainRunningState(8,ACTIVATE,NCHAN); break;
+      case 'Z':
+        changeChannelLeadOffDetection_maintainRunningState(1,DEACTIVATE,NCHAN); break;
+      case 'X':
+        changeChannelLeadOffDetection_maintainRunningState(2,DEACTIVATE,NCHAN); break;
+      case 'C':
+        changeChannelLeadOffDetection_maintainRunningState(3,DEACTIVATE,NCHAN); break;
+      case 'V':
+        changeChannelLeadOffDetection_maintainRunningState(4,DEACTIVATE,NCHAN); break;
+      case 'B':
+        changeChannelLeadOffDetection_maintainRunningState(5,DEACTIVATE,NCHAN); break;
+      case 'N':
+        changeChannelLeadOffDetection_maintainRunningState(6,DEACTIVATE,NCHAN); break;
+      case 'M':
+        changeChannelLeadOffDetection_maintainRunningState(7,DEACTIVATE,NCHAN); break;
+      case '<':
+        changeChannelLeadOffDetection_maintainRunningState(8,DEACTIVATE,NCHAN); break; 
         
       //control test signals
       case '0':
@@ -307,12 +339,12 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         if (is_running) Serial.println(F("Arduino: Starting text..."));
         break;
      case 'f':
-        useFilters = false;
-        Serial.println(F("Arduino: disabling filters"));
-        break;
-     case 'F':
         useFilters = true;
         Serial.println(F("Arduino: enabaling filters"));
+        break;
+     case 'g':
+        useFilters = false;
+        Serial.println(F("Arduino: disabling filters"));
         break;
      case '?':
         //print state of all registers
@@ -369,7 +401,7 @@ int changeChannelState_maintainRunningState(int chan, int start)
   }
 }
 
-int changeChannelLeadOffDetection_maintainRunningState(int chan, int start)
+int changeChannelLeadOffDetection_maintainRunningState(int chan, int start, int code_P_N_Both)
 {
   boolean is_running_when_called = is_running;
   int cur_outputType = outputType;
@@ -379,13 +411,13 @@ int changeChannelLeadOffDetection_maintainRunningState(int chan, int start)
   if (start == true) {
     Serial.print(F("Activating channel "));
     Serial.print(chan);
-    Serial.println(" Lead-Off Detection");
-    ADSManager.activateChannelLeadOffDetection(chan);
+    Serial.println(F(" Lead-Off Detection"));
+    ADSManager.changeChannelLeadOffDetection(chan,ON,code_P_N_Both);
   } else {
     Serial.print(F("Deactivating channel "));
     Serial.print(chan);
-    Serial.println(" Lead-Off Detection");
-    ADSManager.deactivateChannelLeadOffDetection(chan);
+    Serial.println(F(" Lead-Off Detection"));
+    ADSManager.changeChannelLeadOffDetection(chan,OFF,code_P_N_Both);
   }
   
   //restart, if it was running before

@@ -60,6 +60,12 @@
 #define LOFF_FREQ_7p8HZ (0b00000001)
 #define LOFF_FREQ_31p2HZ (0b00000010)
 #define LOFF_FREQ_FS_4 (0b00000011)
+#define PCHAN (1)
+#define NCHAN (2)
+#define BOTHCHAN (3)
+
+#define OFF (0)
+#define ON (1)
 
 //binary communication codes for each packet
 #define PCKT_START 0xA0
@@ -74,8 +80,7 @@ class ADS1299Manager : public ADS1299 {
     void activateChannel(int N, byte gainCode,byte inputCode); //setup the channel 1-8
     void deactivateChannel(int N);                            //disable given channel 1-8
     void configureLeadOffDetection(byte amplitudeCode, byte freqCode);  //configure the lead-off detection signal parameters
-    void activateChannelLeadOffDetection(int N);     // activate lead-on detection 1-8
-    void deactivateChannelLeadOffDetection(int N);   // deactivate lead-on detection 1-8
+    void changeChannelLeadOffDetection(int N, int code_OFF_ON, int code_P_N_Both);
     void configureInternalTestSignal(byte amplitudeCode, byte freqCode);  //configure the test signal parameters
     void start(void);
     void stop(void);

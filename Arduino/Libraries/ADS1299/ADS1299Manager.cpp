@@ -134,10 +134,10 @@ void ADS1299Manager::activateChannel(int N,byte gainCode,byte inputCode)
 };
 
 
-//deactivate the given channel's lead-off detection...note: stops data colleciton to issue its commands
+//change the given channel's lead-off detection state...note: stops data colleciton to issue its commands
 //  N is the channel number: 1-8
 // 
-void ADS1299Manager::deactivateChannelLeadOffDetection(int N)
+void ADS1299Manager::changeChannelLeadOffDetection(int N, int code_OFF_ON, int code_P_N_Both)
 {
   byte reg, config;
 	
@@ -148,46 +148,29 @@ void ADS1299Manager::deactivateChannelLeadOffDetection(int N)
   //proceed...first, disable any data collection
   ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
 
-  //shut down the lead-off signal on the positive side
-  reg = LOFF_SENSP;  //are we using the P inptus or the N inputs?
-  config = ADS1299::RREG(reg); //get the current bias settings
-  bitClear(config,N);                   //set this channel's bit
-  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  if ((code_P_N_Both == PCHAN) || (code_P_N_Both == BOTHCHAN)) {
+  	  //shut down the lead-off signal on the positive side
+  	  reg = LOFF_SENSP;  //are we using the P inptus or the N inputs?
+  	  config = ADS1299::RREG(reg); //get the current lead-off settings
+  	  if (code_OFF_ON == OFF) {
+  	  	  bitClear(config,N);                   //clear this channel's bit
+  	  } else {
+  	  	  bitSet(config,N); 			  //clear this channel's bit
+  	  }
+  	  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  }
   
-  //shut down the lead-off signal on the negative side
-  reg = LOFF_SENSN;  //are we using the P inptus or the N inputs?
-  config = ADS1299::RREG(reg); //get the current bias settings
-  bitClear(config,N);                   //set this channel's bit
-  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
-  
-}; 
-
-//activate the given channel's lead-off detection...note: stops data colleciton to issue its commands
-//  N is the channel number: 1-8
-// 
-void ADS1299Manager::activateChannelLeadOffDetection(int N)
-{
-  byte reg, config;
-	
-  //check the inputs
-  if ((N < 1) || (N > OPENBCI_NCHAN)) return;
-  N = constrain(N-1,0,OPENBCI_NCHAN-1);  //shift down by one
-  
-  //proceed...first, disable any data collection
-  ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
-
-  //shut down the lead-off signal on the positive side
- // reg = LOFF_SENSP;  //are we using the P inptus or the N inputs?
- // config = ADS1299::RREG(reg); //get the current lead-off settings
- // bitSet(config,N);                   //set this channel's bit
- // ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
-  
-  //shut down the lead-off signal on the negative side
-  reg = LOFF_SENSN;  //are we using the P inptus or the N inputs?
-  config = ADS1299::RREG(reg); //get the current lead-off settings
-  bitSet(config,N);                   //set this channel's bit
-  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
-  
+  if ((code_P_N_Both == NCHAN) || (code_P_N_Both == BOTHCHAN)) {
+  	  //shut down the lead-off signal on the negative side
+  	  reg = LOFF_SENSN;  //are we using the P inptus or the N inputs?
+  	  config = ADS1299::RREG(reg); //get the current lead-off settings
+  	  if (code_OFF_ON == OFF) {
+  	  	  bitClear(config,N);                   //clear this channel's bit
+  	  } else {
+  	  	  bitSet(config,N); 			  //clear this channel's bit
+  	  }           //set this channel's bit
+  	  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  }
 }; 
 
 void ADS1299Manager::configureLeadOffDetection(byte amplitudeCode, byte freqCode)
