@@ -32,7 +32,7 @@ int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
 
 
-//data constants
+//data
 float fs_Hz = 250f;  //sample rate used by OpenBCI board
 float dataBuffX[];
 float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is a new channel so that dataBuffY[3][] is channel 4
@@ -43,6 +43,8 @@ float scale_fac_uVolts_per_count = (4.5f / 24.0f / pow(2, 24)) * 1000000.f * 2.0
 int prev_time_millis = 0;
 final int nPointsPerUpdate = 50; //update screen after this many data points.  
 float yLittleBuff[] = new float[nPointsPerUpdate];
+boolean is_railed[];
+final int threshold_railed = int(pow(2,23))-100;
 
 //filter constants
 float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate];
@@ -150,6 +152,7 @@ void setup() {
   dataBuffY_uV = new float[nchan][dataBuffX.length];
   dataBuffY_filtY_uV = new float[nchan][dataBuffX.length];
   data_std_uV = new float[nchan];
+  is_railed = new boolean[nchan]; 
   for (int i=0; i<nDataBackBuff;i++) { 
     dataPacketBuff[i] = new dataPacket_ADS1299(nchan);
   }
@@ -167,7 +170,7 @@ void setup() {
   gui = new gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV);
 
   //associate the data to the GUI traces
-  gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV);
+  gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
 
   //open the data file for writing
   openNewLogFile();
@@ -237,6 +240,13 @@ void draw() {
       for (int Ichan=0;Ichan < nchan; Ichan++) {
         //append data to larger buffer
         appendAndShift(dataBuffY_uV[Ichan], yLittleBuff_uV[Ichan]);
+        
+        //look to see if the signal is railed
+        is_railed[Ichan]=false;
+        if (dataPacketBuff[lastReadDataPacketInd].values[Ichan] > threshold_railed) {
+          //println("OpenBCI_GUI: channel " + Ichan + " may be railed at " + dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
+          is_railed[Ichan]=true;
+        }
 
         //process the time domain data
         dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();

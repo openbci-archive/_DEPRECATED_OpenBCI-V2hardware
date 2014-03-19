@@ -24,6 +24,7 @@ class headPlot {
   private int elec_diam;
   PFont font;
   private float[] intensity_data_uV;
+  private boolean[] is_railed;
   private float intense_min_uV, intense_max_uV;
 
   headPlot(float x,float y,float w,float h,int win_x,int win_y) {
@@ -124,8 +125,9 @@ class headPlot {
     ref_electrode_xy[1] = circ_y+(int)(ref_elec_relXY[1]*((float)circ_diam));
   }
   
-  public void setIntensityData_byRef(float[] data) {
+  public void setIntensityData_byRef(float[] data, boolean[] is_rail) {
     intensity_data_uV = data;  //simply alias the data held externally.  DOES NOT COPY THE DATA ITSEF!  IT'S SIMPLY LINKED!
+    is_railed = is_rail;
   }
   
   public void draw() {
@@ -155,7 +157,12 @@ class headPlot {
         new_rgb[i] = (int)((val + (1.0f - val)*(1.0f-intensity))*255.f); //adds in white at low intensity.  no white at high intensity
         new_rgb[i] = constrain(new_rgb[i],0,255);
       }
-      fill(new_rgb[0],new_rgb[1],new_rgb[2]);
+      
+      //change color to dark RED if railed
+      if (is_railed[Ielec])  new_rgb = new int[]{127,0,0};
+      
+      //draw the electrode
+      fill(new_rgb[0],new_rgb[1],new_rgb[2]);   
       ellipse(electrode_xy[Ielec][0], electrode_xy[Ielec][1], elec_diam, elec_diam); //big circle for the head
     }
     

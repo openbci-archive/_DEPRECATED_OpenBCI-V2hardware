@@ -235,11 +235,12 @@ class gui_Manager {
   }
     
     
-  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std) {      
+  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std, boolean[] is_railed) {      
     //initialize the time-domain montage-plot traces
     sTrace = new ScatterTrace();
     montage_yoffsets = new float[nchan];
     initializeMontageTraces(dataBuffX,dataBuffY);
+    sTrace.set_isRailed(is_railed);
   
     //initialize the FFT traces
     fftTrace = new ScatterTrace_FFT(fftBuff); //can't put this here...must be in setup()
@@ -247,7 +248,7 @@ class gui_Manager {
     initializeFFTTraces(fftTrace,fftBuff,fftYOffset,gFFT);
     
     //link the data to the head plot
-    headPlot1.setIntensityData_byRef(dataBuffY_std);
+    headPlot1.setIntensityData_byRef(dataBuffY_std,is_railed);
   }
   
   public boolean isMouseOnFFT(int mouse_x, int mouse_y) {
