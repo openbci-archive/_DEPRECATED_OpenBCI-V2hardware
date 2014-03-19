@@ -14,34 +14,57 @@ void ADS1299Manager::initialize(void) {
 //Initilize the ADS1299 controller...call this once
 void ADS1299Manager::initialize(const int version) 
 {
-  setVersionOpenBCI(version);
   ADS1299::initialize(PIN_DRDY,PIN_RST,PIN_CS,SCK_MHZ); // (DRDY pin, RST pin, CS pin, SCK frequency in MHz);
   delay(100);
-  
+    
   verbose = false;      // when verbose is true, there will be Serial feedback 
+  setVersionOpenBCI(version);
   reset();
   
   //set default state for internal test signal
   //ADS1299::WREG(CONFIG2,0b11010000);delay(1);   //set internal test signal, default amplitude, default speed, datasheet PDF Page 41
   //ADS1299::WREG(CONFIG2,0b11010001);delay(1);   //set internal test signal, default amplitude, 2x speed, datasheet PDF Page 41
   configureInternalTestSignal(ADSTESTSIG_AMP_1X,ADSTESTSIG_PULSE_FAST); //set internal test signal, default amplitude, 2x speed, datasheet PDF Page 41
-
+  
+  //set default state for lead off detection
+  configureLeadOffDetection(LOFF_MAG_6NA,LOFF_FREQ_31p2HZ);
 };
 
+//set which version of OpenBCI we're using.  This affects whether we use the 
+//positive or negative inputs.  It affects whether we use SRB1 or SRB2 for the
+//referenece signal.  Finally, it affects whether the lead_off signals are
+//flipped or not.
 void ADS1299Manager::setVersionOpenBCI(const int version)
 {
   if (version == OPENBCI_V1) {
+  	  //set whether to use positive or negative inputs
   	  use_neg_inputs = false;
+  	  
+  	  //set SRB2
   	  for (int i=0; i < OPENBCI_NCHAN; i++) {
   	  	  use_SRB2[i] = false;
   	  }
   } else {
+  	  //set whether to use positive or negative inputs
   	  use_neg_inputs = true;
+  	  
+  	  //set SRB
   	  for (int i=0; i < OPENBCI_NCHAN; i++) {
   	  	  use_SRB2[i] = true;
   	  }
+  	  
   }
-  //setSRB1(use_SRB1());  //set whether SRB1 is active or not
+  
+  //set whether or not to flip the polarity of the lead_off drive based
+  //on whether we're sensing the positive or negative inputs
+  if (use_neg_inputs==false) {
+  	  //we're using positive.  Set to default polarity
+  	  ADS1299::WREG(LOFF_FLIP,0b00000000);delay(1);  //set all channels to zero
+  } else {
+  	  //we're using negative.  flip the polarity
+  	  ADS1299::WREG(LOFF_FLIP,0b11111111);delay(1);
+  }
+  
 }
 
 //reset all the ADS1299's settings.  Call however you'd like.  Stops all data acquisition
@@ -53,8 +76,9 @@ void ADS1299Manager::reset(void)
   delay(100);
     
   // turn off all channels
-  for (int chan=1; chan <= 8; chan++) {
-    deactivateChannel(chan);
+  for (int chan=1; chan <= OPENBCI_NCHAN; chan++) {
+    deactivateChannel(chan);  //turn off the channel
+    changeChannelLeadOffDetection(chan,OFF,BOTHCHAN); //turn off any impedance monitoring
   }
   
   setSRB1(use_SRB1());  //set whether SRB1 is active or not
@@ -84,10 +108,17 @@ void ADS1299Manager::deactivateChannel(int N)
   ADS1299::WREG(reg,config); delay(1);
   
   //remove the channel from the bias generation...
-  reg = BIAS_SENSP; if (use_neg_inputs) reg = BIAS_SENSN;  //are we using the P inptus or the N inputs?
-  config = ADS1299::RREG(reg); delay(1);//get the current bias settings
-  bitClear(config,N);          //clear this channel's bit to remove from bias generation
-  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  //see ADS1299 datasheet, PDF p44.
+  //per Chip's experiments, if using the P inputs, just include the P inputs
+  //per Joel's experiements, if using the N inputs, include both P and N inputs
+  int nLoop = 1;  if (use_neg_inputs) nLoop=2;
+  for (int i=0; i < nLoop; i++) {
+  	  reg = BIAS_SENSP;
+  	  if (i > 0) reg = BIAS_SENSN;
+  	  config = ADS1299::RREG(reg); //get the current bias settings
+  	  bitClear(config,N);                   //set this channel's bit
+  	  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  }
   
 }; 
     
@@ -98,6 +129,8 @@ void ADS1299Manager::deactivateChannel(int N)
 //  inputCode is defined in the macros in the header file
 void ADS1299Manager::activateChannel(int N,byte gainCode,byte inputCode) 
 {
+  byte reg, config;
+	
    //check the inputs
   if ((N < 1) || (N > OPENBCI_NCHAN)) return;
   
@@ -116,11 +149,17 @@ void ADS1299Manager::activateChannel(int N,byte gainCode,byte inputCode)
   ADS1299::WREG(CH1SET+(byte)N,configByte); delay(1);
 
   //add this channel to the bias generation
-  //see ADS1299 datasheet, PDF p44
-  byte reg = BIAS_SENSP; if (use_neg_inputs) reg = BIAS_SENSN;  //are we using the P inptus or the N inputs?
-  byte biasSettings = ADS1299::RREG(reg); //get the current bias settings
-  bitSet(biasSettings,N);                   //set this channel's bit
-  ADS1299::WREG(reg,biasSettings); delay(1);  //send the modified byte back to the ADS
+  //see ADS1299 datasheet, PDF p44.
+  //per Chip's experiments, if using the P inputs, just include the P inputs
+  //per Joel's experiements, if using the N inputs, include both P and N inputs
+  int nLoop = 1;  if (use_neg_inputs) nLoop=2;
+  for (int i=0; i < nLoop; i++) {
+  	  reg = BIAS_SENSP;
+  	  if (i > 0) reg = BIAS_SENSN;
+  	  config = ADS1299::RREG(reg); //get the current bias settings
+  	  bitSet(config,N);                   //set this channel's bit
+  	  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+  }
   
   // // Now, these actions are necessary whenever there is at least one active channel
   // // though they don't strictly need to be done EVERY time we activate a channel.
