@@ -410,7 +410,7 @@ void parseKeycode(int val) {
       break;
     case 27:
       println("OpenBCI_GUI: parseKeycode(" + val + "): received ESC keypress.  Stopping OpenBCI...");
-      stopButtonWasPressed();
+      stopRunning();
       break; 
     case 33:
       println("OpenBCI_GUI: parseKeycode(" + val + "): received PAGE UP keypress.  Ignoring...");
@@ -516,22 +516,28 @@ void mouseReleased() {
   redrawScreenNow = true;
 }
 
+void stopRunning() {
+    if (openBCI != null) openBCI.stopDataTransfer();
+    closeLogFile();
+    isRunning = false;
+}
+void startRunning() {
+    openNewLogFile();  //open a new log file
+    if (openBCI != null) openBCI.startDataTransfer(); //use whatever was the previous data transfer mode (TXT vs BINARY)
+    isRunning = true;
+}
+
 //execute this function whenver the stop button is pressed
 void stopButtonWasPressed() {
   //toggle the data transfer state of the ADS1299...stop it or start it...
   if (isRunning) {
     println("openBCI_GUI: stopButton was pressed...stopping data transfer...");
-    if (openBCI != null) openBCI.stopDataTransfer();
-    closeLogFile();
+    stopRunning();
   } 
   else { //not running
-    openNewLogFile();  //open a new log file
-    
     println("openBCI_GUI: startButton was pressed...starting data transfer...");
-    if (openBCI != null) openBCI.startDataTransfer(); //use whatever was the previous data transfer mode (TXT vs BINARY)
+    startRunning();
   }
-
-  isRunning = !isRunning;  //toggle the variable holding the current state of running
 
   //update the push button with new text based on the current running state
   //gui.stopButton.setActive(isRunning);
