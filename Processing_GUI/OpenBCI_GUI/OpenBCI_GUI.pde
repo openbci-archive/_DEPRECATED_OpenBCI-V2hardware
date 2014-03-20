@@ -18,7 +18,7 @@ import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
 //import processing.core.PApplet;
 
-boolean useSyntheticData = false; //flip this to false when using OpenBCI
+boolean useSyntheticData = true; //flip this to false when using OpenBCI
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
@@ -106,7 +106,6 @@ void appendAndShift(float[] data, float[] newData) {
   }
 }
 
-
 void prepareData(float[] dataBuffX, float[][] dataBuffY_uV, float fs_Hz) {
   //initialize the x and y data
   int xoffset = dataBuffX.length - 1;
@@ -137,13 +136,11 @@ void initializeFFTObjects(FFT[] fftBuff, float[][] dataBuffY_uV, int N, float fs
 void setup() {
 
   println("Starting setup...");
-
   //open window
   int win_x = 1200;  
   int win_y = 768;  //desktop PC
   size(win_x, win_y, P2D);
   //if (frame != null) frame.setResizable(true);  //make window resizable
-
   //attach exit handler
   //prepareExitHandler();
 
@@ -159,7 +156,7 @@ void setup() {
 
   //initialize the data
   prepareData(dataBuffX, dataBuffY_uV, fs_Hz);
-
+  
   //initialize the FFT objects
   for (int Ichan=0; Ichan < nchan; Ichan++) { 
     fftBuff[Ichan] = new FFT(Nfft, fs_Hz);
@@ -167,8 +164,9 @@ void setup() {
   initializeFFTObjects(fftBuff, dataBuffY_uV, Nfft, fs_Hz);
 
   //initilize the GUI
-  gui = new gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV);
-
+  String filterDescription = filtCoeff_bp.name + ", " + filtCoeff_notch.name; 
+  gui = new gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV,filterDescription);
+  
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
 
@@ -278,7 +276,7 @@ void draw() {
       }
 
       //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
-      gui.update();
+      gui.update(data_std_uV);
       redrawScreenNow=true;
     } 
     else {

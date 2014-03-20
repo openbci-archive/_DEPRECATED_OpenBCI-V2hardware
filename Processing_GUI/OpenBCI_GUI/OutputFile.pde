@@ -45,27 +45,6 @@ class OutputFile_rawtxt {
     output.flush();
   }
 
-//  public void writeRawData_txt(float[][] yLittleBuff_uV,int indexOfLastValue) {
-//    int nchan = yLittleBuff_uV.length;
-//    int nsamp = yLittleBuff_uV[0].length;
-//  
-//    //println("writeRawData: nchan, nsamp = " + nchan + " " + nsamp);
-//  
-//    if (output != null) {
-//      for (int i=0; i < nsamp; i++) {
-//        output.print(Integer.toString(indexOfLastValue - nsamp + i));
-//        
-//        for (int Ichan = 0; Ichan < nchan; Ichan++) {
-//           output.print(", ");
-//           //output.print(Float.toString(yLittleBuff_uV[Ichan][i]));
-//           output.print(String.format("%.2f",yLittleBuff_uV[Ichan][i]));
-//         }
-//      
-//        output.println();
-//      }
-//      //output.flush();
-//    }
-//  }
   
   public void writeRawData_dataPacket(dataPacket_ADS1299 data,float scale_to_uV) {
     int nchan = data.values.length;

@@ -51,3 +51,71 @@ public class graphDataPoint {
   public String y_units;
 };
 
+class plotFontInfo {
+    String fontName = "Sans Serif";
+    int axisLabel_size = 16;
+    int tickLabel_size = 14;
+    int buttonLabel_size = 12;
+};
+
+public class textBox {
+  public int x, y;
+  public color textColor;
+  public color backgroundColor;
+  private PFont font;
+  private int fontSize;
+  public String string;
+  public boolean drawBackground;
+  public int backgroundEdge_pixels;
+  public int alignH,alignV;
+  
+//  textBox(String s,int x1,int y1) {
+//    textBox(s,x1,y1,0);
+//  }
+  textBox(String s, int x1, int y1) {
+    string = s; x = x1; y = y1;
+    backgroundColor = color(255,255,255);
+    textColor = color(0,0,0);
+    fontSize = 12;
+    font = createFont("Arial",fontSize);
+    backgroundEdge_pixels = 1;
+    drawBackground = false;
+    alignH = LEFT;
+    alignV = BOTTOM;
+  }
+  public void setFontSize(int size) {
+    fontSize = size;
+    font = createFont("Arial",fontSize);
+  }
+  public void draw() {
+    //define text
+    textFont(font);
+    
+    //draw the box behind the text
+    if (drawBackground == true) {
+      int w = int(round(textWidth(string)));
+      int xbox = x - backgroundEdge_pixels;
+      switch (alignH) {
+        case LEFT:
+          xbox = x - backgroundEdge_pixels;
+          break;
+        case RIGHT:
+          xbox = x - w - backgroundEdge_pixels;
+          break;
+        case CENTER:
+          xbox = x - int(round(w/2.0)) - backgroundEdge_pixels;
+          break;
+      }
+      w = w + 2*backgroundEdge_pixels;
+      int h = int(textAscent())+2*backgroundEdge_pixels;        
+      int ybox = y - int(round(textAscent())) - backgroundEdge_pixels -2;
+      fill(backgroundColor);
+      rect(xbox,ybox,w,h);
+    }
+    //draw the text itself
+    fill(textColor);
+    textAlign(alignH,alignV);
+    text(string,x,y);
+  }
+};
+

@@ -303,65 +303,6 @@ class openBCI_ADS1299 {
     }
   }
   
-//  //interpret the data
-//  int interpretBinaryMessage() {
-//    //assume curBuffIndex has already been incremented to the next open spot
-//    int endInd = curBuffIndex-1;
-//    int startInd = curBuffIndex-known_packet_length_bytes;
-//
-//    
-//    //println("openBCI_ADS1299: interpretBinaryMessage: interpretting...");
-//     
-//    //check to see whether the data is valid to interpret
-//    while ((startInd >= 0) && (serialBuff[startInd] != BYTE_START)) {
-//      startInd--;
-//    }
-//    if (startInd < 0) {
-//      //didn't find the start byte..so ignore this data packet
-//      println("openBCI_ADS1299: interpretBinaryMessage: badly formatted packet. Dropping.");
-//    } else if ((endInd - startInd + 1) < 3) {
-//      //data packet isn't long enough to hold any data...so ignore this data packet
-//      println("openBCI_ADS1299: interpretBinaryMessage: badly formatted packet. Dropping.");
-//    } else {
-//      //so the data is valid to interpret.  Let's do so.
-//      
-//      //the first field after the header is the number of bytes in the payload
-//      int n_bytes = int(serialBuff[startInd + 1]); //this is the number of bytes in the payload
-//      
-//      // check to see if the payload is at least the minimum length
-//      if (n_bytes < 4*MIN_PAYLOAD_LEN_INT32) {
-//        //bad data.  ignore this packet;
-//      } else {
-//        //check to see if the payload length matches the measured packet size
-//        if ((startInd + 1 + n_bytes + 1) != endInd) {
-//          //bad data.  ignore this packet
-//        } else {
-//          //println("openBCI_ADS1299: interpretBinaryMessage: good packet!");
-//          int startIndPayload = startInd+1+1;
-//          int nInt32 = n_bytes / 4;
-//          interpretBinaryPayload(startIndPayload,nInt32);
-//          //dataPacket.printToConsole();
-//        }
-//      }      
-//    }
-//    
-//    curBuffIndex=0;  //reset buffer counter back to zero to start refilling the buffer
-//    return 0;
-//  }
-//  
-//  int interpretBinaryPayload(int startInd,int nInt32) {
-//    dataPacket.sampleIndex = interpretAsInt32(subset(serialBuff,startInd,4)); //read the int32 value
-//    startInd += 4;  //increment the start index
-//    
-//    int nValToRead = min(nInt32-1,dataPacket.values.length);
-//    for (int i=0; i < nValToRead;i++) {
-//      dataPacket.values[i] = interpretAsInt32(subset(serialBuff,startInd,4)); //read the int32 value
-//      startInd += 4;  //increment the start index
-//    }
-//    
-//    isNewDataPacketAvailable = true;
-//    return 0;
-//  }
   
   int interpretAsInt32(byte[] byteArray) {     
     //little endian
@@ -373,11 +314,7 @@ class openBCI_ADS1299 {
       );
   }
   
-//  int interpretTextMessage() {
-//    //still have to code this!
-//    curBuffIndex=0;  //reset buffer counter back to zero to start refilling the buffer
-//    return 0;
-//  }
+
   
   int copyDataPacketTo(dataPacket_ADS1299 target) {
     isNewDataPacketAvailable = false;
