@@ -190,7 +190,7 @@ class gui_Manager {
     int h = int(round(axis_relPos[3]*win_y));
     for (int i=0; i<nchan; i++) {
       y3 = y1 + h - yAxis.valueToPosition((float)(-(i+1))); //set to be on the centerline of the trace
-      chanValuesMontage[i] = new textBox("00.0 uVrms",x3,y3);
+      chanValuesMontage[i] = new textBox("0.00 uVrms",x3,y3);
       chanValuesMontage[i].textColor = color(0,0,0);
       chanValuesMontage[i].drawBackground = true;
       chanValuesMontage[i].backgroundColor = color(255,255,255);
@@ -326,8 +326,17 @@ class gui_Manager {
     fftTrace.generate(); //graph doesn't update without this
 
     //update the labels on the montage
+    String fmt; float val;
     for (int Ichan=0; Ichan < data_std_uV.length; Ichan++) {
-      chanValuesMontage[Ichan].string = String.format("%.1f",data_std_uV[Ichan]) + " uVrms";
+      val = data_std_uV[Ichan];
+      if (val > 100.0f) {
+        fmt = "%.0f";
+      } else if (val > 10.0f) {
+        fmt = "%.1f";
+      } else {
+        fmt = "%.2f";
+      }
+      chanValuesMontage[Ichan].string = String.format(fmt,data_std_uV[Ichan]) + " uVrms";
       if (sTrace.is_railed != null) {
         if (sTrace.is_railed[Ichan] == true) {
           chanValuesMontage[Ichan].string = "RAILED";
