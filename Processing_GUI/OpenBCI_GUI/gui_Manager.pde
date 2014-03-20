@@ -39,6 +39,7 @@ class gui_Manager {
   plotFontInfo fontInfo;
   headPlot headPlot1;
   Button[] chanButtons;
+  Button chanModeButton;
   boolean showImpedanceButtons;
   Button[] impedanceButtonsP;
   Button[] impedanceButtonsN;
@@ -92,23 +93,29 @@ class gui_Manager {
     axisHead_relPos[1] = gutter_topbot;  //set y position to be at top of left side
     axisHead_relPos[3] = available_top2bot*up_down_split  - gutter_topbot;
     headPlot1 = new headPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y);  
-    
-    
+
+    int w,h,x,y;
+           
     //setup stop button
-    int w = 100;    //button width
-    int h = 25;     //button height
-    int x = win_x - int(gutter_right*float(win_x)) - w;
-    int y = win_y - int(0.5*gutter_topbot*float(win_y)) - h;
+    w = 100;    //button width
+    h = 25;     //button height
+    x = win_x - int(gutter_right*float(win_x)) - w;
+    y = win_y - int(0.5*gutter_topbot*float(win_y)) - h;
     //int y = win_y - h;
     stopButton = new Button(x,y,w,h,stopButton_pressToStop_txt,fontInfo.buttonLabel_size);
     
+    //setup the channel mode button
+    w = 35;
+    x = (int)(3*gutter_between_buttons*win_x);
+    chanModeButton = new Button(x,y,w,h,"Mode",fontInfo.buttonLabel_size);
+        
     //setup the channel on/off buttons
+    int xoffset = x + w + (int)(gutter_between_buttons*win_x);
     w = 70;   //button width
     if (nchan > 10) w -= (nchan-8)*2; //make the buttons skinnier
     chanButtons = new Button[nchan];
     for (int Ibut = 0; Ibut < nchan; Ibut++) {
-      //x = ((int)(3*gutter_between_buttons*win_x)) + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
-      x = calcButtonXLocation(Ibut, win_x, w, gutter_between_buttons);
+      x = calcButtonXLocation(Ibut, win_x, w, xoffset,gutter_between_buttons);
       chanButtons[Ibut] = new Button(x,y,w,h,"Ch " + (Ibut+1),fontInfo.buttonLabel_size);
     }
 
@@ -118,17 +125,17 @@ class gui_Manager {
     h = h/2;  //use buttons with half the height
     impedanceButtonsP = new Button[nchan];
     for (int Ibut = 0; Ibut < nchan; Ibut++) {
-      x = calcButtonXLocation(Ibut, win_x, w, gutter_between_buttons);
+      x = calcButtonXLocation(Ibut, win_x, w, xoffset, gutter_between_buttons);
       impedanceButtonsP[Ibut] = new Button(x,y-5,w,h,"Imp P" + (Ibut+1),fontInfo.buttonLabel_size);
     }    
     impedanceButtonsN = new Button[nchan];
     for (int Ibut = 0; Ibut < nchan; Ibut++) {
-      x = calcButtonXLocation(Ibut, win_x, w, gutter_between_buttons);
+      x = calcButtonXLocation(Ibut, win_x, w, xoffset, gutter_between_buttons);
       impedanceButtonsN[Ibut] = new Button(x,y+h,w,h,"Imp N" + (Ibut+1),fontInfo.buttonLabel_size);
     }    
   } 
-  private int calcButtonXLocation(int Ibut,int win_x,int w, float gutter_between_buttons) {
-    return ((int)(3*gutter_between_buttons*win_x)) + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
+  private int calcButtonXLocation(int Ibut,int win_x,int w, int xoffset, float gutter_between_buttons) {
+    return xoffset + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
   }
     
   public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, plotFontInfo fontInfo) {
@@ -283,6 +290,7 @@ class gui_Manager {
     gMontage.draw(); //println("completed montage draw..."); 
     gFFT.draw(); //println("completed FFT draw..."); 
     stopButton.draw();
+    chanModeButton.draw();
     if (showImpedanceButtons == false) {
       //show channel buttons
       for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
@@ -292,7 +300,7 @@ class gui_Manager {
       //show impedance buttons
       for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
         impedanceButtonsP[Ichan].draw();
-        impedanceButtonsN[Ichan].draw();
+        impedanceButtonsN[Ichan].draw();       
       }      
     }
   }

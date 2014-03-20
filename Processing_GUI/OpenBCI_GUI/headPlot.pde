@@ -23,7 +23,7 @@ class headPlot {
   private float[] ref_electrode_xy;
   private int elec_diam;
   PFont font;
-  private float[] intensity_data_uV;
+  public float[] intensity_data_uV;
   private boolean[] is_railed;
   private float intense_min_uV, intense_max_uV;
 

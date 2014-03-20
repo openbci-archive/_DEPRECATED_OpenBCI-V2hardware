@@ -615,6 +615,12 @@ void mousePressed() {
     gui.stopButton.setIsActive(true);
     redrawScreenNow = true;
   }
+  
+  if (gui.chanModeButton.updateIsMouseHere()) {
+    //toggle whether to show channel on/off or channel impedance on/off
+    gui.showImpedanceButtons = !gui.showImpedanceButtons;
+    redrawScreenNow = true;
+  }
 
   //check the buttons
   if (gui.showImpedanceButtons == false) {
