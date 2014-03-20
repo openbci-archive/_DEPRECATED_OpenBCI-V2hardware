@@ -18,7 +18,7 @@ import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
 //import processing.core.PApplet;
 
-boolean useSyntheticData = true; //flip this to false when using OpenBCI
+boolean useSyntheticData = false; //flip this to false when using OpenBCI
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
