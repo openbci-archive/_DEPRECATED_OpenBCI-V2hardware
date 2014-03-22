@@ -2,7 +2,7 @@
 //
 // GUI for controlling the ADS1299-based OpenBCI Shield
 //
-// Created: Chip Audette, Oct 2013 - Jan 2014
+// Created: Chip Audette, Oct 2013 - Mar 2014
 //
 // Requires gwoptics graphing library for processing.  Built on V0.5.0
 // http://www.gwoptics.org/processing/gwoptics_p5lib/
@@ -16,7 +16,6 @@ import processing.serial.*;
 import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
-//import processing.core.PApplet;
 
 boolean useSyntheticData = false; //flip this to false when using OpenBCI
 

@@ -30,6 +30,7 @@ class headPlot {
   private float intense_min_uV, intense_max_uV;
   PImage headImage;
   private int image_x,image_y;
+  public boolean drawHeadAsContours;
 
 
   headPlot(float x,float y,float w,float h,int win_x,int win_y) {
@@ -41,6 +42,7 @@ class headPlot {
     ref_electrode_xy = new float[2];  //x-y position of reference electrode
     electrode_rgb = new int[3][n_elec];  //rgb color for each electrode
     font = createFont("Arial",16);
+    drawHeadAsContours = false;
     
     rel_posX = x;
     rel_posY = y;
@@ -248,7 +250,7 @@ class headPlot {
     updateElectrodeColors();
     
     //update the head image
-    updateHeadImage();
+    if (drawHeadAsContours) updateHeadImage();
        
     //draw head parts
     fill(255,255,255);
@@ -258,17 +260,23 @@ class headPlot {
     ellipse(earR_x, earR_y, ear_width, ear_height); //little circle for the ear
     
     //draw head itself    
-    image(headImage,image_x,image_y);
-    noFill(); //overlay a circle as an outline, but no fill
+    if (drawHeadAsContours) {
+      image(headImage,image_x,image_y);
+      noFill(); //overlay a circle as an outline, but no fill
+    } else {
+      fill(255,255,255,255);
+    }
     strokeWeight(2);
     ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
   
     //draw electrodes on the head
     strokeWeight(1);
-    //int alpha = 127; //half transparent
     for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
-      //fill(electrode_rgb[0][Ielec],electrode_rgb[1][Ielec],electrode_rgb[2][Ielec],alpha);
-      noFill(); //make transparent to allow color to come through from below   
+      if (drawHeadAsContours) {
+        noFill(); //make transparent to allow color to come through from below   
+      } else {
+        fill(electrode_rgb[0][Ielec],electrode_rgb[1][Ielec],electrode_rgb[2][Ielec]);
+      }
       ellipse(electrode_xy[Ielec][0], electrode_xy[Ielec][1], elec_diam, elec_diam); //big circle for the head
     }
     
