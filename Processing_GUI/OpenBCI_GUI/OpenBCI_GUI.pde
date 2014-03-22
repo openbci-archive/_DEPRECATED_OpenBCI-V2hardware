@@ -39,7 +39,9 @@ float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is
 float dataBuffY_filtY_uV[][];
 float data_std_uV[];
 int nchan = OpenBCI_Nchannels;
-float scale_fac_uVolts_per_count = (4.5f / 24.0f / pow(2, 24)) * 1000000.f * 2.0f; //factor of 2 added 2013-11-10 to match empirical tests in my office on Friday
+final float ADS1299_Vref = 4.5f;  //reference voltage for ADC in ADS1299
+final float ADS1299_gain = 24;  //assumed gain setting for ADS1299
+final float scale_fac_uVolts_per_count = ADS1299_Vref / (pow(2,23)-1) / ADS1299_gain  * 1000000.f; //ADS1299 datasheet Table 7, confirmed through experiment
 int prev_time_millis = 0;
 final int nPointsPerUpdate = 50; //update screen after this many data points.  
 float yLittleBuff[] = new float[nPointsPerUpdate];
