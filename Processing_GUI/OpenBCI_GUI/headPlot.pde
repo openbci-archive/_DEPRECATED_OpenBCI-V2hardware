@@ -21,17 +21,23 @@ class headPlot {
   private int[] nose_x, nose_y;
   private float[][] electrode_xy;
   private float[] ref_electrode_xy;
+  private color[] electrode_color;
   private int elec_diam;
   PFont font;
   public float[] intensity_data_uV;
   private boolean[] is_railed;
   private float intense_min_uV, intense_max_uV;
+  PImage headImage;
+  private int image_x,image_y;
+
 
   headPlot(float x,float y,float w,float h,int win_x,int win_y) {
+    final int n_elec = 8;
     nose_x = new int[3];
     nose_y = new int[3];
-    electrode_xy = new float[8][2];  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
+    electrode_xy = new float[n_elec][2];  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
     ref_electrode_xy = new float[2];
+    electrode_color = new color[n_elec];
     font = createFont("Arial",16);
     
     rel_posX = x;
@@ -41,6 +47,13 @@ class headPlot {
     setWindowDimensions(win_x,win_y);
     
     intense_min_uV = 5; intense_max_uV = 100;  //default intensity scaling for electrodes
+    
+    //initialize the image
+    for (int Iy=0; Iy < headImage.height; Iy++) {
+      for (int Ix = 0; Ix < headImage.width; Ix++) {
+        headImage.set(Ix,Iy,color(0));
+      }
+    }
   }
   
   //this method defines all locations of all the subcomponents
@@ -66,12 +79,11 @@ class headPlot {
     int circ_height_foo = (int)(total_height - nose_height);
     circ_diam = min(circ_width_foo,circ_height_foo);
 
-
-    //locations!  circle center, measured from upper left
+    //locations: circle center, measured from upper left
     circ_x = (int)((rel_posX+0.5f*rel_width)*(float)win_width);                  //center of head
     circ_y = (int)((rel_posY+0.5*rel_height)*(float)win_height + nose_height);  //center of head
     
-    //locations, ear centers, measured from upper left
+    //locations: ear centers, measured from upper left
     earL_x = circ_x - circ_diam/2;
     earR_x = circ_x + circ_diam/2;
     earL_y = circ_y;
@@ -99,19 +111,6 @@ class headPlot {
       
       elec_relXY[6][0] = -0.125f;             elec_relXY[6][1] = +0.5f - elec_relDiam*0.75f;
       elec_relXY[7][0] = -elec_relXY[6][0];  elec_relXY[7][1] = elec_relXY[6][1];
-   
-//      elec_relXY[8][0] = 0.0f;  elec_relXY[8][1] = 0.0f;
-//      elec_relXY[9][0] = 0.f;    elec_relXY[9][1] = +0.2f;
-//      
-//      elec_relXY[10][0] = -0.18f;              elec_relXY[10][1] = -0.15f;
-//      elec_relXY[11][0] = -elec_relXY[10][0];  elec_relXY[11][1] = elec_relXY[10][1];
-//      
-//      elec_relXY[12][0] = -0.4f;               elec_relXY[12][1] = 0f  ;
-//      elec_relXY[13][0] = -elec_relXY[12][0];  elec_relXY[13][1] = elec_relXY[12][1];  
-//      
-//      elec_relXY[14][0] = -0.18f;  elec_relXY[14][1] = +0.15f;  
-//      elec_relXY[15][0] = -elec_relXY[14][0];  elec_relXY[15][1] = elec_relXY[14][1];  
-
       
     float[] ref_elec_relXY = new float[2];
       ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = -0.325f;   
@@ -123,6 +122,11 @@ class headPlot {
     }
     ref_electrode_xy[0] = circ_x+(int)(ref_elec_relXY[0]*((float)circ_diam));
     ref_electrode_xy[1] = circ_y+(int)(ref_elec_relXY[1]*((float)circ_diam));
+    
+    //define image to hold all of this
+    image_x = int(round(circ_x - 0.5*circ_diam - 0.5*ear_width));
+    image_y = nose_y[2];
+    headImage = createImage(int(total_width),int(total_height),RGB);
   }
   
   public void setIntensityData_byRef(float[] data, boolean[] is_rail) {
@@ -130,23 +134,61 @@ class headPlot {
     is_railed = is_rail;
   }
   
-  public void draw() {
-    
-    //draw head
-    fill(255,255,255);
-    stroke(128,128,128);
-    strokeWeight(1);
-    triangle(nose_x[0], nose_y[0],nose_x[1], nose_y[1],nose_x[2], nose_y[2]);  //nose
-    ellipse(earL_x, earL_y, ear_width, ear_height); //little circle for the ear
-    ellipse(earR_x, earR_y, ear_width, ear_height); //little circle for the ear    
-    ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
+  //step through pixel-by-pixel to update the image
+  int pixel_x, pixel_y;
+  int dy = 0; int dx = 0;
+  float r;
+  float circ_radius = 0.5*float(circ_diam);
+  private void updateHeadImage() {
+    for (int Iy=0; Iy < headImage.height; Iy++) {
+      pixel_y = image_y + Iy;
+      dy = pixel_y - circ_y;
+      for (int Ix = 0; Ix < headImage.width; Ix++) {
+        pixel_x = image_x + Ix;
+        dx = pixel_y - circ_x;
+        
+        //is it inside the head?
+        r = sqrt(dx^2 + dy^2);
+        if (r <= circ_radius) {
+          headImage.set(Ix,Iy,calcPixelColor(pixel_x,pixel_y));
+        }
+      }
+    }
+  }
   
-    //draw electrodes
+  //compute the color of the pixel given the location
+  private color calcPixelColor(int pixel_x, int pixel_y) {
+    final int Xind = 0, Yind = 1;
+    int Ix_low, Ix_high, Iy_low, Iy_high;
+    
+    //find electrode whose location is lower and higher in the X direction
+    Ix_low = findElectrodeLower(pixel_x,electrode_xy,Xind);
+    Ix_high = findElectrodeHigher(pixel_x,electrode_xy,Xind);
+    
+    //find electrode whose location is lower and higher in the Y direction
+    Iy_low = findElectrodeLower(pixel_y,electrode_xy,Yind);
+    Iy_high = findElectrodeHigher(pixel_y,electrode_xy,Yind);
+    
+    //compute the color based on how it is surrounded
+    if ((Ix_low < 0) && (Iy_low < 0)) {
+    }
+    
+    return color(255);
+  }
+  
+  private int findElectrodeLower(int pixel_loc, float[][] electrode_xy, int dim) {
+    return 0;
+  }
+  private int findElectrodeHigher(int pixel_loc, float[][] electrode_xy, int dim) {
+    return 0;
+  }
+  
+  //compute color for the electrode value
+  private void updateElectrodeColors() {
     int rgb[] = new int[]{255,0,0}; //color for the electrode when fully light
     float intensity;
     float val;
     int new_rgb[] = new int[3];
-    strokeWeight(1);
     for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
       intensity = constrain(intensity_data_uV[Ielec],intense_min_uV,intense_max_uV);
       intensity = map(log10(intensity),log10(intense_min_uV),log10(intense_max_uV),0.0f,1.0f);
@@ -161,8 +203,32 @@ class headPlot {
       //change color to dark RED if railed
       if (is_railed[Ielec])  new_rgb = new int[]{127,0,0};
       
-      //draw the electrode
-      fill(new_rgb[0],new_rgb[1],new_rgb[2]);   
+      //set the electrode color
+      electrode_color[Ielec] = color(new_rgb[0],new_rgb[1],new_rgb[2]);
+    }
+  }
+  
+  public void draw() {
+    //update electrode colors
+    updateElectrodeColors();
+    
+    //draw the image
+    //updateHeadImage();
+    image(headImage,image_x,image_y);
+       
+    //draw head
+    fill(255,255,255);
+    stroke(128,128,128);
+    strokeWeight(1);
+    triangle(nose_x[0], nose_y[0],nose_x[1], nose_y[1],nose_x[2], nose_y[2]);  //nose
+    ellipse(earL_x, earL_y, ear_width, ear_height); //little circle for the ear
+    ellipse(earR_x, earR_y, ear_width, ear_height); //little circle for the ear    
+    ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
+  
+    //draw electrodes
+    strokeWeight(1);
+    for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
+      fill(electrode_color[Ielec]);   
       ellipse(electrode_xy[Ielec][0], electrode_xy[Ielec][1], elec_diam, elec_diam); //big circle for the head
     }
     
