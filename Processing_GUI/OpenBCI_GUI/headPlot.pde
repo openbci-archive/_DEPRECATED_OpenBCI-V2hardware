@@ -20,6 +20,7 @@ class headPlot {
   private  int earL_x, earL_y, earR_x, earR_y, ear_width, ear_height;
   private int[] nose_x, nose_y;
   private float[][] electrode_xy;
+  //private float[][] electrode_relDist;
   private float[] ref_electrode_xy;
   private int[][] electrode_rgb;
   private int elec_diam;
@@ -32,12 +33,13 @@ class headPlot {
 
 
   headPlot(float x,float y,float w,float h,int win_x,int win_y) {
-    final int n_elec = 8;
+    final int n_elec = 8;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
     nose_x = new int[3];
     nose_y = new int[3];
-    electrode_xy = new float[n_elec][2];  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
-    ref_electrode_xy = new float[2];
-    electrode_rgb = new int[3][n_elec];
+    electrode_xy = new float[n_elec][2];   //x-y position of electrodes (pixels?) 
+    //electrode_relDist = new float[n_elec][n_elec];  //relative distance between electrodes (pixels)
+    ref_electrode_xy = new float[2];  //x-y position of reference electrode
+    electrode_rgb = new int[3][n_elec];  //rgb color for each electrode
     font = createFont("Arial",16);
     
     rel_posX = x;
@@ -92,8 +94,8 @@ class headPlot {
     nose_y[2] = circ_y - (int)((float)circ_diam/2.0f + nose_height);
 
 
-    //define the electrodes
-    float elec_relDiam = 0.15f;
+    //define the electrode positions as the relative position [-1.0 +1.0] within the head
+    float elec_relDiam = 0.1425f;
     float[][] elec_relXY = new float[8][2]; //change to 16!!!
       elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*0.75f;
       elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1];
@@ -109,6 +111,7 @@ class headPlot {
     float[] ref_elec_relXY = new float[2];
       ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = -0.325f;   
 
+    //define the actual locations of the electrodes in pixels
     elec_diam = (int)(elec_relDiam*((float)circ_diam));
     for (int i=0; i < elec_relXY.length; i++) {
       electrode_xy[i][0] = circ_x+(int)(elec_relXY[i][0]*((float)circ_diam));
@@ -165,74 +168,133 @@ class headPlot {
   
   //compute the color of the pixel given the location
   private color calcPixelColor(int pixel_x, int pixel_y) {
-    final int Xind = 0, Yind = 1;
-    int Ix_low, Ix_high, Iy_low, Iy_high;
-
-    //find electrode whose location is lower and higher in the X direction
-    Ix_low = findElectrodeLower(pixel_x,electrode_xy,Xind);
-    Ix_high = findElectrodeHigher(pixel_x,electrode_xy,Xind);
-    Ix_high = 3;
-    
-    //find electrode whose location is lower and higher in the Y direction
-    Iy_low = findElectrodeLower(pixel_y,electrode_xy,Yind);
-    Iy_high = findElectrodeHigher(pixel_y,electrode_xy,Yind);
-    Iy_high = 3;
-    
-    //compute the color based on how it is surrounded
-    float big_value = 1e6;
-    float dx,dy;
-    float r[] = new float[4];
-    int foo_rgb[][] = new int[3][4];
-    int ind=0;
-    for (int i=0; i<4; i++) r[i] = big_value;
- 
-    if (Ix_low >= 0) {
-      ind = 0;
-      r[ind] = calcDistance(pixel_x,pixel_y,electrode_xy[Ix_low][Xind],electrode_xy[Ix_low][Yind]);
-      for (int i=0;i<3;i++) foo_rgb[i][ind] = electrode_rgb[i][Ix_low];
-    }
-    if (Ix_high >= 0) {
-      ind = 1;
-      r[ind] = calcDistance(pixel_x,pixel_y,electrode_xy[Ix_high][Xind],electrode_xy[Ix_high][Yind]);
-      for (int i=0;i<3;i++) foo_rgb[i][ind] = electrode_rgb[i][Ix_high];
-    }  
-    if (Iy_low >= 0) {
-      ind=2;
-      r[ind] = calcDistance(pixel_x,pixel_y,electrode_xy[Iy_low][Xind],electrode_xy[Iy_low][Yind]);
-      for (int i=0;i<3;i++) foo_rgb[i][ind] = electrode_rgb[i][Iy_low];
-    }
-    if (Iy_high >= 0) {
-      ind = 3;
-      r[ind] = calcDistance(pixel_x,pixel_y,electrode_xy[Iy_high][Xind],electrode_xy[Iy_high][Yind]);
-      for (int i=0;i<3;i++) foo_rgb[i][ind] = electrode_rgb[i][Iy_high];
-    }
-
-    //now get the weighted average of the four colors
+    //get the distance-weighted average of the electrodes
     float new_rgb[] = {0.0,0.0,0.0};
-    float sum = 0.0f;
-    float fac = 0.0f;
-    for (int Ielec=0; Ielec<4; Ielec++) {
-      fac = 1.0/r[Ielec];
-      sum += fac;
-      for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] += fac*foo_rgb[Irgb][Ielec];
+    float dist[] = new float[electrode_xy.length];
+    int withinElecInd = -1;
+    float elec_radius = 0.5f*elec_diam;
+    
+    //compute distances to each electrode
+    for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
+      dist[Ielec] = max(1.0,calcDistance(pixel_x,pixel_y,electrode_xy[Ielec][0],electrode_xy[Ielec][1]));
+      if (dist[Ielec] < elec_radius) withinElecInd = Ielec;
     }
-    fac = 1.0/sum;
-    for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] *= fac;
+    
+    if (withinElecInd >= 0) {
+      //use that electrode's color
+      for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] = electrode_rgb[Irgb][withinElecInd];
+    } else {
+      //get weighted average based on relative distance
+      float sum_weight_fac = 0.0f;
+      float weight_fac = 0.0f;
+      float foo_dist;
+      for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
+        foo_dist = max(3.0,abs(dist[Ielec] - elec_radius));  //remove radius of the electrode
+        weight_fac = 1.0f/foo_dist;
+        for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] += weight_fac*electrode_rgb[Irgb][Ielec];
+        sum_weight_fac += weight_fac;
+      }
+      for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] /= sum_weight_fac;  //complete the averaging operation
+    }
    
-    return color(new_rgb[0],new_rgb[1],new_rgb[2],255);
+    return color(int(new_rgb[0]),int(new_rgb[1]),int(new_rgb[2]),255);
   }
+  
+//  //compute the color of the pixel given the location
+//  private color calcPixelColor_old(int pixel_x, int pixel_y) {
+//    final int Xind = 0, Yind = 1;
+//    int Ix_low, Ix_high, Iy_low, Iy_high;
+//
+//    //find electrode whose location is lower and higher in the X direction
+//    final int LOW = 0, HIGH = 1;
+//    Ix_low = findClosestElectrodeLowHigh(pixel_x,electrode_xy,Xind,LOW);
+//    Ix_high = findClosestElectrodeLowHigh(pixel_x,electrode_xy,Xind,HIGH);
+//    
+//    //find electrode whose location is lower and higher in the Y direction
+//    Iy_low = findClosestElectrodeLowHigh(pixel_y,electrode_xy,Yind,LOW);
+//    Iy_high = findClosestElectrodeLowHigh(pixel_y,electrode_xy,Yind,HIGH);
+//    
+//    //compute the color based on how it is surrounded
+//    float big_value = 1e6;
+//    float dx,dy;
+//    float r[] = new float[4];
+//    int foo_rgb[][] = new int[3][4];
+//    int ind=0;
+//    for (int i=0; i<4; i++) r[i] = big_value;
+// 
+//    if (Ix_low >= 0) {
+//      ind = 0;
+//      r[ind] = calcDistance(pixel_x,pixel_y,electrode_xy[Ix_low][Xind],electrode_xy[Ix_low][Yind]);
+//      for (int i=0;i<3;i++) foo_rgb[i][ind] = electrode_rgb[i][Ix_low];
+//    }
+//    if (Ix_high >= 0) {
+//      ind = 1;
+//      r[ind] = calcDistance(pixel_x,pixel_y,electrode_xy[Ix_high][Xind],electrode_xy[Ix_high][Yind]);
+//      for (int i=0;i<3;i++) foo_rgb[i][ind] = electrode_rgb[i][Ix_high];
+//    }  
+//    if (Iy_low >= 0) {
+//      ind=2;
+//      r[ind] = calcDistance(pixel_x,pixel_y,electrode_xy[Iy_low][Xind],electrode_xy[Iy_low][Yind]);
+//      for (int i=0;i<3;i++) foo_rgb[i][ind] = electrode_rgb[i][Iy_low];
+//    }
+//    if (Iy_high >= 0) {
+//      ind = 3;
+//      r[ind] = calcDistance(pixel_x,pixel_y,electrode_xy[Iy_high][Xind],electrode_xy[Iy_high][Yind]);
+//      for (int i=0;i<3;i++) foo_rgb[i][ind] = electrode_rgb[i][Iy_high];
+//    }
+//
+//    //now get the weighted average of the four colors
+//    float new_rgb[] = {0.0,0.0,0.0};
+//    float sum = 0.0f;
+//    float fac = 0.0f;
+//    for (int Ielec=0; Ielec<4; Ielec++) {
+//      fac = 1.0/r[Ielec];
+//      sum += fac;
+//      for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] += fac*foo_rgb[Irgb][Ielec];
+//    }
+//    fac = 1.0/sum;
+//    for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] *= fac;
+//   
+//    return color(new_rgb[0],new_rgb[1],new_rgb[2],255);
+//  }
+
   private float calcDistance(int x,int y,float ref_x,float ref_y) {
     float dx = float(x) - ref_x;
     float dy = float(y) - ref_y;
     return sqrt(dx*dx + dy*dy);
   }
   
-  private int findElectrodeLower(int pixel_loc, float[][] electrode_xy, int dim) {
-    return 0;
-  }
-  private int findElectrodeHigher(int pixel_loc, float[][] electrode_xy, int dim) {
-    return 0;
-  }
+//  //get electrode that is clostest but lower (or higher) than the given pixel
+//  //return -1 if none are below
+//  private int findClosestElectrodeLowHigh(int pixel_loc, float[][] electrode_xy, int dim, int flagHigher) {
+//    int I_return = -1;
+//    float dist_min = 1000000; //init to something big
+//    float dist;
+//    
+//    //loop over each electrode
+//    for (int i=0;i<electrode_xy.length;i++) {
+//      
+//      //compute the relative position
+//      if (flagHigher == 0) {
+//        //look for the electrode that is just below the given pixel
+//        dist = float(pixel_loc) - electrode_xy[i][dim];
+//      } else {
+//        //look for the electrode that is just above the given pixel
+//        dist = electrode_xy[i][dim] - float(pixel_loc);
+//      }
+//      
+//      //see if we're on the correct side of the pixel
+//      if (dist > 0.0f) {
+//        //see if we're closest to the pixel
+//        if (dist < dist_min) {
+//          //update the return values
+//          I_return = i;
+//          dist_min = dist;
+//        }
+//      }
+//    }
+//    return I_return;
+//  }
   
   //compute color for the electrode value
   private void updateElectrodeColors() {
@@ -262,26 +324,32 @@ class headPlot {
   }
   
   public void draw() {
+    
     //update electrode colors
     updateElectrodeColors();
     
     //update the head image
     updateHeadImage();
        
-    //draw head
+    //draw head parts
     fill(255,255,255);
-    stroke(128,128,128);
-    strokeWeight(1);
+    stroke(63,63,63);
     triangle(nose_x[0], nose_y[0],nose_x[1], nose_y[1],nose_x[2], nose_y[2]);  //nose
     ellipse(earL_x, earL_y, ear_width, ear_height); //little circle for the ear
     ellipse(earR_x, earR_y, ear_width, ear_height); //little circle for the ear
-   image(headImage,image_x,image_y);   
-    //ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
+    
+    //draw head itself    
+    image(headImage,image_x,image_y);
+    noFill(); //overlay a circle as an outline, but no fill
+    strokeWeight(2);
+    ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
   
-    //draw electrodes
+    //draw electrodes on the head
     strokeWeight(1);
+    //int alpha = 127; //half transparent
     for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
-      fill(electrode_rgb[0][Ielec],electrode_rgb[1][Ielec],electrode_rgb[2][Ielec]);   
+      //fill(electrode_rgb[0][Ielec],electrode_rgb[1][Ielec],electrode_rgb[2][Ielec],alpha);
+      noFill(); //make transparent to allow color to come through from below   
       ellipse(electrode_xy[Ielec][0], electrode_xy[Ielec][1], elec_diam, elec_diam); //big circle for the head
     }
     
