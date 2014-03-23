@@ -299,27 +299,44 @@ class gui_Manager {
     headPlot1.setIntensityData_byRef(dataBuffY_std,is_railed);
   }
   
-  public boolean isMouseOnFFT(int mouse_x, int mouse_y) {
+  
+  public boolean isMouseOnGraph2D(Graph2D g, int mouse_x, int mouse_y) {
     graphDataPoint dataPoint = new graphDataPoint();
-    getFFTdataPoint(mouse_x,mouse_y,dataPoint);
-    if ( (dataPoint.x >= gFFT.getXAxis().getMinValue()) &
-         (dataPoint.x <= gFFT.getXAxis().getMaxValue()) &
-         (dataPoint.y >= gFFT.getYAxis().getMinValue()) &
-         (dataPoint.y <= gFFT.getYAxis().getMaxValue()) ) {
+    getGraph2DdataPoint(g,mouse_x,mouse_y,dataPoint);
+    if ( (dataPoint.x >= g.getXAxis().getMinValue()) &
+         (dataPoint.x <= g.getXAxis().getMaxValue()) &
+         (dataPoint.y >= g.getYAxis().getMinValue()) &
+         (dataPoint.y <= g.getYAxis().getMaxValue()) ) {
       return true;
     } else {
       return false;
     }
   }
+  
+  public boolean isMouseOnMontage(int mouse_x, int mouse_y) {
+    return isMouseOnGraph2D(gMontage,mouse_x,mouse_y);
+  }
+  public boolean isMouseOnFFT(int mouse_x, int mouse_y) {
+    return isMouseOnGraph2D(gFFT,mouse_x,mouse_y);
+  }
+
+  public void getGraph2DdataPoint(Graph2D g, int mouse_x,int mouse_y, graphDataPoint dataPoint) {
+    int rel_x = mouse_x - int(g.position.x);
+    int rel_y = g.getYAxis().getLength() - (mouse_y - int(g.position.y));
+    dataPoint.x = g.getXAxis().positionToValue(rel_x);
+    dataPoint.y = g.getYAxis().positionToValue(rel_y);
+  }
+  public void getMontageDataPoint(int mouse_x, int mouse_y, graphDataPoint dataPoint) {
+    getGraph2DdataPoint(gMontage,mouse_x,mouse_y,dataPoint);
+    dataPoint.x_units = "sec";
+    dataPoint.y_units = "uV";  
+  }  
   public void getFFTdataPoint(int mouse_x,int mouse_y,graphDataPoint dataPoint) {
-    int rel_x = mouse_x - int(gFFT.position.x);
-    int rel_y = gFFT.getYAxis().getLength() - (mouse_y - int(gFFT.position.y));
-    dataPoint.x = gFFT.getXAxis().positionToValue(rel_x);
-    dataPoint.y = gFFT.getYAxis().positionToValue(rel_y);
+    getGraph2DdataPoint(gFFT, mouse_x,mouse_y,dataPoint);
     dataPoint.x_units = "Hz";
     dataPoint.y_units = "uV/sqrt(Hz)";
   }
-  
+    
 //  public boolean isMouseOnHeadPlot(int mouse_x, int mouse_y) {
 //    return headPlot1.isPixelInsideHead(mouse_x,mouse_y) {
 //  }

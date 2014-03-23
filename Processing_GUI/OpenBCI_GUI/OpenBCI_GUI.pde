@@ -707,9 +707,15 @@ void mousePressed() {
     graphDataPoint dataPoint = new graphDataPoint();
     gui.getFFTdataPoint(mouseX,mouseY,dataPoint);
     println("OpenBCI_GUI: FFT data point: " + String.format("%4.2f",dataPoint.x) + " " + dataPoint.x_units + ", " + String.format("%4.2f",dataPoint.y) + " " + dataPoint.y_units);
+    redrawScreenNow = true;
   } else if (gui.headPlot1.isPixelInsideHead(mouseX,mouseY)) {
     //toggle the head plot contours
     gui.headPlot1.drawHeadAsContours = !gui.headPlot1.drawHeadAsContours;
+    redrawScreenNow = true;
+  } else if (gui.isMouseOnMontage(mouseX,mouseY)) {
+    //toggle the display of the montage values
+    gui.showMontageValues  = !gui.showMontageValues;
+    redrawScreenNow = true;
   }
 }
 
