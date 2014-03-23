@@ -320,6 +320,10 @@ class gui_Manager {
     dataPoint.y_units = "uV/sqrt(Hz)";
   }
   
+//  public boolean isMouseOnHeadPlot(int mouse_x, int mouse_y) {
+//    return headPlot1.isPixelInsideHead(mouse_x,mouse_y) {
+//  }
+  
   public void update(float[] data_std_uV) {
     //assume new data has already arrived via the pre-existing references to dataBuffX and dataBuffY and FftBuff
     sTrace.generate();  //graph doesn't update without this

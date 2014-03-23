@@ -17,11 +17,12 @@ import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
 
+
 //choose where to get the EEG data
 final int DATASOURCE_NORMAL =  0;
 final int DATASOURCE_SYNTHETIC = 1;
 final int DATASOURCE_PLAYBACKFILE = 2;
-int eegDataSource = DATASOURCE_NORMAL;
+final int eegDataSource = DATASOURCE_PLAYBACKFILE;
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
@@ -34,6 +35,11 @@ int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //int openBCI_baud = 2*115200; //baud rate from the Arduino
 //int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
 
+//here are variables that are used if loading input data from a CSV text file
+//final String playbackData_fname = "openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
+final String playbackData_fname = "openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
+int currentTableRowIndex = 0;
+Table playbackData_table;
 
 //data
 float fs_Hz = 250.0f;  //sample rate used by OpenBCI board
@@ -178,14 +184,30 @@ void setup() {
   //open the data file for writing
   openNewLogFile();
 
-  // Open the serial port to the Arduino that has the OpenBCI
-  if (eegDataSource == DATASOURCE_NORMAL) {
-    if (true) {
+  //prepare the source of the input data
+  switch (eegDataSource) {
+    case DATASOURCE_NORMAL:
+      //list all the serial ports available...useful for debugging
       println(Serial.list());
-      //openBCI_portName = Serial.list()[0]; //change this for your computer!
-    }
-    println("Opening Serial " + openBCI_portName);
-    openBCI = new openBCI_ADS1299(this, openBCI_portName, openBCI_baud, nchan); //this also starts the data transfer after XX seconds
+      //openBCI_portName = Serial.list()[0];
+      
+      // Open the serial port to the Arduino that has the OpenBCI
+      println("Opening Serial " + openBCI_portName);
+      openBCI = new openBCI_ADS1299(this, openBCI_portName, openBCI_baud, nchan); //this also starts the data transfer after XX seconds
+      break;
+    case DATASOURCE_SYNTHETIC:
+      //do nothing
+      break;
+    case DATASOURCE_PLAYBACKFILE:
+      //open and load the data file
+      println("OpenBCI_GUI: loading playback data from " + playbackData_fname);
+      playbackData_table = loadTable(playbackData_fname, "header,csv");
+      println("OpenBCI_GUI: loading complete.  " + playbackData_table.getRowCount() + " rows of data, which is " + round(float(playbackData_table.getRowCount())/fs_Hz) + " seconds of EEG data");
+      
+      println("OpenBCI_GUI: removing first column of data from data file...the first column is a time index and not eeg data.");
+      playbackData_table.removeColumn(0);
+      break;
+    default: 
   }
 
   //start
@@ -217,7 +239,7 @@ void draw() {
         }
         break;
       case DATASOURCE_SYNTHETIC: //use synthetic data (for GUI debugging)
-      lastReadDataPacketInd = 0;
+        lastReadDataPacketInd = 0;
         for (int i = 0; i < nPointsPerUpdate; i++) {
           //synthesize data
           dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
@@ -232,7 +254,20 @@ void draw() {
         }
         break;
       case DATASOURCE_PLAYBACKFILE:
-      
+        lastReadDataPacketInd = 0;
+        for (int i = 0; i < nPointsPerUpdate; i++) {
+          //get one data point and put it into the packet buffer (as if the data were coming in from the Serial port)
+          dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
+          currentTableRowIndex=getPlaybackDataFromTable(playbackData_table,currentTableRowIndex,scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
+  
+          //gather the data into the "little buffer"
+          for (int Ichan=0; Ichan < nchan; Ichan++) {
+            //scale the data into engineering units..."microvolts"
+            yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
+          }
+          pointCounter++;
+        }
+        break;
       default:
         //no action
     }
@@ -296,7 +331,17 @@ void draw() {
     }
     
     //either way, update the title of the figure;
-    frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", Writing to " + output_fname);
+    switch (eegDataSource) {
+      case DATASOURCE_NORMAL:
+        frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
+        break;
+      case DATASOURCE_SYNTHETIC:
+        frame.setTitle(int(frameRate) + " fps, " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
+        break;
+      case DATASOURCE_PLAYBACKFILE:
+        frame.setTitle(int(frameRate) + " fps, Playing " + int(float(currentTableRowIndex)/fs_Hz) + " of " + int(float(playbackData_table.getRowCount())/fs_Hz) + " secs, Reading from: " + playbackData_fname + ", Writing to " + output_fname);
+        break;  
+    }       
   }
   
   if (redrawScreenNow) {
@@ -626,9 +671,11 @@ void mousePressed() {
     redrawScreenNow = true;
   }
   
+  //was the channel_mode button pressed?
   if (gui.chanModeButton.updateIsMouseHere()) {
     //toggle whether to show channel on/off or channel impedance on/off
     gui.showImpedanceButtons = !gui.showImpedanceButtons;
+    gui.chanModeButton.setIsActive(true);
     redrawScreenNow = true;
   }
 
@@ -660,12 +707,17 @@ void mousePressed() {
     graphDataPoint dataPoint = new graphDataPoint();
     gui.getFFTdataPoint(mouseX,mouseY,dataPoint);
     println("OpenBCI_GUI: FFT data point: " + String.format("%4.2f",dataPoint.x) + " " + dataPoint.x_units + ", " + String.format("%4.2f",dataPoint.y) + " " + dataPoint.y_units);
+  } else if (gui.headPlot1.isPixelInsideHead(mouseX,mouseY)) {
+    //toggle the head plot contours
+    gui.headPlot1.drawHeadAsContours = !gui.headPlot1.drawHeadAsContours;
   }
 }
 
 void mouseReleased() {
-  //gui.stopButton.updateMouseIsReleased();
+  //some buttons light up only when being actively pressed.  Now that we've
+  //released the mouse button, turn off those buttons.
   gui.stopButton.setIsActive(false);
+  gui.chanModeButton.setIsActive(false);
   redrawScreenNow = true;
 }
 
@@ -715,6 +767,36 @@ void synthesizeData(int nchan, float fs_Hz, float scale_fac_uVolts_per_count, da
     }
     curDataPacket.values[Ichan] = (int) (0.5f+ val_uV / scale_fac_uVolts_per_count); //convert to counts, the 0.5 is to ensure rounding
   }
+}
+
+
+int getPlaybackDataFromTable(Table datatable, int currentTableRowIndex, float scale_fac_uVolts_per_count, dataPacket_ADS1299 curDataPacket) {
+  float val_uV = 0.0f;
+  
+  //check to see if we can load a value from the table
+  if (currentTableRowIndex >= datatable.getRowCount()) {
+    //end of file
+    println("OpenBCI_GUI: hit the end of the playback data file.  stopping.");
+    if (isRunning) stopRunning();
+  } else {
+    //get the row
+    TableRow row = datatable.getRow(currentTableRowIndex);
+    currentTableRowIndex++; //increment to the next row
+    
+    //get each value
+    for (int Ichan=0; Ichan < nchan; Ichan++) {
+      if (Ichan < datatable.getColumnCount()) {
+        val_uV = row.getFloat(Ichan);
+      } else {
+        //use zeros
+        val_uV = 0.0f;
+      }
+      
+      //put into data structure
+      curDataPacket.values[Ichan] = (int) (0.5f+ val_uV / scale_fac_uVolts_per_count); //convert to counts, the 0.5 is to ensure rounding
+    }
+  }
+  return currentTableRowIndex;
 }
 
 //toggleChannelState: : Ichan is [0 nchan-1]

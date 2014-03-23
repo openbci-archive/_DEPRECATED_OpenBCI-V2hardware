@@ -42,7 +42,7 @@ class headPlot {
     ref_electrode_xy = new float[2];  //x-y position of reference electrode
     electrode_rgb = new int[3][n_elec];  //rgb color for each electrode
     font = createFont("Arial",16);
-    drawHeadAsContours = false;
+    drawHeadAsContours = true; //set this to be false for slower computers
     
     rel_posX = x;
     rel_posY = y;
@@ -242,6 +242,17 @@ class headPlot {
       electrode_rgb[1][Ielec] = new_rgb[1];
       electrode_rgb[2][Ielec] = new_rgb[2];
     }
+  }
+  
+  public boolean isPixelInsideHead(int pixel_x, int pixel_y) {
+    int dx = pixel_x - circ_x;
+    int dy = pixel_y - circ_y;
+    float r = sqrt(float(dx*dx) + float(dy*dy));
+    if (r <= 0.5*circ_diam) {
+      return true;
+    } else {
+      return false;
+    }    
   }
   
   public void draw() {

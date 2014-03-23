@@ -4,6 +4,7 @@
 class OutputFile_rawtxt {
   PrintWriter output;
   String fname;
+  private int rowsWritten;
   
   OutputFile_rawtxt(float fs_Hz) {
 
@@ -48,6 +49,7 @@ class OutputFile_rawtxt {
   
   public void writeRawData_dataPacket(dataPacket_ADS1299 data,float scale_to_uV) {
     int nchan = data.values.length;
+    rowsWritten = 0;
    
     if (output != null) {
       output.print(Integer.toString(data.sampleIndex));
@@ -68,6 +70,10 @@ class OutputFile_rawtxt {
   public void closeFile() {
     output.flush();
     output.close();
+  }
+  
+  public int getRowsWritten() {
+    return rowsWritten;
   }
 };
 
