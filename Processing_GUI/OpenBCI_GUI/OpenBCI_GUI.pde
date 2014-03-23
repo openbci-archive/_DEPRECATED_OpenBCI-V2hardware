@@ -17,7 +17,11 @@ import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
 
-boolean useSyntheticData = false; //flip this to false when using OpenBCI
+//choose where to get the EEG data
+final int DATASOURCE_NORMAL =  0;
+final int DATASOURCE_SYNTHETIC = 1;
+final int DATASOURCE_PLAYBACKFILE = 2;
+int eegDataSource = DATASOURCE_NORMAL;
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
@@ -175,7 +179,7 @@ void setup() {
   openNewLogFile();
 
   // Open the serial port to the Arduino that has the OpenBCI
-  if (useSyntheticData == false) {
+  if (eegDataSource == DATASOURCE_NORMAL) {
     if (true) {
       println(Serial.list());
       //openBCI_portName = Serial.list()[0]; //change this for your computer!
@@ -197,33 +201,40 @@ int prevMillis=millis();
 int byteRate_perSec = 0;
 void draw() {
   if (isRunning) {
-    if (useSyntheticData) {  //use synthetic data (for GUI debugging) or use real data from the Serial stream
-      lastReadDataPacketInd = 0;
-      for (int i = 0; i < nPointsPerUpdate; i++) {
-        //synthesize data
-        dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
-        synthesizeData(nchan, fs_Hz, scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
-
-        //gather the data into the "little buffer"
-        for (int Ichan=0; Ichan < nchan; Ichan++) {
-          //scale the data into engineering units..."microvolts"
-          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
+    switch (eegDataSource) {
+      case DATASOURCE_NORMAL:   //use live data from the Serial stream
+        //first, get the new data (if any is available
+        openBCI.updateState();
+        
+        //next, gather any new data into the "little buffer"
+        while ( (curDataPacketInd != lastReadDataPacketInd) && (pointCounter < nPointsPerUpdate)) {
+          lastReadDataPacketInd = (lastReadDataPacketInd+1) % dataPacketBuff.length;  //increment to read the next packet
+          for (int Ichan=0; Ichan < nchan; Ichan++) {   //loop over each cahnnel
+            //scale the data into engineering units ("microvolts") and save to the "little buffer"
+            yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan] * scale_fac_uVolts_per_count;
+          } 
+          pointCounter++; //increment counter for "little buffer"
         }
-        pointCounter++;
-      }
-    } 
-    else {
-      openBCI.updateState();
-
-      //gather any new data into the "little buffer"
-      while ( (curDataPacketInd != lastReadDataPacketInd) && (pointCounter < nPointsPerUpdate)) {
-        lastReadDataPacketInd = (lastReadDataPacketInd+1) % dataPacketBuff.length;  //increment to read the next packet
-        for (int Ichan=0; Ichan < nchan; Ichan++) {   //loop over each cahnnel
-          //scale the data into engineering units ("microvolts") and save to the "little buffer"
-          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan] * scale_fac_uVolts_per_count;
-        } 
-        pointCounter++; //increment counter for "little buffer"
-      }
+        break;
+      case DATASOURCE_SYNTHETIC: //use synthetic data (for GUI debugging)
+      lastReadDataPacketInd = 0;
+        for (int i = 0; i < nPointsPerUpdate; i++) {
+          //synthesize data
+          dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
+          synthesizeData(nchan, fs_Hz, scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
+  
+          //gather the data into the "little buffer"
+          for (int Ichan=0; Ichan < nchan; Ichan++) {
+            //scale the data into engineering units..."microvolts"
+            yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
+          }
+          pointCounter++;
+        }
+        break;
+      case DATASOURCE_PLAYBACKFILE:
+      
+      default:
+        //no action
     }
 
     //has enough data arrived to process it and update the GUI?
