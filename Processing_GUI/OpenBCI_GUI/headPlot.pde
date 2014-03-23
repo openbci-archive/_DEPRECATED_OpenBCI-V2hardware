@@ -20,8 +20,8 @@ class headPlot {
   private  int earL_x, earL_y, earR_x, earR_y, ear_width, ear_height;
   private int[] nose_x, nose_y;
   private float[][] electrode_xy;
-  //private float[][] electrode_relDist;
   private float[] ref_electrode_xy;
+  private float[][][] electrode_color_weightFac;
   private int[][] electrode_rgb;
   private int elec_diam;
   PFont font;
@@ -55,6 +55,7 @@ class headPlot {
   
   //this method defines all locations of all the subcomponents
   public void setWindowDimensions(int win_width, int win_height){
+    final int n_elec = electrode_xy.length;
     
     //define the head itself
     float nose_relLen = 0.075f;
@@ -99,7 +100,7 @@ class headPlot {
     //define the electrode positions as the relative position [-1.0 +1.0] within the head
     //remember that negative "Y" is up and positive "Y" is down
     float elec_relDiam = 0.1425f;
-    float[][] elec_relXY = new float[8][2]; //change to 16!!!
+    float[][] elec_relXY = new float[n_elec][2]; //change to 16!!!
       elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*(0.5f+0.2f);
       elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1];
       elec_relXY[2][0] = -0.2f;            elec_relXY[2][1] = 0f;
@@ -134,6 +135,10 @@ class headPlot {
         headImage.set(Ix,Iy,color(0,0,0,0));
       }
     }
+    
+    //compute the weighting factor for each pixel
+    electrode_color_weightFac = new float[int(total_width)][int(total_height)][n_elec];
+    computePixelWeightingFactors();  
   }
   
   public void setIntensityData_byRef(float[] data, boolean[] is_rail) {
@@ -141,76 +146,109 @@ class headPlot {
     is_railed = is_rail;
   }
   
-  //step through pixel-by-pixel to update the image
-  private void updateHeadImage() {
+  private void computePixelWeightingFactors() {
+    int n_elec = electrode_xy.length;
+    float dist;
+    int withinElecInd = -1;
+    float elec_radius = 0.5f*elec_diam;
     int pixel_x, pixel_y;
-    int dy = 0; int dx = 0;
-    float r;
-    float circ_radius = 0.5*float(circ_diam);
+    float sum_weight_fac = 0.0f;
+    float weight_fac[] = new float[n_elec];
+    float foo_dist;
     
-    //println("headPlot: circ_radius = " + circ_radius);
+    //loop over each pixel
     for (int Iy=0; Iy < headImage.height; Iy++) {
       pixel_y = image_y + Iy;
-      dy = pixel_y - circ_y;
       for (int Ix = 0; Ix < headImage.width; Ix++) {
         pixel_x = image_x + Ix;
-        dx = pixel_x - circ_x;
-        
-        //is this pixel inside the head?
-        r = sqrt(float(dx*dx) + float(dy*dy));
-        if (r <= circ_radius) {
-          //it is inside the head.  set the color based on the electrodes
-          headImage.set(Ix,Iy,calcPixelColor(pixel_x,pixel_y));
+                
+        if (isPixelInsideHead(pixel_x,pixel_y)==false) {
+          for (int Ielec=0; Ielec < n_elec; Ielec++) {
+            //outside of head...no color from electrodes
+            electrode_color_weightFac[Ix][Iy][Ielec] = -1.0f; //a negative value will be a flag that it is outside of the head
+          }
         } else {
+          //inside of head, compute weighting factors
+
+          //compute distances of this pixel to each electrode
+          sum_weight_fac = 0.0f; //reset for this pixel
+          withinElecInd = -1;    //reset for this pixel
+          for (int Ielec=0; Ielec < n_elec; Ielec++) {
+            //compute distance
+            dist = max(1.0,calcDistance(pixel_x,pixel_y,electrode_xy[Ielec][0],electrode_xy[Ielec][1]));
+            if (dist < elec_radius) withinElecInd = Ielec;
+            
+            //compute the first part of the weighting factor
+            foo_dist = max(1.0,abs(dist - elec_radius));  //remove radius of the electrode
+            weight_fac[Ielec] = 1.0f/foo_dist;  //arbitrarily chosen
+            weight_fac[Ielec] = weight_fac[Ielec]*weight_fac[Ielec]*weight_fac[Ielec];  //again, arbitrary
+            sum_weight_fac += weight_fac[Ielec];
+          }
+          
+          //finalize the weight factor
+          for (int Ielec=0; Ielec < n_elec; Ielec++) {
+             //is this pixel within an electrode? 
+            if (withinElecInd > -1) {
+              //yes, it is within an electrode
+              if (Ielec == withinElecInd) {
+                //use this signal electrode as the color
+                electrode_color_weightFac[Ix][Iy][Ielec] = 1.0f;
+              } else {
+                //ignore all other electrodes
+                electrode_color_weightFac[Ix][Iy][Ielec] = 0.0f;
+              }
+            } else {
+              //no, this pixel is not in an electrode.  So, use the distance-based weight factor, 
+              //after dividing by the sum of the weight factors, resulting in an averaging operation
+              electrode_color_weightFac[Ix][Iy][Ielec] = weight_fac[Ielec]/sum_weight_fac;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  //step through pixel-by-pixel to update the image
+  private void updateHeadImage() {
+    
+    for (int Iy=0; Iy < headImage.height; Iy++) {
+      for (int Ix = 0; Ix < headImage.width; Ix++) {
+        //is this pixel inside the head?
+        if (electrode_color_weightFac[Ix][Iy][0] >= 0.0) { //zero and positive values are inside the head
+          //it is inside the head.  set the color based on the electrodes
+          headImage.set(Ix,Iy,calcPixelColor(Ix,Iy));
+        } else {  //negative values are outside of the head
           //pixel is outside the head.  set to black.
           headImage.set(Ix,Iy,color(0,0,0,0));
         }
       }
     }
   }
-  
+
+
   //compute the color of the pixel given the location
-  private color calcPixelColor(int pixel_x, int pixel_y) {
-    //get the distance-weighted average of the electrodes
+  private color calcPixelColor(int pixel_Ix,int pixel_Iy) {
+    
+    //compute the weighted average using the precomputed factors
     float new_rgb[] = {0.0,0.0,0.0};
-    float dist[] = new float[electrode_xy.length];
-    int withinElecInd = -1;
-    float elec_radius = 0.5f*elec_diam;
-    
-    //compute distances to each electrode
     for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
-      dist[Ielec] = max(1.0,calcDistance(pixel_x,pixel_y,electrode_xy[Ielec][0],electrode_xy[Ielec][1]));
-      if (dist[Ielec] < elec_radius) withinElecInd = Ielec;
+      for (int Irgb=0; Irgb<3; Irgb++) {
+        new_rgb[Irgb] += electrode_color_weightFac[pixel_Ix][pixel_Iy][Ielec]*electrode_rgb[Irgb][Ielec];
+      }
     }
     
-    if (withinElecInd >= 0) {
-      //use that electrode's color
-      for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] = electrode_rgb[Irgb][withinElecInd];
-    } else {
-      //get weighted average based on relative distance
-      float sum_weight_fac = 0.0f;
-      float weight_fac = 0.0f;
-      float foo_dist;
-      for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
-        foo_dist = max(1.0,abs(dist[Ielec] - elec_radius));  //remove radius of the electrode
-        weight_fac = 1.0f/foo_dist;  //arbitrarily chosen
-        weight_fac = weight_fac*weight_fac*weight_fac;  //again, arbitrary
-        for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] += weight_fac*electrode_rgb[Irgb][Ielec];
-        sum_weight_fac += weight_fac;
+    if (true) {
+      //quantize the colors
+      int n_colors = 12;
+      int ticks_per_color = 256 / (n_colors+1);
+      for (int Irgb=0; Irgb<3; Irgb++) {
+        new_rgb[Irgb] = min(255.0,float(int(new_rgb[Irgb]/ticks_per_color))*ticks_per_color);
       }
-      for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] /= sum_weight_fac;  //complete the averaging operation
     }
-   
-   if (true) {
-     //quantize the colors
-     int n_colors = 12;
-     int ticks_per_color = 256 / (n_colors+1);
-     for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] = min(255.0,float(int(new_rgb[Irgb]/ticks_per_color))*ticks_per_color);
-   }
-   
+       
     return color(int(new_rgb[0]),int(new_rgb[1]),int(new_rgb[2]),255);
   }
-
+  
   private float calcDistance(int x,int y,float ref_x,float ref_y) {
     float dx = float(x) - ref_x;
     float dy = float(y) - ref_y;
