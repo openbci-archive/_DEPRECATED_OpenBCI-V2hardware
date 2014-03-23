@@ -207,6 +207,156 @@ class headPlot {
       }
     }
   }
+  
+  void computePixelWeightingFactors_trueAverage() {
+    int n_wide = headImage.width;
+    int n_tall = headImage.height;
+    int n_pixels = n_wide * n_tall;
+    int n_elec = electrode_xy.length;
+    float toPixels[][] = new float[n_pixels][n_pixels];
+    float toElectrodes[][] = new float[n_pixels][n_elec];
+    int withinElectrode[][] = new int[n_wide][n_tall];
+    boolean withinHead[][] = new boolean[n_wide][n_tall];
+    int pixelAddress[][] = new int[n_pixels][2];
+    int Ix,Iy;
+    int Ipix;
+    int curPixel;
+    
+    
+    //find which pixesl are within the head and within an electrode
+    whereAreThePixels(withinHead,withinElectrode);
+       
+    //loop over the pixels and make all the connections
+    makeAllTheConnections(n_wide,n_tall,n_elec,withinHead,withinElectrode,toPixels,toElectrodes,pixelAddress);
+    
+    //
+  
+    
+  }
+    
+  void makeAllTheConnections(int n_wide, int n_tall, int n_elec, boolean withinHead[][],int withinElectrode[][], float toPixels[][],float toElectrodes[][],int pixelAddress[][]) {
+    float sum_of_connections;
+    int curPixel, Ipix, Ielec;
+    int n_pixels = n_wide * n_tall;
+    int Ix_try, Iy_try;
+  
+    //initilize connections to zero
+    for (curPixel = 0; curPixel < n_pixels; curPixel++) {
+      for (Ipix = 0; Ipix < n_pixels; Ipix++) {
+        toPixels[curPixel][Ipix] = 0.0;  //no connection
+      }
+      for (Ielec = 0; Ielec < n_elec; Ielec++) {
+        toElectrodes[curPixel][Ielec] = 0.0; //no connection
+      }
+    }
+    
+    //loop over every pixel in the image
+    for (int Iy=0; Iy < n_tall; Iy++) {
+      for (int Ix = 0; Ix < n_wide; Ix++) {
+        curPixel = (Iy*n_wide)+Ix;  //indx of the current pixel
+        sum_of_connections = 0.0f;
+        
+        pixelAddress[curPixel][0]=Ix;
+        pixelAddress[curPixel][1]=Iy;
+        
+        if (withinHead[Ix][Iy]) {
+          //this pixel is within head
+          
+          //is the pixel within an electrode?
+          if (withinElectrode[Ix][Iy] >= 0) {
+            //this pixel is within an electrode...only connection is to that electrode
+            toElectrodes[curPixel][withinElectrode[Ix][Iy]] = 1.0;
+            sum_of_connections += toElectrodes[curPixel][withinElectrode[Ix][Iy]];
+            
+          } else {
+            //this pixel is a regular pixel...
+            
+            //make the connections to its up-down and left-right neighbors
+            Ix_try = 0; Iy_try=0;
+            for (int Icase=0;Icase<4;Icase++) {
+              switch (Icase) {
+                case 0:
+                  Ix_try = Ix-1; Iy_try = Iy; //left
+                  break;
+                case 1:
+                  Ix_try = Ix+1; Iy_try = Iy; //right
+                  break;
+                case 2:
+                  Ix_try = Ix; Iy_try = Iy-1; //up
+                  break;
+                case 3:
+                  Ix_try = Ix; Iy_try = Iy+1; //down
+                  break;
+              }
+              Ipix = (Iy_try*n_wide)+Ix_try;
+              
+              //is the target pixel within the head?
+              if (withinHead[Ix_try][Iy_try]==false) {
+                //outside of head.  No connections at all.
+              } else {
+                //inside of head.
+                
+                //is the target pixel within an electrode?
+                if (withinElectrode[Ix_try][Iy] >= 0) {
+                  //it is within an electrode...so connect to that electrode
+                  Ielec = withinElectrode[Ix][Iy];
+                  toElectrodes[curPixel][Ielec] = 1.0;
+                  sum_of_connections += toElectrodes[curPixel][Ielec];
+                } else {
+                  //it is not an electrode...so just connect to that pixel
+                  toPixels[curPixel][Ipix]=1.0;
+                  sum_of_connections += toPixels[curPixel][Ipix];
+                }
+              }
+            } //end loop over Icase
+          } //end loop over is withinHead
+          
+          
+          if (sum_of_connections > 0.0) {
+            //divide all connections in order to make it an average
+            for (Ipix = 0; Ipix < toPixels[curPixel].length; Ipix++) {
+              toPixels[curPixel][Ipix] /= sum_of_connections;
+            }
+            for (Ielec = 0; Ielec < toElectrodes[curPixel].length; Ielec++) {
+              toElectrodes[curPixel][Ielec] /= sum_of_connections;
+            }
+          }
+          
+        } // end loop over Iy
+        
+        //apply a -1 down the main diagonal
+        toPixels[Ix][Ix] = -1.0;
+        
+      } //end loop over Ix
+    }    
+  }
+  
+  private void whereAreThePixels(boolean[][] withinHead,int[][] withinElectrode) {
+    int pixel_x,pixel_y;
+    int withinElecInd=-1;
+    final int n_elec = electrode_xy.length;
+    float dist;
+    float elec_radius = 0.5*elec_diam;
+    
+    for (int Iy=0; Iy < headImage.height; Iy++) {
+      pixel_y = image_y + Iy;
+      for (int Ix = 0; Ix < headImage.width; Ix++) {
+        pixel_x = image_x + Ix;
+        
+        //is it within the head
+        withinHead[Ix][Iy] = isPixelInsideHead(pixel_x,pixel_y);
+        
+        //compute distances of this pixel to each electrode
+        withinElecInd = -1;    //reset for this pixel
+        for (int Ielec=0; Ielec < n_elec; Ielec++) {
+          //compute distance
+          dist = max(1.0,calcDistance(pixel_x,pixel_y,electrode_xy[Ielec][0],electrode_xy[Ielec][1]));
+          if (dist < elec_radius) withinElecInd = Ielec;
+        }
+        withinElectrode[Ix][Iy] = withinElecInd;  //-1 means not inside an electrode 
+      }
+    }
+  }
 
   //step through pixel-by-pixel to update the image
   private void updateHeadImage() {
