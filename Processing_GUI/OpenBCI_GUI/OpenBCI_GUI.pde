@@ -293,8 +293,15 @@ void draw() {
           is_railed[Ichan]=true;
         }
 
-        //process the time domain data
+        //make a copy of the data for further processing
         dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();
+      } 
+        
+      //recompute the montage to make it be a mean-head reference
+      if (false) rereferenceTheMontage(dataBuffY_filtY_uV);
+        
+      for (int Ichan=0;Ichan < nchan; Ichan++) {  
+        //filter the data in the time domain
         filterIIR(filtCoeff_notch.b, filtCoeff_notch.a, dataBuffY_filtY_uV[Ichan]); //notch
         filterIIR(filtCoeff_bp.b, filtCoeff_bp.a, dataBuffY_filtY_uV[Ichan]); //bandpass
 
