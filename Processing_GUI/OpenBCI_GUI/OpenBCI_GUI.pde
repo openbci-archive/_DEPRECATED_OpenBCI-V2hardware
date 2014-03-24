@@ -41,16 +41,20 @@ final String playbackData_fname = "openBCI_2013-12-24_relaxation.txt"; //only us
 int currentTableRowIndex = 0;
 Table playbackData_table;
 
-//data
+//properties of the openBCI board
 float fs_Hz = 250.0f;  //sample rate used by OpenBCI board
+final float ADS1299_Vref = 4.5f;  //reference voltage for ADC in ADS1299
+final float ADS1299_gain = 24;  //assumed gain setting for ADS1299
+final float scale_fac_uVolts_per_count = ADS1299_Vref / (pow(2,23)-1) / ADS1299_gain  * 1000000.f; //ADS1299 datasheet Table 7, confirmed through experiment
+final float openBCI_impedanceDrive_amps = 6.0e-9;  //6 nA
+
+//other data fields
 float dataBuffX[];
 float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is a new channel so that dataBuffY[3][] is channel 4
 float dataBuffY_filtY_uV[][];
 float data_std_uV[];
+float data_elec_imp_ohm[];
 int nchan = OpenBCI_Nchannels;
-final float ADS1299_Vref = 4.5f;  //reference voltage for ADC in ADS1299
-final float ADS1299_gain = 24;  //assumed gain setting for ADS1299
-final float scale_fac_uVolts_per_count = ADS1299_Vref / (pow(2,23)-1) / ADS1299_gain  * 1000000.f; //ADS1299 datasheet Table 7, confirmed through experiment
 int prev_time_millis = 0;
 final int nPointsPerUpdate = 50; //update screen after this many data points.  
 float yLittleBuff[] = new float[nPointsPerUpdate];
@@ -160,6 +164,7 @@ void setup() {
   dataBuffY_uV = new float[nchan][dataBuffX.length];
   dataBuffY_filtY_uV = new float[nchan][dataBuffX.length];
   data_std_uV = new float[nchan];
+  data_elec_imp_ohm = new float[nchan];
   is_railed = new boolean[nchan]; 
   for (int i=0; i<nDataBackBuff;i++) { 
     dataPacketBuff[i] = new dataPacket_ADS1299(nchan);
@@ -327,10 +332,13 @@ void draw() {
         float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
         fooData_filt = Arrays.copyOfRange(fooData_filt, fooData_filt.length-Nfft, fooData_filt.length);   //just grab the most recent block of data
         data_std_uV[Ichan]=std(fooData_filt);
+        
+        //compute the electrode impedance in a very simple way [rms to amplitude, then uVolt to Volt, then Volt/Amp to Ohm]
+        data_elec_imp_ohm[Ichan] = (sqrt(2.0)*data_std_uV[Ichan]*1.0e-6) / openBCI_impedanceDrive_amps;
       }
-
+      
       //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
-      gui.update(data_std_uV);
+      gui.update(data_std_uV,data_elec_imp_ohm);
       redrawScreenNow=true;
     } 
     else {

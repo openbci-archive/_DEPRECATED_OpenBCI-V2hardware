@@ -38,6 +38,7 @@ class gui_Manager {
   Button[] impedanceButtonsN;
   textBox titleMontage, titleFFT;
   textBox[] chanValuesMontage;
+  textBox[] impValuesMontage;
   boolean showMontageValues;
   
   float fftYOffset[];
@@ -180,23 +181,48 @@ class gui_Manager {
     titleMontage.setFontSize(16);
     titleMontage.alignH = CENTER;
     
-    //add channel data values
+    //add channel data values and impedance values
     int x3, y3;
     //float w = int(round(axis_relPos[2]*win_x));
+    textBox fooBox = new textBox("",0,0); 
     chanValuesMontage = new textBox[nchan];
+    impValuesMontage = new textBox[nchan];
     Axis2D xAxis = g.getXAxis();
-    x3 = x1 + xAxis.valueToPosition(xAxis.getMaxValue()) - 2;  //set to left edge of plot.  nudge 2 pixels to the right
     Axis2D yAxis = g.getYAxis();
     int h = int(round(axis_relPos[3]*win_y));
     for (int i=0; i<nchan; i++) {
       y3 = y1 + h - yAxis.valueToPosition((float)(-(i+1))); //set to be on the centerline of the trace
-      chanValuesMontage[i] = new textBox("0.00 uVrms",x3,y3);
-      chanValuesMontage[i].textColor = color(0,0,0);
-      chanValuesMontage[i].drawBackground = true;
-      chanValuesMontage[i].backgroundColor = color(255,255,255);
-      chanValuesMontage[i].alignH = RIGHT;
+      for (int j=0; j<2; j++) { //loop over the different text box types
+        switch (j) {
+          case 0:
+            //voltage value text
+            x3 = x1 + xAxis.valueToPosition(xAxis.getMaxValue()) - 2;  //set to right edge of plot.  nudge 2 pixels to the left
+            fooBox = new textBox("0.00 uVrms",x3,y3);
+            break;
+          case 1:
+            //impedance value text
+            x3 = x1 + xAxis.valueToPosition(xAxis.getMinValue()) + 2;  //set to left edge of plot.  nudge 2 pixels to the right
+            fooBox = new textBox("0.00 kOhm",x3,y3);
+            break;
+        }
+        fooBox.textColor = color(0,0,0);
+        fooBox.drawBackground = true;
+        fooBox.backgroundColor = color(255,255,255);
+        switch (j) {
+          case 0:
+            //voltage value text
+            fooBox.alignH = RIGHT;
+            chanValuesMontage[i] = fooBox;
+            break;
+          case 1:
+            //impedance value text
+            fooBox.alignH = LEFT;
+            impValuesMontage[i] = fooBox;
+            break;
+        }
+      }
     }
-    showMontageValues = true;  // default to having them NOT displayed
+    showMontageValues = true;  // default to having them NOT displayed    
   }
   
   public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,plotFontInfo fontInfo) {
@@ -341,15 +367,36 @@ class gui_Manager {
 //    return headPlot1.isPixelInsideHead(mouse_x,mouse_y) {
 //  }
   
-  public void update(float[] data_std_uV) {
+  public void update(float[] data_std_uV,float[] data_elec_imp_ohm) {
     //assume new data has already arrived via the pre-existing references to dataBuffX and dataBuffY and FftBuff
     sTrace.generate();  //graph doesn't update without this
     fftTrace.generate(); //graph doesn't update without this
 
-    //update the labels on the montage
+    //update the text strings
     String fmt; float val;
     for (int Ichan=0; Ichan < data_std_uV.length; Ichan++) {
+      //update the voltage values
       val = data_std_uV[Ichan];
+      chanValuesMontage[Ichan].string = String.format(getFmt(val),val) + " uVrms";
+      if (sTrace.is_railed != null) {
+        if (sTrace.is_railed[Ichan] == true) {
+          chanValuesMontage[Ichan].string = "RAILED";
+        }
+      } 
+      
+      //update the impedance values
+      val = data_elec_imp_ohm[Ichan]/1000;
+      impValuesMontage[Ichan].string = String.format(getFmt(val),val) + " kOhm";
+      if (sTrace.is_railed != null) {
+        if (sTrace.is_railed[Ichan] == true) {
+          impValuesMontage[Ichan].string = "RAILED";
+        }
+      }
+    }
+  }
+  
+  private String getFmt(float val) {
+    String fmt;
       if (val > 100.0f) {
         fmt = "%.0f";
       } else if (val > 10.0f) {
@@ -357,15 +404,9 @@ class gui_Manager {
       } else {
         fmt = "%.2f";
       }
-      chanValuesMontage[Ichan].string = String.format(fmt,data_std_uV[Ichan]) + " uVrms";
-      if (sTrace.is_railed != null) {
-        if (sTrace.is_railed[Ichan] == true) {
-          chanValuesMontage[Ichan].string = "RAILED";
-        }
-      } 
-    }
+      return fmt;
   }
-
+  
   public void draw() {
     headPlot1.draw();
     gMontage.draw(); titleMontage.draw();//println("completed montage draw..."); 
@@ -378,11 +419,12 @@ class gui_Manager {
         chanButtons[Ichan].draw();
       }
     } else {
-      //show impedance buttons
+      //show impedance buttons and text
       for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
         impedanceButtonsP[Ichan].draw();
-        impedanceButtonsN[Ichan].draw();       
-      }      
+        impedanceButtonsN[Ichan].draw();
+        impValuesMontage[Ichan].draw();     
+      }    
     }
     
     if (showMontageValues) {

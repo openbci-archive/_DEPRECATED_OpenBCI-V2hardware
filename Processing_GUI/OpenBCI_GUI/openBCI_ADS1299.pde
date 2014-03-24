@@ -9,7 +9,7 @@
 // for normal operation.
 //
 // Created: Chip Audette, Oct 2013
-// Modified: through Jan 2014
+// Modified: through March 2014
 //
 // Note: this class does not care whether you are using V1 or V2 of the OpenBCI
 // board because the Arduino itself handles the differences between the two.  The
