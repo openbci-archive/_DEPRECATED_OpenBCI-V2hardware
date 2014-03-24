@@ -25,7 +25,7 @@ boolean useSyntheticData = false; //flip this to false when using OpenBCI, flip 
 
 //Serial communications constants
 openBCI_ADS1299 openBCI;
-String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+String openBCI_portName = "COM21";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the Arduino
@@ -444,6 +444,14 @@ void mousePressed() {
       toggleChannelState(Ibut);
     }
   }
+  
+  //check the graphs
+  if (gui.isMouseOnFFT(mouseX,mouseY)) {
+    graphDataPoint dataPoint = new graphDataPoint();
+    gui.getFFTdataPoint(mouseX,mouseY,dataPoint);
+    println("OpenBCI_GUI: FFT data point: " + String.format("%4.2f",dataPoint.x) + " " + dataPoint.x_units + ", " + String.format("%4.2f",dataPoint.y) + " " + dataPoint.y_units);
+  }
+  
   redrawScreenNow = true; //redraw the screen for any reason
 }
 

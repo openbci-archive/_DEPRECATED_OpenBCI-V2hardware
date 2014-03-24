@@ -64,20 +64,6 @@ class Button {
     return isMouseHere;
   }
 
-//  boolean updateMouseIsPressed() {
-//    updateIsMouseHere();
-//    if (isMouseHere) {
-//      isActive = true;
-//    //} else {
-//    //  isActive = false;
-//    }
-//    return isActive;
-//  }
-
-//  void updateMouseIsReleased() {
-//    isActive = false;
-//  }
-
   color getColor() {
     if (isActive) {
       return color_pressed;

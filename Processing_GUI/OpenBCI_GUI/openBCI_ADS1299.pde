@@ -20,14 +20,18 @@
 //import processing.serial.*;
 import java.io.OutputStream; //for logging raw bytes to an output file
 
-String command_stop = "s";
-String command_startText = "x";
-String command_startBinary = "b";
-String command_startBinary_4chan = "v";
-String command_activateFilters = "F";
-String command_deactivateFilters = "f";
+final String command_stop = "s";
+final String command_startText = "x";
+final String command_startBinary = "b";
+final String command_startBinary_4chan = "v";
+final String command_activateFilters = "F";
+final String command_deactivateFilters = "f";
 String[] command_deactivate_channel = {"1", "2", "3", "4", "5", "6", "7", "8"};
 String[] command_activate_channel = {"q", "w", "e", "r", "t", "y", "u", "i"};
+String[] command_activate_leadoffP_channel = {"!", "@", "#", "$", "%", "^", "&", "*"};  //shift + 1-8
+String[] command_deactivate_leadoffP_channel = {"Q", "W", "E", "R", "T", "Y", "U", "I"};   //letters (plus shift) right below 1-8
+String[] command_activate_leadoffN_channel = {"A", "S", "D", "F", "G", "H", "J", "K"}; //letters (plus shift) below the letters below 1-8
+String[] command_deactivate_leadoffN_channel = {"Z", "X", "C", "V", "B", "N", "M", "<"};   //letters (plus shift) below the letters below the letters below 1-8
 
 //final int DATAMODE_TXT = 0;
 final int DATAMODE_BIN = 1;
@@ -48,12 +52,12 @@ final byte BYTE_END = byte(0xC0);
 //final int LEN_SERIAL_BUFF_CHAR = 10000;
 //final int MIN_PAYLOAD_LEN_INT32 = 1; //8 is the normal number, but there are shorter modes to enable Bluetooth
 
-int preffered_datamode = DATAMODE_BIN;
+int prefered_datamode = DATAMODE_BIN;
 
 class openBCI_ADS1299 {
   Serial serial_openBCI = null;
   int state = STATE_NOCOM;
-  int dataMode = preffered_datamode;
+  int dataMode = prefered_datamode;
   int prevState_millis = 0;
   //byte[] serialBuff;
   //int curBuffIndex = 0;
@@ -93,16 +97,18 @@ class openBCI_ADS1299 {
       if ((millis() - prevState_millis) > COM_INIT_MSEC) {
         //serial_openBCI.write(command_activates + "\n"); println("Processing: OpenBCI_ADS1299: activating filters");
         changeState(STATE_NORMAL);
-        startDataTransfer(preffered_datamode);
+        startDataTransfer(prefered_datamode);
       }
     }
     return 0;
   }    
 
   int closeSerialPort() {
-    serial_openBCI.stop();
-    serial_openBCI = null;
-    state = STATE_NOCOM;
+    if (serial_openBCI != null) {
+      serial_openBCI.stop();
+      serial_openBCI = null;
+      state = STATE_NOCOM;
+    }
     return 0;
   }
   
@@ -125,8 +131,10 @@ class openBCI_ADS1299 {
   }
   
   void stopDataTransfer() {
-    serial_openBCI.write(command_stop + "\n");
-    serial_openBCI.clear(); // clear anything in the com port's buffer
+    if (serial_openBCI != null) {
+      serial_openBCI.write(command_stop + "\n");
+      serial_openBCI.clear(); // clear anything in the com port's buffer
+    }
   }
   
   //read from the serial port
@@ -141,7 +149,7 @@ class openBCI_ADS1299 {
       try {
        output.write(inByte);   //for debugging  WEA 2014-01-26
       } catch (IOException e) {
-        //System.err.println("Caught IOException: " + e.getMessage());
+        System.err.println("openBCI_ADS1299: Caught IOException: " + e.getMessage());
         //do nothing
       }
     }
@@ -270,65 +278,31 @@ class openBCI_ADS1299 {
     }
   }
   
-//  //interpret the data
-//  int interpretBinaryMessage() {
-//    //assume curBuffIndex has already been incremented to the next open spot
-//    int endInd = curBuffIndex-1;
-//    int startInd = curBuffIndex-known_packet_length_bytes;
-//
-//    
-//    //println("openBCI_ADS1299: interpretBinaryMessage: interpretting...");
-//     
-//    //check to see whether the data is valid to interpret
-//    while ((startInd >= 0) && (serialBuff[startInd] != BYTE_START)) {
-//      startInd--;
-//    }
-//    if (startInd < 0) {
-//      //didn't find the start byte..so ignore this data packet
-//      println("openBCI_ADS1299: interpretBinaryMessage: badly formatted packet. Dropping.");
-//    } else if ((endInd - startInd + 1) < 3) {
-//      //data packet isn't long enough to hold any data...so ignore this data packet
-//      println("openBCI_ADS1299: interpretBinaryMessage: badly formatted packet. Dropping.");
-//    } else {
-//      //so the data is valid to interpret.  Let's do so.
-//      
-//      //the first field after the header is the number of bytes in the payload
-//      int n_bytes = int(serialBuff[startInd + 1]); //this is the number of bytes in the payload
-//      
-//      // check to see if the payload is at least the minimum length
-//      if (n_bytes < 4*MIN_PAYLOAD_LEN_INT32) {
-//        //bad data.  ignore this packet;
-//      } else {
-//        //check to see if the payload length matches the measured packet size
-//        if ((startInd + 1 + n_bytes + 1) != endInd) {
-//          //bad data.  ignore this packet
-//        } else {
-//          //println("openBCI_ADS1299: interpretBinaryMessage: good packet!");
-//          int startIndPayload = startInd+1+1;
-//          int nInt32 = n_bytes / 4;
-//          interpretBinaryPayload(startIndPayload,nInt32);
-//          //dataPacket.printToConsole();
-//        }
-//      }      
-//    }
-//    
-//    curBuffIndex=0;  //reset buffer counter back to zero to start refilling the buffer
-//    return 0;
-//  }
-//  
-//  int interpretBinaryPayload(int startInd,int nInt32) {
-//    dataPacket.sampleIndex = interpretAsInt32(subset(serialBuff,startInd,4)); //read the int32 value
-//    startInd += 4;  //increment the start index
-//    
-//    int nValToRead = min(nInt32-1,dataPacket.values.length);
-//    for (int i=0; i < nValToRead;i++) {
-//      dataPacket.values[i] = interpretAsInt32(subset(serialBuff,startInd,4)); //read the int32 value
-//      startInd += 4;  //increment the start index
-//    }
-//    
-//    isNewDataPacketAvailable = true;
-//    return 0;
-//  }
+  public void changeImpedanceState(int Ichan,boolean activate,int code_P_N_Both) {
+    //println("openBCI_ADS1299: changeImpedanceState: Ichan " + Ichan + ", activate " + activate + ", code_P_N_Both " + code_P_N_Both);
+    if (serial_openBCI != null) {
+      if ((Ichan >= 0) && (Ichan < command_activate_leadoffP_channel.length)) {
+        if (activate) {
+          if ((code_P_N_Both == 0) || (code_P_N_Both == 2)) {
+            //activate the P channel
+            serial_openBCI.write(command_activate_leadoffP_channel[Ichan] + "\n");
+          } else if ((code_P_N_Both == 1) || (code_P_N_Both == 2)) {
+            //activate the N channel
+            serial_openBCI.write(command_activate_leadoffN_channel[Ichan] + "\n");
+          }
+        } else {
+          if ((code_P_N_Both == 0) || (code_P_N_Both == 2)) {
+            //deactivate the P channel
+            serial_openBCI.write(command_deactivate_leadoffP_channel[Ichan] + "\n");
+          } else if ((code_P_N_Both == 1) || (code_P_N_Both == 2)) {
+            //deactivate the N channel
+            serial_openBCI.write(command_deactivate_leadoffN_channel[Ichan] + "\n");
+          }          
+        }
+      }
+    }
+  }
+  
   
   int interpretAsInt32(byte[] byteArray) {     
     //little endian
@@ -340,11 +314,7 @@ class openBCI_ADS1299 {
       );
   }
   
-//  int interpretTextMessage() {
-//    //still have to code this!
-//    curBuffIndex=0;  //reset buffer counter back to zero to start refilling the buffer
-//    return 0;
-//  }
+
   
   int copyDataPacketTo(dataPacket_ADS1299 target) {
     isNewDataPacketAvailable = false;

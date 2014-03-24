@@ -405,6 +405,27 @@ class gui_Manager {
     return ("Spectrogram, Channel " + (whichChannelForSpectrogram+1) + " (As Received)");
   }
   
+  public boolean isMouseOnFFT(int mouse_x, int mouse_y) {
+    graphDataPoint dataPoint = new graphDataPoint();
+    getFFTdataPoint(mouse_x,mouse_y,dataPoint);
+    if ( (dataPoint.x >= gFFT.getXAxis().getMinValue()) &
+         (dataPoint.x <= gFFT.getXAxis().getMaxValue()) &
+         (dataPoint.y >= gFFT.getYAxis().getMinValue()) &
+         (dataPoint.y <= gFFT.getYAxis().getMaxValue()) ) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  public void getFFTdataPoint(int mouse_x,int mouse_y,graphDataPoint dataPoint) {
+    int rel_x = mouse_x - int(gFFT.position.x);
+    int rel_y = gFFT.getYAxis().getLength() - (mouse_y - int(gFFT.position.y));
+    dataPoint.x = gFFT.getXAxis().positionToValue(rel_x);
+    dataPoint.y = gFFT.getYAxis().positionToValue(rel_y);
+    dataPoint.x_units = "Hz";
+    dataPoint.y_units = "uV/sqrt(Hz)";
+  }
+  
   
   public void update() {
     //assume new data has already arrived via the pre-existing references to dataBuffX and dataBuffY and FftBuff

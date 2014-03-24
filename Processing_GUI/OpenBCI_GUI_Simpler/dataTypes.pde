@@ -62,3 +62,11 @@ public class DetectionData_FreqDomain {
   }
 };
 
+public class graphDataPoint {
+  public double x;
+  public double y;
+  public String x_units;
+  public String y_units;
+};
+
+

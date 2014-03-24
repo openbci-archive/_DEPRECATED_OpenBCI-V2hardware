@@ -36,8 +36,11 @@ class ScatterTrace extends Blank2DTrace {
   private float plotYScale = 1f;  //multiplied to data prior to plotting
   private float plotYOffset[];  //added to data prior to plotting, after applying plotYScale
   private int decimate_factor = 1;  // set to 1 to plot all points, 2 to plot every other point, 3 for every third point
+  private boolean[] is_railed;
+  PFont font = createFont("Arial",16);
 
   public ScatterTrace() {
+    //font = createFont("Arial",10);
   }
 
   /* set the plot's X and Y data by overwriting the existing data */
@@ -58,6 +61,10 @@ class ScatterTrace extends Blank2DTrace {
 
   public void setYScaleFac(float yscale) {
     plotYScale = yscale;
+  }
+
+  public void set_isRailed(boolean[] is_rail) {
+    is_railed = is_rail;
   }
 
   public void TraceDraw(Blank2DTrace.PlotRenderer pr) {
@@ -92,8 +99,25 @@ class ScatterTrace extends Blank2DTrace {
           new_x = pr.valToX(dataX[i]);
           new_y = pr.valToY(dataY[iChan][i]*plotYScale+plotYOffset[iChan]);
           pr.canvas.line(prev_x, prev_y, new_x, new_y);
-        }   
-      }    
+          //if (i==1)  println("ScatterTrace: first point: new_x, new_y = " + new_x + ", " + new_y);
+          
+        }
+     
+        //add annotation for is_railed...doesn't work right
+//        if (is_railed != null) {
+//          if (iChan < is_railed.length) {
+//            if (is_railed[iChan]) {
+//              new_x = pr.valToX(-2.0);  //near time zero
+//              new_y = pr.valToY(0.0+plotYOffset[iChan]);
+//              println("ScatterTrace: text: new_x, new_y = " + new_x + ", " + new_y);
+//              fill(50,50,50);
+//              textFont(font);
+//              textAlign(RIGHT, BOTTOM);
+//              pr.canvas.text("RAILED",new_x,new_y,100);
+//            }
+//          }
+//       }    
+      }
       pr.canvas.popStyle(); //restore whatever was the previous style
     }
   }
