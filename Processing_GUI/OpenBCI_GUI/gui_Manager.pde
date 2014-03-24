@@ -102,7 +102,7 @@ class gui_Manager {
     stopButton = new Button(x,y,w,h,stopButton_pressToStop_txt,fontInfo.buttonLabel_size);
     
     //setup the channel mode button
-    w = 35;
+    w = 40;
     x = (int)(3*gutter_between_buttons*win_x);
     chanModeButton = new Button(x,y,w,h,"Mode",fontInfo.buttonLabel_size);
         

@@ -23,11 +23,12 @@ class headPlot {
   private float[] ref_electrode_xy;
   private float[][][] electrode_color_weightFac;
   private int[][] electrode_rgb;
+  private float[][] headVoltage;
   private int elec_diam;
   PFont font;
   public float[] intensity_data_uV;
   private boolean[] is_railed;
-  private float intense_min_uV, intense_max_uV;
+  private float intense_min_uV, intense_max_uV, assumed_railed_voltage_uV;
   PImage headImage;
   private int image_x,image_y;
   public boolean drawHeadAsContours;
@@ -51,6 +52,12 @@ class headPlot {
     setWindowDimensions(win_x,win_y);
     
     intense_min_uV = 5; intense_max_uV = 100;  //default intensity scaling for electrodes
+    assumed_railed_voltage_uV = intense_max_uV;
+  }
+  
+  public void setIntensityData_byRef(float[] data, boolean[] is_rail) {
+    intensity_data_uV = data;  //simply alias the data held externally.  DOES NOT COPY THE DATA ITSEF!  IT'S SIMPLY LINKED!
+    is_railed = is_rail;
   }
   
   //this method defines all locations of all the subcomponents
@@ -99,7 +106,7 @@ class headPlot {
 
     //define the electrode positions as the relative position [-1.0 +1.0] within the head
     //remember that negative "Y" is up and positive "Y" is down
-    float elec_relDiam = 0.1425f;
+    float elec_relDiam = 0.12f; //was 0.1425 prior to 2014-03-23
     float[][] elec_relXY = new float[n_elec][2]; //change to 16!!!
       elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*(0.5f+0.2f);
       elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1];
@@ -134,19 +141,94 @@ class headPlot {
       for (int Ix = 0; Ix < headImage.width; Ix++) {
         headImage.set(Ix,Iy,color(0,0,0,0));
       }
-    }
+    }  
     
-    //compute the weighting factor for each pixel
-    electrode_color_weightFac = new float[int(total_width)][int(total_height)][n_elec];
-    computePixelWeightingFactors();  
+    //define the weighting factors to go from the electrode voltages
+    //outward to the full the contour plot
+    if (false) {
+      //here is a simple distance-based algorithm that works every time, though
+      //is not really physically accurate.  It looks decent enough
+      computePixelWeightingFactors();
+    } else {
+      //here is the better solution that is more physical.  It involves an iterative
+      //solution, which could be really slow or could fail.  If it does poorly,
+      //switch to using the algorithm above.
+      int n_wide_full = int(total_width); int n_tall_full = int(total_height);
+      computePixelWeightingFactors_multiScale(n_wide_full,n_tall_full);
+    }
+  } //end of method
+  
+  //Here, we do a two-step solution to get the weighting factors.  
+  //We do a coarse grid first.  We do our iterative solution on the coarse grid.
+  //Then, we formulate the full resolution fine grid.  We interpolate these points
+  //from the data resulting from the coarse grid.
+  private void computePixelWeightingFactors_multiScale(int n_wide_full, int n_tall_full) {
+    int n_elec = electrode_xy.length;
+    
+    //define the coarse grid data structures and pixel locations
+    int decimation = 10;
+    int n_wide_small = n_wide_full / decimation + 1;  int n_tall_small = n_tall_full / decimation + 1;
+    float weightFac[][][] = new float[n_elec][n_wide_small][n_tall_small];
+    int pixelAddress[][][] = new int[n_wide_small][n_tall_small][2];
+    for (int Ix=0;Ix<n_wide_small;Ix++) { for(int Iy=0;Iy<n_tall_small;Iy++) { pixelAddress[Ix][Iy][0] = Ix*decimation; pixelAddress[Ix][Iy][1] = Iy*decimation;};};
+    
+    //compute the weighting factors of the coarse grid
+    computePixelWeightingFactors_trueAverage(pixelAddress,weightFac);
+    
+    //define the fine grid data structures
+    electrode_color_weightFac = new float[n_elec][n_wide_full][n_tall_full];
+    headVoltage = new float[n_wide_full][n_tall_full];
+    
+    //interpolate to get the fine grid from the coarse grid
+    float dx_frac, dy_frac;
+    for (int Ix=0;Ix<n_wide_full;Ix++) {
+      int Ix_source = Ix/decimation;
+      dx_frac = float(Ix - Ix_source*decimation)/float(decimation);
+      for (int Iy=0; Iy < n_tall_full; Iy++) {
+        int Iy_source = Iy/decimation;
+        dy_frac = float(Iy - Iy_source*decimation)/float(decimation);           
+        
+        for (int Ielec=0; Ielec<n_elec;Ielec++) {
+          //println("    : Ielec = " + Ielec);
+          if ((Ix_source < (n_wide_small-1)) && (Iy_source < (n_tall_small-1))) {
+            //normal 2-D interpolation    
+            electrode_color_weightFac[Ielec][Ix][Iy] = interpolate2D(weightFac[Ielec],Ix_source,Iy_source,Ix_source+1,Iy_source+1,dx_frac,dy_frac);
+          } else if (Ix_source < (n_wide_small-1)) {
+            //1-D interpolation in X
+            dy_frac = 0.0f;
+            electrode_color_weightFac[Ielec][Ix][Iy] = interpolate2D(weightFac[Ielec],Ix_source,Iy_source,Ix_source+1,Iy_source,dx_frac,dy_frac);
+          } else if (Iy_source < (n_tall_small-1)) {
+            //1-D interpolation in Y
+            dx_frac = 0.0f;
+            electrode_color_weightFac[Ielec][Ix][Iy] = interpolate2D(weightFac[Ielec],Ix_source,Iy_source,Ix_source,Iy_source+1,dx_frac,dy_frac);
+          } else { 
+            //no interpolation, just use the last value
+            electrode_color_weightFac[Ielec][Ix][Iy] = weightFac[Ielec][Ix_source][Iy_source];
+          }  //close the if block selecting the interpolation configuration
+        } //close Ielec loop
+      } //close Iy loop
+    } // close Ix loop
+    
+    //clean up the boundaries of our interpolated results to make the look nicer
+    int pixelAddress_full[][][] = new int[n_wide_full][n_tall_full][2];
+    for (int Ix=0;Ix<n_wide_full;Ix++) { for(int Iy=0;Iy<n_tall_full;Iy++) { pixelAddress_full[Ix][Iy][0] = Ix; pixelAddress_full[Ix][Iy][1] = Iy; };};
+    cleanUpTheBoundaries(pixelAddress_full,electrode_color_weightFac);
+  } //end of method
+  
+  
+  private float interpolate2D(float[][] weightFac,int Ix1,int Iy1,int Ix2,int Iy2,float dx_frac,float dy_frac) {
+    if (Ix1 >= weightFac.length) {
+      println("headPlot: interpolate2D: Ix1 = " + Ix1 + ", weightFac.length = " + weightFac.length);
+    }
+    float foo1 = (weightFac[Ix2][Iy1] - weightFac[Ix1][Iy1])*dx_frac + weightFac[Ix1][Iy1];
+    float foo2 = (weightFac[Ix2][Iy2] - weightFac[Ix1][Iy2])*dx_frac + weightFac[Ix1][Iy2];
+    return (foo2 - foo1) * dy_frac + foo1;
   }
   
-  public void setIntensityData_byRef(float[] data, boolean[] is_rail) {
-    intensity_data_uV = data;  //simply alias the data held externally.  DOES NOT COPY THE DATA ITSEF!  IT'S SIMPLY LINKED!
-    is_railed = is_rail;
-  }
   
-  private void computePixelWeightingFactors() {
+  //here is the simpler and more robust algorithm.  It's not necessarily physically real, though.
+  //but, it will work every time.  So, if the other method fails, go with this one.
+  private void computePixelWeightingFactors() { 
     int n_elec = electrode_xy.length;
     float dist;
     int withinElecInd = -1;
@@ -165,7 +247,7 @@ class headPlot {
         if (isPixelInsideHead(pixel_x,pixel_y)==false) {
           for (int Ielec=0; Ielec < n_elec; Ielec++) {
             //outside of head...no color from electrodes
-            electrode_color_weightFac[Ix][Iy][Ielec] = -1.0f; //a negative value will be a flag that it is outside of the head
+            electrode_color_weightFac[Ielec][Ix][Iy]= -1.0f; //a negative value will be a flag that it is outside of the head
           }
         } else {
           //inside of head, compute weighting factors
@@ -192,156 +274,378 @@ class headPlot {
               //yes, it is within an electrode
               if (Ielec == withinElecInd) {
                 //use this signal electrode as the color
-                electrode_color_weightFac[Ix][Iy][Ielec] = 1.0f;
+                electrode_color_weightFac[Ielec][Ix][Iy] = 1.0f;
               } else {
                 //ignore all other electrodes
-                electrode_color_weightFac[Ix][Iy][Ielec] = 0.0f;
+                electrode_color_weightFac[Ielec][Ix][Iy] = 0.0f;
               }
             } else {
               //no, this pixel is not in an electrode.  So, use the distance-based weight factor, 
               //after dividing by the sum of the weight factors, resulting in an averaging operation
-              electrode_color_weightFac[Ix][Iy][Ielec] = weight_fac[Ielec]/sum_weight_fac;
+              electrode_color_weightFac[Ielec][Ix][Iy] = weight_fac[Ielec]/sum_weight_fac;
             }
           }
         }
       }
     }
-  }
+  } //end of method
   
-  void computePixelWeightingFactors_trueAverage() {
-    int n_wide = headImage.width;
-    int n_tall = headImage.height;
-    int n_pixels = n_wide * n_tall;
+  void computePixelWeightingFactors_trueAverage(int pixelAddress[][][],float weightFac[][][]) {
+    int n_wide = pixelAddress.length;
+    int n_tall = pixelAddress[0].length;
     int n_elec = electrode_xy.length;
-    float toPixels[][] = new float[n_pixels][n_pixels];
-    float toElectrodes[][] = new float[n_pixels][n_elec];
-    int withinElectrode[][] = new int[n_wide][n_tall];
-    boolean withinHead[][] = new boolean[n_wide][n_tall];
-    int pixelAddress[][] = new int[n_pixels][2];
-    int Ix,Iy;
-    int Ipix;
-    int curPixel;
-    
-    
-    //find which pixesl are within the head and within an electrode
-    whereAreThePixels(withinHead,withinElectrode);
+    int withinElectrode[][] = new int[n_wide][n_tall]; //which electrode is this pixel within (-1 means that it is not within any electrode)
+    boolean withinHead[][] = new boolean[n_wide][n_tall]; //is the pixel within the head?
+    int toPixels[][][][] = new int[n_wide][n_tall][4][2];
+    int toElectrodes[][][] = new int[n_wide][n_tall][4];
+    //int numConnections[][] = new int[n_wide][n_tall];
+        
+    //find which pixesl are within the head and which pixels are within an electrode
+    whereAreThePixels(pixelAddress,withinHead,withinElectrode);
        
     //loop over the pixels and make all the connections
-    makeAllTheConnections(n_wide,n_tall,n_elec,withinHead,withinElectrode,toPixels,toElectrodes,pixelAddress);
+    makeAllTheConnections(withinHead,withinElectrode,toPixels,toElectrodes);
     
-    //
-  
-    
-  }
-    
-  void makeAllTheConnections(int n_wide, int n_tall, int n_elec, boolean withinHead[][],int withinElectrode[][], float toPixels[][],float toElectrodes[][],int pixelAddress[][]) {
-    float sum_of_connections;
-    int curPixel, Ipix, Ielec;
-    int n_pixels = n_wide * n_tall;
-    int Ix_try, Iy_try;
-  
-    //initilize connections to zero
-    for (curPixel = 0; curPixel < n_pixels; curPixel++) {
-      for (Ipix = 0; Ipix < n_pixels; Ipix++) {
-        toPixels[curPixel][Ipix] = 0.0;  //no connection
-      }
-      for (Ielec = 0; Ielec < n_elec; Ielec++) {
-        toElectrodes[curPixel][Ielec] = 0.0; //no connection
-      }
-    }
-    
-    //loop over every pixel in the image
-    for (int Iy=0; Iy < n_tall; Iy++) {
-      for (int Ix = 0; Ix < n_wide; Ix++) {
-        curPixel = (Iy*n_wide)+Ix;  //indx of the current pixel
-        sum_of_connections = 0.0f;
-        
-        pixelAddress[curPixel][0]=Ix;
-        pixelAddress[curPixel][1]=Iy;
-        
-        if (withinHead[Ix][Iy]) {
-          //this pixel is within head
-          
-          //is the pixel within an electrode?
-          if (withinElectrode[Ix][Iy] >= 0) {
-            //this pixel is within an electrode...only connection is to that electrode
-            toElectrodes[curPixel][withinElectrode[Ix][Iy]] = 1.0;
-            sum_of_connections += toElectrodes[curPixel][withinElectrode[Ix][Iy]];
-            
-          } else {
-            //this pixel is a regular pixel...
-            
-            //make the connections to its up-down and left-right neighbors
-            Ix_try = 0; Iy_try=0;
-            for (int Icase=0;Icase<4;Icase++) {
-              switch (Icase) {
-                case 0:
-                  Ix_try = Ix-1; Iy_try = Iy; //left
-                  break;
-                case 1:
-                  Ix_try = Ix+1; Iy_try = Iy; //right
-                  break;
-                case 2:
-                  Ix_try = Ix; Iy_try = Iy-1; //up
-                  break;
-                case 3:
-                  Ix_try = Ix; Iy_try = Iy+1; //down
-                  break;
-              }
-              Ipix = (Iy_try*n_wide)+Ix_try;
-              
-              //is the target pixel within the head?
-              if (withinHead[Ix_try][Iy_try]==false) {
-                //outside of head.  No connections at all.
-              } else {
-                //inside of head.
-                
-                //is the target pixel within an electrode?
-                if (withinElectrode[Ix_try][Iy] >= 0) {
-                  //it is within an electrode...so connect to that electrode
-                  Ielec = withinElectrode[Ix][Iy];
-                  toElectrodes[curPixel][Ielec] = 1.0;
-                  sum_of_connections += toElectrodes[curPixel][Ielec];
-                } else {
-                  //it is not an electrode...so just connect to that pixel
-                  toPixels[curPixel][Ipix]=1.0;
-                  sum_of_connections += toPixels[curPixel][Ipix];
-                }
-              }
-            } //end loop over Icase
-          } //end loop over is withinHead
-          
-          
-          if (sum_of_connections > 0.0) {
-            //divide all connections in order to make it an average
-            for (Ipix = 0; Ipix < toPixels[curPixel].length; Ipix++) {
-              toPixels[curPixel][Ipix] /= sum_of_connections;
-            }
-            for (Ielec = 0; Ielec < toElectrodes[curPixel].length; Ielec++) {
-              toElectrodes[curPixel][Ielec] /= sum_of_connections;
-            }
-          }
-          
-        } // end loop over Iy
-        
-        //apply a -1 down the main diagonal
-        toPixels[Ix][Ix] = -1.0;
-        
-      } //end loop over Ix
+    //compute the pixel values when lighting up each electrode invididually
+    for (int Ielec=0;Ielec<n_elec;Ielec++) {
+      computeWeightFactorsGivenOneElectrode_iterative(toPixels,toElectrodes,Ielec,weightFac);
     }    
   }
   
-  private void whereAreThePixels(boolean[][] withinHead,int[][] withinElectrode) {
+  private void cleanUpTheBoundaries(int pixelAddress[][][],float weightFac[][][]) {
+    int n_wide = pixelAddress.length;
+    int n_tall = pixelAddress[0].length;
+    int n_elec = electrode_xy.length;
+    int withinElectrode[][] = new int[n_wide][n_tall]; //which electrode is this pixel within (-1 means that it is not within any electrode)
+    boolean withinHead[][] = new boolean[n_wide][n_tall]; //is the pixel within the head?
+       
+    //find which pixesl are within the head and which pixels are within an electrode
+    whereAreThePixels(pixelAddress,withinHead,withinElectrode);
+    
+    //loop over the pixels and change the weightFac to reflext where it is
+    for (int Ix=0;Ix<n_wide;Ix++) {
+      for (int Iy=0;Iy<n_tall;Iy++) {
+        if (withinHead[Ix][Iy]==false) {
+            //this pixel is outside of the head
+            for (int Ielec=0;Ielec<n_elec;Ielec++){
+              weightFac[Ielec][Ix][Iy]=-1.0;  //this means to ignore this weight
+            }
+        } else {
+          //we are within the head...there are a couple of things to clean up
+         
+          //first, is this a legit value?  It should be >= 0.0.  If it isn't, it was a
+          //quantization problem.  let's clean it up.
+          for (int Ielec=0;Ielec<n_elec;Ielec++) {
+            if (weightFac[Ielec][Ix][Iy] < 0.0) {
+              weightFac[Ielec][Ix][Iy] = getClosestWeightFac(weightFac[Ielec],Ix,Iy);
+            }
+          }
+          
+          //next, is our pixel within an electrode.  If so, ensure it's weights
+          //set the value to be the same as the electrode
+          if (withinElectrode[Ix][Iy] > -1) {
+            //we are!  set the weightFac to reflect this electrode only
+            for (int Ielec=0;Ielec<n_elec;Ielec++){
+              weightFac[Ielec][Ix][Iy] = 0.0f; //ignore all other electrodes
+              if (Ielec == withinElectrode[Ix][Iy]) {
+                 weightFac[Ielec][Ix][Iy] = 1.0f;  //become equal to this electrode
+              }
+            }
+          } //close "if within electrode"
+        } //close "if within head"
+      } //close Iy
+    } // close Ix
+  } //close method
+             
+  //find the closest legitimate weightFac          
+  private float getClosestWeightFac(float weightFac[][],int Ix,int Iy) {
+    int n_wide = weightFac.length;
+    int n_tall = weightFac[0].length;
+    float sum = 0.0f;
+    int n_sum = 0;
+    float new_weightFac=-1.0;
+    
+    
+    int step = 1;
+    int Ix_test, Iy_test;
+    boolean done = false;
+    boolean anyWithinBounds;
+    while (!done) {
+      anyWithinBounds = false;
+      
+      //search the perimeter at this distance
+      sum = 0.0f;
+      n_sum = 0;
+      
+      //along the top
+      Iy_test = Iy + step;
+      if ((Iy_test >= 0) && (Iy_test < n_tall)) {
+        for (Ix_test=Ix-step;Ix_test<=Ix+step;Ix_test++) {
+          if ((Ix_test >=0) && (Ix_test < n_wide)) {
+            anyWithinBounds=true;
+            if (weightFac[Ix_test][Iy_test] >= 0.0) {
+              sum += weightFac[Ix_test][Iy_test];
+              n_sum++;
+            }
+          }
+        }
+      }
+      
+      //along the right
+      Ix_test = Ix + step;
+      if ((Ix_test >= 0) && (Ix_test < n_wide)) {
+        for (Iy_test=Iy-step;Iy_test<=Iy+step;Iy_test++) {
+          if ((Iy_test >=0) && (Iy_test < n_tall)) {
+            anyWithinBounds=true;
+            if (weightFac[Ix_test][Iy_test] >= 0.0) {
+              sum += weightFac[Ix_test][Iy_test];
+              n_sum++;
+            }
+          }
+        }
+      }
+       //along the bottom
+      Iy_test = Iy - step;
+      if ((Iy_test >= 0) && (Iy_test < n_tall)) {
+        for (Ix_test=Ix-step;Ix_test<=Ix+step;Ix_test++) {
+          if ((Ix_test >=0) && (Ix_test < n_wide)) {
+            anyWithinBounds=true;
+            if (weightFac[Ix_test][Iy_test] >= 0.0) {
+              sum += weightFac[Ix_test][Iy_test];
+              n_sum++;
+            }
+          }
+        }
+      }
+      
+      //along the left
+      Ix_test = Ix - step;
+      if ((Ix_test >= 0) && (Ix_test < n_wide)) {
+        for (Iy_test=Iy-step;Iy_test<=Iy+step;Iy_test++) {
+          if ((Iy_test >=0) && (Iy_test < n_tall)) {
+            anyWithinBounds=true;
+            if (weightFac[Ix_test][Iy_test] >= 0.0) {
+              sum += weightFac[Ix_test][Iy_test];
+              n_sum++;
+            }
+          }
+        }
+      }
+  
+      if (n_sum > 0) {
+        //some good pixels were found, so we have our answer
+        new_weightFac = sum / n_sum; //complete the averaging process
+        done = true; //we're done
+      } else {
+        //we did not find any good pixels.  Step outward one more pixel and repeat the search
+        step++;  //step outwward
+        if (anyWithinBounds) {  //did the last iteration have some pixels that were at least within the domain
+          //some pixels were within the domain, so we have space to try again
+          done = false;
+        } else {
+          //no pixels were within the domain.  We're out of space.  We're done.
+          done = true;
+        }
+      }
+    }
+    return new_weightFac; //good or bad, return our new value
+  }
+
+  private void computeWeightFactorsGivenOneElectrode_iterative(int toPixels[][][][],int toElectrodes[][][],int Ielec,float pixelVal[][][]) {
+    //Approach: pretend that one electrode is set to 1.0 and that all other electrodes are set to 0.0.
+    //Assume all of the pixels start at zero.  Then, begin the simulation as if it were a transient
+    //solution where energy is coming in from the connections.  Any excess energy will accumulate
+    //and cause the local pixel's value to increase.  Iterate until the pixel values stabalize.
+    
+    int n_wide = toPixels.length;
+    int n_tall = toPixels[0].length;
+    int n_dir = toPixels[0][0].length;
+    float prevVal[][] = new float[n_wide][n_tall];
+    float total,dVal;
+    int Ix_targ, Iy_targ;
+    float min_val=0.0f, max_val=0.0f;
+    boolean anyConnections = false;
+    int pixel_step = 1;
+
+    //initialize all pixels to zero
+    //for (int Ix=0; Ix<n_wide;Ix++) { for (int Iy=0; Iy<n_tall;Iy++) { pixelVal[Ielec][Ix][Iy]=0.0f; }; };
+
+    //define the iteration limits
+    int lim_iter_count = 2000;  //set to something big enough to get the job done, but not so big that it could take forever
+    float dVal_threshold = 0.00001;  //set to something arbitrarily small
+    float change_fac = 0.2f; //must be small enough to keep this iterative solution stable.  Goes unstable above 0.25
+    
+    //begin iteration
+    int iter_count = 0;
+    float max_dVal = 10.0*dVal_threshold;  //initilize to large value to ensure that it starts
+    while ((iter_count < lim_iter_count) && (max_dVal > dVal_threshold)) {
+      //increment the counter
+      iter_count++;
+      
+      //reset our test value to a large value
+      max_dVal = 0.0f;
+      
+      //reset other values that I'm using for debugging
+      min_val = 1000.0f; //init to a big val
+      max_val = -1000.f; //init to a small val
+      
+      //copy current values
+      for (int Ix=0; Ix<n_wide;Ix++) { for (int Iy=0; Iy<n_tall;Iy++) { prevVal[Ix][Iy]=pixelVal[Ielec][Ix][Iy]; }; };
+      
+      //compute the new pixel values
+      for (int Ix=0; Ix<n_wide;Ix+=pixel_step) {
+        for (int Iy=0; Iy<n_tall;Iy+=pixel_step) {
+          //reset variables related to this one pixel
+          total=0.0f;
+          anyConnections = false;
+              
+          for (int Idir=0; Idir<n_dir; Idir++) {
+            //do we connect to a real pixel?
+            if (toPixels[Ix][Iy][Idir][0] > -1) {
+              Ix_targ = toPixels[Ix][Iy][Idir][0];  //x index of target pixel
+              Iy_targ = toPixels[Ix][Iy][Idir][1];  //y index of target pixel
+              total += (prevVal[Ix_targ][Iy_targ]-prevVal[Ix][Iy]);  //difference relative to target pixel
+              anyConnections = true;
+            }
+            //do we connect to an electrode?
+            if (toElectrodes[Ix][Iy][Idir] > -1) {
+              //do we connect to the electrode that we're stimulating
+              if (toElectrodes[Ix][Iy][Idir] == Ielec) {
+                //yes, this is the active high one
+                total += (1.0-prevVal[Ix][Iy]);  //difference relative to HIGH electrode
+              } else {
+                //no, this is a low one
+                total += (0.0-prevVal[Ix][Iy]);  //difference relative to the LOW electrode
+              }
+              anyConnections = true;
+            }
+          }
+         
+          //compute the new pixel value
+          //if (numConnections[Ix][Iy] > 0) {
+          if (anyConnections) {
+            
+            //dVal = change_fac * (total - float(numConnections[Ix][Iy])*prevVal[Ix][Iy]);
+            dVal = change_fac * total;
+            pixelVal[Ielec][Ix][Iy] = prevVal[Ix][Iy] + dVal;
+                        
+            //is this our worst change in value?
+            max_dVal = max(max_dVal,abs(dVal));
+            
+            //update our other debugging values, too
+            min_val = min(min_val,pixelVal[Ielec][Ix][Iy]);
+            max_val = max(max_val,pixelVal[Ielec][Ix][Iy]);
+            
+          } else {
+            pixelVal[Ielec][Ix][Iy] = -1.0; //means that there are no connections
+          }
+        }
+      }
+      //println("headPlot: computeWeightFactor: Ielec " + Ielec + ", iter = " + iter_count + ", max_dVal = " + max_dVal);
+    }
+    //println("headPlot: computeWeightFactor: Ielec " + Ielec + ", solution complete with " + iter_count + " iterations. min and max vals = " + min_val + ", " + max_val);
+    if (iter_count >= lim_iter_count) println("headPlot: computeWeightFactor: Ielec " + Ielec + ", solution complete with " + iter_count + " iterations. max_dVal = " + max_dVal);
+  }
+    
+    
+    
+//  private void countConnections(int toPixels[][][][],int toElectrodes[][][], int numConnections[][]) {
+//    int n_wide = toPixels.length;
+//    int n_tall = toPixels[0].length;
+//    int n_dir = toPixels[0][0].length;
+//    
+//    //loop over each pixel
+//    for (int Ix=0; Ix<n_wide;Ix++) { 
+//      for (int Iy=0; Iy<n_tall;Iy++) {
+//        
+//        //initialize
+//        numConnections[Ix][Iy]=0;
+//        
+//        //loop through the four directions
+//        for (int Idir=0;Idir<n_dir;Idir++) {
+//          //is it a connection to another pixel (anything > -1 is a connection)
+//          if (toPixels[Ix][Iy][Idir][0] > -1) numConnections[Ix][Iy]++;
+//          
+//          //is it a connection to an electrode?
+//          if (toElectrodes[Ix][Iy][Idir] > -1) numConnections[Ix][Iy]++;
+//        }
+//      }
+//    }
+//  }
+    
+  private void makeAllTheConnections(boolean withinHead[][],int withinElectrode[][], int toPixels[][][][],int toElectrodes[][][]) {
+   
+    int n_wide = toPixels.length;
+    int n_tall = toPixels[0].length;
+    int n_elec = electrode_xy.length;
+    int curPixel, Ipix, Ielec;
+    int n_pixels = n_wide * n_tall;
+    int Ix_try, Iy_try;
+
+    
+    //loop over every pixel in the image
+    for (int Iy=0; Iy < n_tall; Iy++) {
+      for (int Ix=0; Ix < n_wide; Ix++) {
+        
+        //loop over the four connections: left, right, up, down
+        for (int Idirection = 0; Idirection < 4; Idirection++) {
+          
+          Ix_try = -1; Iy_try=-1; //nonsense values
+          switch (Idirection) {
+              case 0:
+                Ix_try = Ix-1; Iy_try = Iy; //left
+                break;
+              case 1:
+                Ix_try = Ix+1; Iy_try = Iy; //right
+                break;
+              case 2:
+                Ix_try = Ix; Iy_try = Iy-1; //up
+                break;
+              case 3:
+                Ix_try = Ix; Iy_try = Iy+1; //down
+                break;
+           }
+          
+          //initalize to no connection
+          toPixels[Ix][Iy][Idirection][0] = -1;
+          toPixels[Ix][Iy][Idirection][1] = -1;
+          toElectrodes[Ix][Iy][Idirection] = -1;
+          
+          //does the target pixel exist
+          if ((Ix_try >= 0) && (Ix_try < n_wide)  && (Iy_try >= 0) && (Iy_try < n_tall)) {
+            //is the target pixel an electrode
+            if (withinElectrode[Ix_try][Iy_try] >= 0) {
+              //the target pixel is within an electrode
+              toElectrodes[Ix][Iy][Idirection] = withinElectrode[Ix_try][Iy_try];
+            } else {
+              //the target pixel is not within an electrode.  is it within the head?
+              if (withinHead[Ix_try][Iy_try]) {
+                toPixels[Ix][Iy][Idirection][0] = Ix_try; //save the address of the target pixel
+                toPixels[Ix][Iy][Idirection][1] = Iy_try; //save the address of the target pixel
+              }
+            }
+          }
+        } //end loop over direction of the target pixel
+      } //end loop over Ix
+    } //end loop over Iy 
+  }
+  
+  private void whereAreThePixels(int pixelAddress[][][], boolean[][] withinHead,int[][] withinElectrode) {
+    int n_wide = pixelAddress.length;
+    int n_tall = pixelAddress[0].length;
+    int n_elec = electrode_xy.length;
     int pixel_x,pixel_y;
     int withinElecInd=-1;
-    final int n_elec = electrode_xy.length;
     float dist;
     float elec_radius = 0.5*elec_diam;
     
-    for (int Iy=0; Iy < headImage.height; Iy++) {
-      pixel_y = image_y + Iy;
-      for (int Ix = 0; Ix < headImage.width; Ix++) {
-        pixel_x = image_x + Ix;
+    for (int Iy=0; Iy < n_tall; Iy++) {
+      //pixel_y = image_y + Iy;
+      for (int Ix = 0; Ix < n_wide; Ix++) {
+        //pixel_x = image_x + Ix;
+        
+        pixel_x = pixelAddress[Ix][Iy][0]+image_x;
+        pixel_y = pixelAddress[Ix][Iy][1]+image_y;
         
         //is it within the head
         withinHead[Ix][Iy] = isPixelInsideHead(pixel_x,pixel_y);
@@ -354,17 +658,44 @@ class headPlot {
           if (dist < elec_radius) withinElecInd = Ielec;
         }
         withinElectrode[Ix][Iy] = withinElecInd;  //-1 means not inside an electrode 
-      }
-    }
-  }
+      } //close Ix loop
+    } //close Iy loop
+    
+    //ensure that each electrode is at at least one pixel
+    for (int Ielec=0; Ielec<n_elec; Ielec++) {
+      //find closest pixel
+      float min_dist = 1.0e10;  //some huge number
+      int best_Ix=0, best_Iy=0; 
+      for (int Iy=0; Iy < n_tall; Iy++) {
+        //pixel_y = image_y + Iy;
+        for (int Ix = 0; Ix < n_wide; Ix++) {
+          //pixel_x = image_x + Ix;
+        
+          pixel_x = pixelAddress[Ix][Iy][0]+image_x;
+          pixel_y = pixelAddress[Ix][Iy][1]+image_y;
+          
+          dist = calcDistance(pixel_x,pixel_y,electrode_xy[Ielec][0],electrode_xy[Ielec][1]);;
+          
+          if (dist < min_dist) {
+            min_dist = dist;
+            best_Ix = Ix;
+            best_Iy = Iy;
+          }
+        } //close Iy loop
+      } //close Ix loop
+      
+      //define this closest point to be within the electrode
+      withinElectrode[best_Ix][best_Iy] = Ielec;
+    } //close Ielec loop
+  } //close method
+
 
   //step through pixel-by-pixel to update the image
   private void updateHeadImage() {
-    
     for (int Iy=0; Iy < headImage.height; Iy++) {
       for (int Ix = 0; Ix < headImage.width; Ix++) {
         //is this pixel inside the head?
-        if (electrode_color_weightFac[Ix][Iy][0] >= 0.0) { //zero and positive values are inside the head
+        if (electrode_color_weightFac[0][Ix][Iy] >= 0.0) { //zero and positive values are inside the head
           //it is inside the head.  set the color based on the electrodes
           headImage.set(Ix,Iy,calcPixelColor(Ix,Iy));
         } else {  //negative values are outside of the head
@@ -374,27 +705,98 @@ class headPlot {
       }
     }
   }
+  
+  private void convertVoltagesToHeadImage() { 
+    for (int Iy=0; Iy < headImage.height; Iy++) {
+      for (int Ix = 0; Ix < headImage.width; Ix++) {
+        //is this pixel inside the head?
+        if (electrode_color_weightFac[0][Ix][Iy] >= 0.0) { //zero and positive values are inside the head
+          //it is inside the head.  set the color based on the electrodes
+          headImage.set(Ix,Iy,calcPixelColor(headVoltage[Ix][Iy]));
+        } else {  //negative values are outside of the head
+          //pixel is outside the head.  set to black.
+          headImage.set(Ix,Iy,color(0,0,0,0));
+        }
+      }
+    }
+    
+  }
+  
 
+  private void updateHeadVoltages() {
+    for (int Iy=0; Iy < headImage.height; Iy++) {
+      for (int Ix = 0; Ix < headImage.width; Ix++) {
+        //is this pixel inside the head?
+        if (electrode_color_weightFac[0][Ix][Iy] >= 0.0) { //zero and positive values are inside the head
+          //it is inside the head.  set the voltage based on the electrodes
+          headVoltage[Ix][Iy] = calcPixelVoltage(Ix,Iy);
+
+        } else {  //negative values are outside of the head
+          //pixel is outside the head.
+          headVoltage[Ix][Iy] = -1.0;
+        }
+      }
+    }
+  }    
+
+  private float calcPixelVoltage(int pixel_Ix,int pixel_Iy) {
+    float weight,elec_volt;
+    int n_elec = electrode_xy.length;
+    float voltage = 0.0f;
+    
+    for (int Ielec=0;Ielec<n_elec;Ielec++) {
+      weight = electrode_color_weightFac[Ielec][pixel_Ix][pixel_Iy];
+      elec_volt = max(intense_min_uV,min(intensity_data_uV[Ielec],intense_max_uV));
+      if (is_railed[Ielec]) elec_volt = assumed_railed_voltage_uV;
+      voltage += weight*elec_volt;
+    }
+    return voltage;
+  }
+      
+    
+  private color calcPixelColor(float pixel_volt_uV) {
+    float new_rgb[] = {255.0,0.0,0.0}; //init to zeros
+    float val;
+    
+    float intensity = constrain(pixel_volt_uV,intense_min_uV,intense_max_uV);
+    intensity = map(log10(intensity),log10(intense_min_uV),log10(intense_max_uV),0.0f,1.0f);
+      
+    //make the intensity fade NOT from black->color, but from white->color
+    for (int i=0; i < 3; i++) {
+      val = ((float)new_rgb[i]) / 255.f;
+      new_rgb[i] = ((val + (1.0f - val)*(1.0f-intensity))*255.f); //adds in white at low intensity.  no white at high intensity
+      new_rgb[i] = constrain(new_rgb[i],0.0,255.0);
+    }
+    
+    //quantize the color to make contour-style plot?
+    if (true) quantizeColor(new_rgb);
+
+    return color(int(new_rgb[0]),int(new_rgb[1]),int(new_rgb[2]),255);   
+  }
+  
+  private void quantizeColor(float new_rgb[]) {
+    int n_colors = 12;
+    int ticks_per_color = 256 / (n_colors+1);
+    for (int Irgb=0; Irgb<3; Irgb++) new_rgb[Irgb] = min(255.0,float(int(new_rgb[Irgb]/ticks_per_color))*ticks_per_color);
+  }
+  
 
   //compute the color of the pixel given the location
   private color calcPixelColor(int pixel_Ix,int pixel_Iy) {
+    float weight;
     
     //compute the weighted average using the precomputed factors
-    float new_rgb[] = {0.0,0.0,0.0};
+    float new_rgb[] = {0.0,0.0,0.0}; //init to zeros
     for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
+      //int Ielec = 0;
+      weight = electrode_color_weightFac[Ielec][pixel_Ix][pixel_Iy];
       for (int Irgb=0; Irgb<3; Irgb++) {
-        new_rgb[Irgb] += electrode_color_weightFac[pixel_Ix][pixel_Iy][Ielec]*electrode_rgb[Irgb][Ielec];
+        new_rgb[Irgb] += weight*electrode_rgb[Irgb][Ielec];
       }
     }
     
-    if (true) {
-      //quantize the colors
-      int n_colors = 12;
-      int ticks_per_color = 256 / (n_colors+1);
-      for (int Irgb=0; Irgb<3; Irgb++) {
-        new_rgb[Irgb] = min(255.0,float(int(new_rgb[Irgb]/ticks_per_color))*ticks_per_color);
-      }
-    }
+    //quantize the color to make contour-style plot?
+    if (true) quantizeColor(new_rgb);
        
     return color(int(new_rgb[0]),int(new_rgb[1]),int(new_rgb[2]),255);
   }
@@ -431,6 +833,7 @@ class headPlot {
       electrode_rgb[2][Ielec] = new_rgb[2];
     }
   }
+ 
   
   public boolean isPixelInsideHead(int pixel_x, int pixel_y) {
     int dx = pixel_x - circ_x;
@@ -445,11 +848,18 @@ class headPlot {
   
   public void draw() {
     
+
     //update electrode colors
     updateElectrodeColors();
     
-    //update the head image
-    if (drawHeadAsContours) updateHeadImage();
+    if (false) {
+      //update the head image
+      if (drawHeadAsContours) updateHeadImage();
+    } else {
+      //update head voltages
+      updateHeadVoltages();
+      convertVoltagesToHeadImage();
+    }
        
     //draw head parts
     fill(255,255,255);
