@@ -26,6 +26,13 @@ http://www.gwoptics.org/processing/gwoptics_p5lib/
 Updates
 --------
 
+2014-03-23 OpenBCI_GUI: Lots of added features
+		: HeadPlot now shows full contours, not just the signal at
+		  the electrodes.  Click on the head to go back to the old.
+		: GUI can now play back previously recorded OpenBCI data.  Added
+		  some example data so that you can see it in action.
+		: Beginning hooks for checking the impedance of the electrodes
+
 2014-02-02 OpenBCI_GUI and OpenBCI_GUI_Simpler:
 		: More refinements in handling of incoming serial binary data.
                   Most stable at 115200 bps
