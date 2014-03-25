@@ -107,29 +107,8 @@ class headPlot {
     //define the electrode positions as the relative position [-1.0 +1.0] within the head
     //remember that negative "Y" is up and positive "Y" is down
     float elec_relDiam = 0.12f; //was 0.1425 prior to 2014-03-23
-    float[][] elec_relXY = new float[n_elec][2]; //change to 16!!!
-      elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*(0.5f+0.2f);
-      elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1];
-      elec_relXY[2][0] = -0.2f;            elec_relXY[2][1] = 0f;
-      elec_relXY[3][0] = -elec_relXY[2][0];  elec_relXY[3][1] = elec_relXY[2][1];
-      
-      elec_relXY[4][0] = -0.34f;            elec_relXY[4][1] = 0.25f;
-      elec_relXY[5][0] = -elec_relXY[4][0];  elec_relXY[5][1] = elec_relXY[4][1];
-      
-      elec_relXY[6][0] = -0.125f;             elec_relXY[6][1] = +0.5f - elec_relDiam*(0.5f+0.2f);
-      elec_relXY[7][0] = -elec_relXY[6][0];  elec_relXY[7][1] = elec_relXY[6][1];
-      
-    float[] ref_elec_relXY = new float[2];
-      ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = -0.275f;   
-
-    //define the actual locations of the electrodes in pixels
     elec_diam = (int)(elec_relDiam*((float)circ_diam));
-    for (int i=0; i < elec_relXY.length; i++) {
-      electrode_xy[i][0] = circ_x+(int)(elec_relXY[i][0]*((float)circ_diam));
-      electrode_xy[i][1] = circ_y+(int)(elec_relXY[i][1]*((float)circ_diam));
-    }
-    ref_electrode_xy[0] = circ_x+(int)(ref_elec_relXY[0]*((float)circ_diam));
-    ref_electrode_xy[1] = circ_y+(int)(ref_elec_relXY[1]*((float)circ_diam));
+    setElectrodeLocations(n_elec,elec_relDiam);
     
     //define image to hold all of this
     image_x = int(round(circ_x - 0.5*circ_diam - 0.5*ear_width));
@@ -157,6 +136,82 @@ class headPlot {
       computePixelWeightingFactors_multiScale(n_wide_full,n_tall_full);
     }
   } //end of method
+  
+      
+  private void setElectrodeLocations(int n_elec,float elec_relDiam) {
+    //try loading the positions from a file
+    int n_elec_to_load = n_elec+1;  //load the n_elec plus the reference electrode
+    Table elec_relXY = new Table();
+    String default_fname = "electrode_positions_default.txt";
+    try {
+      elec_relXY = loadTable(default_fname,"header,csv");
+    } catch (NullPointerException e) {};
+    
+    //get the default locations if the file didn't exist
+    if ((elec_relXY == null) || (elec_relXY.getRowCount() < n_elec_to_load)) {
+      println("headPlot: electrode position file not found or was wrong size: " + default_fname);
+      println("        : using defaults...");
+      elec_relXY = createDefaultElectrodeLocations(default_fname,elec_relDiam);
+    }
+    
+    //define the actual locations of the electrodes in pixels
+    for (int i=0; i < min(electrode_xy.length,elec_relXY.getRowCount()); i++) {
+      electrode_xy[i][0] = circ_x+(int)(elec_relXY.getFloat(i,0)*((float)circ_diam));
+      electrode_xy[i][1] = circ_y+(int)(elec_relXY.getFloat(i,1)*((float)circ_diam));
+    }
+    
+    //the referenece electrode is last in the file
+    ref_electrode_xy[0] = circ_x+(int)(elec_relXY.getFloat(elec_relXY.getRowCount()-1,0)*((float)circ_diam));
+    ref_electrode_xy[1] = circ_y+(int)(elec_relXY.getFloat(elec_relXY.getRowCount()-1,1)*((float)circ_diam));
+  }
+  
+  private Table createDefaultElectrodeLocations(String fname,float elec_relDiam) {
+    
+    //regular electrodes
+    float[][] elec_relXY = new float[16][2]; 
+    elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*(0.5f+0.2f);
+    elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1];
+    elec_relXY[2][0] = -0.2f;            elec_relXY[2][1] = 0f;
+    elec_relXY[3][0] = -elec_relXY[2][0];  elec_relXY[3][1] = elec_relXY[2][1];
+    
+    elec_relXY[4][0] = -0.3425f;            elec_relXY[4][1] = 0.27f;
+    elec_relXY[5][0] = -elec_relXY[4][0];  elec_relXY[5][1] = elec_relXY[4][1];
+    
+    elec_relXY[6][0] = -0.125f;             elec_relXY[6][1] = +0.5f - elec_relDiam*(0.5f+0.2f);
+    elec_relXY[7][0] = -elec_relXY[6][0];  elec_relXY[7][1] = elec_relXY[6][1];
+      
+    //need to add the other 8 electrodes!!!!!!!!!!!!!!!!!!1
+      
+    //reference electrode
+    float[] ref_elec_relXY = new float[2];
+    ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = -0.275f;   
+    
+    //put it all into a table
+    Table table_elec_relXY = new Table();
+    table_elec_relXY.addColumn("X",Table.FLOAT);  
+    table_elec_relXY.addColumn("Y",Table.FLOAT);
+    for (int I = 0; I < elec_relXY.length; I++) {
+      table_elec_relXY.addRow();
+      table_elec_relXY.setFloat(I,"X",elec_relXY[I][0]);
+      table_elec_relXY.setFloat(I,"Y",elec_relXY[I][1]);
+    }
+    
+    //last one is the reference electrode
+    table_elec_relXY.addRow();
+    table_elec_relXY.setFloat(table_elec_relXY.getRowCount()-1,"X",ref_elec_relXY[0]);
+    table_elec_relXY.setFloat(table_elec_relXY.getRowCount()-1,"Y",ref_elec_relXY[1]);
+    
+    //try writing it to a file
+    String full_fname = "Data\\" + fname;
+    try { 
+      saveTable(table_elec_relXY,full_fname,"csv"); 
+    } catch (NullPointerException e) {
+      println("headPlot: createDefaultElectrodeLocations: could not write file to " + full_fname);
+    };
+    
+    //return
+    return table_elec_relXY;
+  }
   
   //Here, we do a two-step solution to get the weighting factors.  
   //We do a coarse grid first.  We do our iterative solution on the coarse grid.
