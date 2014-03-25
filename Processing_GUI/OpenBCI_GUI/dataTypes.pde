@@ -7,14 +7,14 @@
 //
 /////////////////////////////////////
 
-class dataPacket_ADS1299 {
+class DataPacket_ADS1299 {
   int sampleIndex;
   int[] values;
-  dataPacket_ADS1299(int nValues) {
+  DataPacket_ADS1299(int nValues) {
     values = new int[nValues];
   }
   int printToConsole() {
-    print("printToConsole: dataPacket = ");
+    print("printToConsole: DataPacket = ");
     print(sampleIndex);
     for (int i=0; i < values.length; i++) {
       print(", " + values[i]);
@@ -22,21 +22,22 @@ class dataPacket_ADS1299 {
     println();
     return 0;
   }
-  int copyTo(dataPacket_ADS1299 target) {
+  int copyTo(DataPacket_ADS1299 target) {
     target.sampleIndex = sampleIndex;
     for (int i=0; i < values.length; i++) {
       target.values[i] = values[i];
     }
     return 0;
   }
-}
+};
 
 
-public class filterConstants {
+
+public class FilterConstants {
   public double[] a;
   public double[] b;
   public String name;
-  filterConstants(double[] b_given, double[] a_given, String name_given) {
+  FilterConstants(double[] b_given, double[] a_given, String name_given) {
     b = new double[b_given.length];a = new double[b_given.length];
     for (int i=0; i<b.length;i++) { b[i] = b_given[i];}
     for (int i=0; i<a.length;i++) { a[i] = a_given[i];}
@@ -44,21 +45,21 @@ public class filterConstants {
   };
 };
 
-public class graphDataPoint {
+public class GraphDataPoint {
   public double x;
   public double y;
   public String x_units;
   public String y_units;
 };
 
-class plotFontInfo {
+class PlotFontInfo {
     String fontName = "Sans Serif";
     int axisLabel_size = 16;
     int tickLabel_size = 14;
     int buttonLabel_size = 12;
 };
 
-public class textBox {
+public class TextBox {
   public int x, y;
   public color textColor;
   public color backgroundColor;
@@ -72,7 +73,7 @@ public class textBox {
 //  textBox(String s,int x1,int y1) {
 //    textBox(s,x1,y1,0);
 //  }
-  textBox(String s, int x1, int y1) {
+  TextBox(String s, int x1, int y1) {
     string = s; x = x1; y = y1;
     backgroundColor = color(255,255,255);
     textColor = color(0,0,0);

@@ -16,7 +16,7 @@ import processing.serial.*;
 import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
-
+import processing.core.PApplet;
 
 //choose where to get the EEG data
 final int DATASOURCE_NORMAL =  0;
@@ -25,7 +25,7 @@ final int DATASOURCE_PLAYBACKFILE = 2;
 final int eegDataSource = DATASOURCE_PLAYBACKFILE;
 
 //Serial communications constants
-openBCI_ADS1299 openBCI;
+OpenBCI_ADS1299 openBCI;
 String openBCI_portName = "COM21";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
@@ -68,18 +68,18 @@ float filtState[] = new float[nchan];
 //define filter...Matlab....butter(2,[1 50]/(250/2));  %bandpass filter
 double[] b = new double[]{ 2.001387256580675e-001, 0.0f, -4.002774513161350e-001, 0.0f, 2.001387256580675e-001 };
 double[] a = new double[]{ 1.0f, -2.355934631131582e+000, 1.941257088655214e+000, -7.847063755334187e-001, 1.999076052968340e-001 };
-filterConstants filtCoeff_bp =  new filterConstants(b,a,"Bandpass 1-50Hz");
+FilterConstants filtCoeff_bp =  new FilterConstants(b,a,"Bandpass 1-50Hz");
 double[] b2 = new double[]{ 9.650809863447347e-001, -2.424683201757643e-001, 1.945391494128786e+000, -2.424683201757643e-001, 9.650809863447347e-001};
 double[] a2 = new double[]{    1.000000000000000e+000,   -2.467782611297853e-001,    1.944171784691352e+000,   -2.381583792217435e-001,    9.313816821269039e-001}; 
-filterConstants filtCoeff_notch =  new filterConstants(b2,a2,"Notch 60Hz");
+FilterConstants filtCoeff_notch =  new FilterConstants(b2,a2,"Notch 60Hz");
 
 ////The code below causes no filtering of the data
 //double[] b = new double[] {1.0};
 //double[] a = new double[] {1.0};
-//filterConstants filtCoeff_bp =  new filterConstants(b,a,"No Filter");
+//FilterConstants filtCoeff_bp =  new FilterConstants(b,a,"No Filter");
 //double[] b2 = new double[] {1.0};
 //double[] a2 = new double[] {1.0};
-//filterConstants filtCoeff_notch =  new filterConstants(b2,a2,"No Filter");
+//FilterConstants filtCoeff_notch =  new FilterConstants(b2,a2,"No Filter");
 
 
 //fft constants
@@ -88,7 +88,7 @@ float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smo
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
 
 //plotting constants
-gui_Manager gui;
+Gui_Manager gui;
 float vertScale_uV = 200.0f;
 float displayTime_sec = 5f;
 float dataBuff_len_sec = displayTime_sec+3f; //needs to be wider than actual display so that filter startup is hidden
@@ -106,7 +106,7 @@ String output_fname;
 
 //openBCI data packet
 final int nDataBackBuff = 3*(int)fs_Hz;
-dataPacket_ADS1299 dataPacketBuff[] = new dataPacket_ADS1299[nDataBackBuff]; //allocate the array, but doesn't call constructor.  Still need to call the constructor!
+DataPacket_ADS1299 dataPacketBuff[] = new DataPacket_ADS1299[nDataBackBuff]; //allocate the array, but doesn't call constructor.  Still need to call the constructor!
 int curDataPacketInd = -1;
 int lastReadDataPacketInd = -1;
 
@@ -167,7 +167,7 @@ void setup() {
   data_elec_imp_ohm = new float[nchan];
   is_railed = new boolean[nchan]; 
   for (int i=0; i<nDataBackBuff;i++) { 
-    dataPacketBuff[i] = new dataPacket_ADS1299(nchan);
+    dataPacketBuff[i] = new DataPacket_ADS1299(nchan);
   }
 
   //initialize the data
@@ -181,7 +181,7 @@ void setup() {
 
   //initilize the GUI
   String filterDescription = filtCoeff_bp.name + ", " + filtCoeff_notch.name; 
-  gui = new gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV,filterDescription);
+  gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV,filterDescription);
   
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
@@ -198,7 +198,7 @@ void setup() {
       
       // Open the serial port to the Arduino that has the OpenBCI
       println("Opening Serial " + openBCI_portName);
-      openBCI = new openBCI_ADS1299(this, openBCI_portName, openBCI_baud, nchan); //this also starts the data transfer after XX seconds
+      openBCI = new OpenBCI_ADS1299(this, openBCI_portName, openBCI_baud, nchan); //this also starts the data transfer after XX seconds
       break;
     case DATASOURCE_SYNTHETIC:
       //do nothing
@@ -583,7 +583,8 @@ void parseKeycode(int val) {
       break;   
     case 9:
       println("OpenBCI_GUI: parseKeycode(" + val + "): received TAB keypress.  Toggling Impedance Control...");
-      gui.showImpedanceButtons = !gui.showImpedanceButtons;
+      //gui.showImpedanceButtons = !gui.showImpedanceButtons;
+      gui.incrementGUImode();
       break;    
     case 10:
       println("OpenBCI_GUI: parseKeycode(" + val + "): received ENTER keypress.  Ignoring...");
@@ -690,37 +691,43 @@ void mousePressed() {
   if (gui.guiModeButton.updateIsMouseHere()) {
     gui.incrementGUImode();
     //toggle whether to show channel on/off or channel impedance on/off
-    gui.showImpedanceButtons = !gui.showImpedanceButtons;
+    //gui.showImpedanceButtons = !gui.showImpedanceButtons;
     gui.guiModeButton.setIsActive(true);
     redrawScreenNow = true;
   }
 
   //check the buttons
-  if (gui.showImpedanceButtons == false) {
-    //check the channel buttons
-    for (int Ibut = 0; Ibut < gui.chanButtons.length; Ibut++) {
-      if (gui.chanButtons[Ibut].updateIsMouseHere()) { 
-        toggleChannelState(Ibut);
-        redrawScreenNow = true;
+  switch (gui.guiMode) {
+    case Gui_Manager.GUI_MODE_CHANNEL_ONOFF:
+      //check the channel buttons
+      for (int Ibut = 0; Ibut < gui.chanButtons.length; Ibut++) {
+        if (gui.chanButtons[Ibut].updateIsMouseHere()) { 
+          toggleChannelState(Ibut);
+          redrawScreenNow = true;
+        }
       }
-    }
-  } else {
-    for (int Ibut = 0; Ibut < gui.impedanceButtonsP.length; Ibut++) {
-      if (gui.impedanceButtonsP[Ibut].updateIsMouseHere()) { 
-        toggleChannelImpedanceState(gui.impedanceButtonsP[Ibut],Ibut,0);
-        redrawScreenNow = true;
+      break;
+    case Gui_Manager.GUI_MODE_IMPEDANCE_CHECK:
+      //check the impedance buttons
+      for (int Ibut = 0; Ibut < gui.impedanceButtonsP.length; Ibut++) {
+        if (gui.impedanceButtonsP[Ibut].updateIsMouseHere()) { 
+          toggleChannelImpedanceState(gui.impedanceButtonsP[Ibut],Ibut,0);
+          redrawScreenNow = true;
+        }
+        if (gui.impedanceButtonsN[Ibut].updateIsMouseHere()) { 
+          toggleChannelImpedanceState(gui.impedanceButtonsN[Ibut],Ibut,1);
+          redrawScreenNow = true;
+        }
       }
-      if (gui.impedanceButtonsN[Ibut].updateIsMouseHere()) { 
-        toggleChannelImpedanceState(gui.impedanceButtonsN[Ibut],Ibut,1);
-        redrawScreenNow = true;
-      }
-    }
+      break;
+    case Gui_Manager.GUI_MODE_HEADPLOT_SETUP:
+      break;
+    //default:
   }
-  
   
   //check the graphs
   if (gui.isMouseOnFFT(mouseX,mouseY)) {
-    graphDataPoint dataPoint = new graphDataPoint();
+    GraphDataPoint dataPoint = new GraphDataPoint();
     gui.getFFTdataPoint(mouseX,mouseY,dataPoint);
     println("OpenBCI_GUI: FFT data point: " + String.format("%4.2f",dataPoint.x) + " " + dataPoint.x_units + ", " + String.format("%4.2f",dataPoint.y) + " " + dataPoint.y_units);
     redrawScreenNow = true;
@@ -769,14 +776,14 @@ void stopButtonWasPressed() {
   //update the push button with new text based on the current running state
   //gui.stopButton.setActive(isRunning);
   if (isRunning) {
-    gui.stopButton.setString(stopButton_pressToStop_txt);
+    gui.stopButton.setString(Gui_Manager.stopButton_pressToStop_txt);
   } 
   else {
-    gui.stopButton.setString(stopButton_pressToStart_txt);
+    gui.stopButton.setString(Gui_Manager.stopButton_pressToStart_txt);
   }
 }
 
-void synthesizeData(int nchan, float fs_Hz, float scale_fac_uVolts_per_count, dataPacket_ADS1299 curDataPacket) {
+void synthesizeData(int nchan, float fs_Hz, float scale_fac_uVolts_per_count, DataPacket_ADS1299 curDataPacket) {
   float val_uV;
   for (int Ichan=0; Ichan < nchan; Ichan++) {
     if (gui.chanButtons[Ichan].isActive()==false) { //an INACTIVE button has not been pressed, which means that the channel itself is ACTIVE
@@ -792,7 +799,7 @@ void synthesizeData(int nchan, float fs_Hz, float scale_fac_uVolts_per_count, da
 }
 
 
-int getPlaybackDataFromTable(Table datatable, int currentTableRowIndex, float scale_fac_uVolts_per_count, dataPacket_ADS1299 curDataPacket) {
+int getPlaybackDataFromTable(Table datatable, int currentTableRowIndex, float scale_fac_uVolts_per_count, DataPacket_ADS1299 curDataPacket) {
   float val_uV = 0.0f;
   
   //check to see if we can load a value from the table

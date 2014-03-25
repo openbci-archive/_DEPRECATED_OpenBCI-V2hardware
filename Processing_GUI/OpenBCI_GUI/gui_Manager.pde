@@ -13,7 +13,7 @@
 ///////////////////////////////////////////////////
 
 
-import processing.core.PApplet;
+//import processing.core.PApplet;
 import org.gwoptics.graphics.*;
 import org.gwoptics.graphics.graph2D.*;
 import org.gwoptics.graphics.graph2D.Graph2D;
@@ -23,35 +23,38 @@ import org.gwoptics.graphics.graph2D.backgrounds.*;
 import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 
-final int GUI_MODE_CHANNEL_ONOFF = 0;
-final int GUI_MODE_IMPEDANCE_CHECK = 1;
-final int GUI_MODE_HEADPLOT_SETUP = 2;
-final int N_GUI_MODES = 3;
-
-class gui_Manager {
+class Gui_Manager {
   ScatterTrace sTrace;
   ScatterTrace_FFT fftTrace;
   Graph2D gMontage, gFFT;
   GridBackground gbMontage, gbFFT;
   Button stopButton;
-  plotFontInfo fontInfo;
-  headPlot headPlot1;
+  PlotFontInfo fontInfo;
+  HeadPlot headPlot1;
   Button[] chanButtons;
   Button guiModeButton;
-  boolean showImpedanceButtons;
+  //boolean showImpedanceButtons;
   Button[] impedanceButtonsP;
   Button[] impedanceButtonsN;
-  textBox titleMontage, titleFFT;
-  textBox[] chanValuesMontage;
-  textBox[] impValuesMontage;
+  TextBox titleMontage, titleFFT;
+  TextBox[] chanValuesMontage;
+  TextBox[] impValuesMontage;
   boolean showMontageValues;
-  int guiMode;
+  public int guiMode;
   
   float fftYOffset[];
   float vertScale_uV = 200.f; //this defines the Y-scale on the montage plots...this is the vertical space between traces
   float montage_yoffsets[];
   
-  gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float yScale_uV, String filterDescription) {  
+  public final static int GUI_MODE_CHANNEL_ONOFF = 0;
+  public final static int GUI_MODE_IMPEDANCE_CHECK = 1;
+  public final static int GUI_MODE_HEADPLOT_SETUP = 2;
+  public final static int N_GUI_MODES = 3;
+  
+  public final static String stopButton_pressToStop_txt = "Press to Stop";
+  public final static String stopButton_pressToStart_txt = "Press to Start";
+  
+  Gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float yScale_uV, String filterDescription) {  
     
      //define some layout parameters
     int axes_x, axes_y;
@@ -64,7 +67,7 @@ class gui_Manager {
     float up_down_split = 0.55f;   //notional dividing line between top and bottom plots, measured from top
     float gutter_between_buttons = 0.005f; //space between buttons
     float title_gutter = 0.02f;
-    fontInfo = new plotFontInfo();
+    fontInfo = new PlotFontInfo();
   
     //setup the montage plot...the right side 
     vertScale_uV = yScale_uV;  //here is the vertical scaling of the traces
@@ -96,7 +99,7 @@ class gui_Manager {
     float[] axisHead_relPos = axisFFT_relPos.clone();
     axisHead_relPos[1] = gutter_topbot;  //set y position to be at top of left side
     axisHead_relPos[3] = available_top2bot*up_down_split  - gutter_topbot;
-    headPlot1 = new headPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y);  
+    headPlot1 = new HeadPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y);  
 
     int w,h,x,y;
            
@@ -124,7 +127,7 @@ class gui_Manager {
     }
 
     //setup the impedance measurement (lead-off) control buttons
-    showImpedanceButtons = false; //by default, do not show the buttons
+    //showImpedanceButtons = false; //by default, do not show the buttons
     w = w;  //use same width as for buttons above
     h = h/2;  //use buttons with half the height
     impedanceButtonsP = new Button[nchan];
@@ -145,7 +148,7 @@ class gui_Manager {
     return xoffset + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
   }
     
-  public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, plotFontInfo fontInfo,String filterDescription) {
+  public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, PlotFontInfo fontInfo,String filterDescription) {
   
     g.setAxisColour(220, 220, 220);
     g.setFontColour(255, 255, 255);
@@ -181,7 +184,7 @@ class gui_Manager {
     g.setBackground(gbMontage);
     
     // add title
-    titleMontage = new textBox("EEG Data (" + filterDescription + ")",0,0);
+    titleMontage = new TextBox("EEG Data (" + filterDescription + ")",0,0);
     int x2 = x1 + int(round(0.5*axis_relPos[2]*float(win_x)));
     int y2 = y1 - 2;  //deflect two pixels upward
     titleMontage.x = x2;
@@ -193,9 +196,9 @@ class gui_Manager {
     //add channel data values and impedance values
     int x3, y3;
     //float w = int(round(axis_relPos[2]*win_x));
-    textBox fooBox = new textBox("",0,0); 
-    chanValuesMontage = new textBox[nchan];
-    impValuesMontage = new textBox[nchan];
+    TextBox fooBox = new TextBox("",0,0); 
+    chanValuesMontage = new TextBox[nchan];
+    impValuesMontage = new TextBox[nchan];
     Axis2D xAxis = g.getXAxis();
     Axis2D yAxis = g.getYAxis();
     int h = int(round(axis_relPos[3]*win_y));
@@ -206,12 +209,12 @@ class gui_Manager {
           case 0:
             //voltage value text
             x3 = x1 + xAxis.valueToPosition(xAxis.getMaxValue()) - 2;  //set to right edge of plot.  nudge 2 pixels to the left
-            fooBox = new textBox("0.00 uVrms",x3,y3);
+            fooBox = new TextBox("0.00 uVrms",x3,y3);
             break;
           case 1:
             //impedance value text
             x3 = x1 + xAxis.valueToPosition(xAxis.getMinValue()) + 2;  //set to left edge of plot.  nudge 2 pixels to the right
-            fooBox = new textBox("0.00 kOhm",x3,y3);
+            fooBox = new TextBox("0.00 kOhm",x3,y3);
             break;
         }
         fooBox.textColor = color(0,0,0);
@@ -234,7 +237,7 @@ class gui_Manager {
     showMontageValues = true;  // default to having them NOT displayed    
   }
   
-  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,plotFontInfo fontInfo) {
+  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,PlotFontInfo fontInfo) {
   
     g.setAxisColour(220, 220, 220);
     g.setFontColour(255, 255, 255);
@@ -277,7 +280,7 @@ class gui_Manager {
     g.setBackground(gbFFT);
     
     // add title
-    titleFFT = new textBox("EEG Data (As Received)",0,0);
+    titleFFT = new TextBox("EEG Data (As Received)",0,0);
     int x2 = x1 + int(round(0.5*axis_relPos[2]*float(win_x)));
     int y2 = y1 - 2;  //deflect two pixels upward
     titleFFT.x = x2;
@@ -347,7 +350,7 @@ class gui_Manager {
   }
   
   public boolean isMouseOnGraph2D(Graph2D g, int mouse_x, int mouse_y) {
-    graphDataPoint dataPoint = new graphDataPoint();
+    GraphDataPoint dataPoint = new GraphDataPoint();
     getGraph2DdataPoint(g,mouse_x,mouse_y,dataPoint);
     if ( (dataPoint.x >= g.getXAxis().getMinValue()) &
          (dataPoint.x <= g.getXAxis().getMaxValue()) &
@@ -366,18 +369,18 @@ class gui_Manager {
     return isMouseOnGraph2D(gFFT,mouse_x,mouse_y);
   }
 
-  public void getGraph2DdataPoint(Graph2D g, int mouse_x,int mouse_y, graphDataPoint dataPoint) {
+  public void getGraph2DdataPoint(Graph2D g, int mouse_x,int mouse_y, GraphDataPoint dataPoint) {
     int rel_x = mouse_x - int(g.position.x);
     int rel_y = g.getYAxis().getLength() - (mouse_y - int(g.position.y));
     dataPoint.x = g.getXAxis().positionToValue(rel_x);
     dataPoint.y = g.getYAxis().positionToValue(rel_y);
   }
-  public void getMontageDataPoint(int mouse_x, int mouse_y, graphDataPoint dataPoint) {
+  public void getMontageDataPoint(int mouse_x, int mouse_y, GraphDataPoint dataPoint) {
     getGraph2DdataPoint(gMontage,mouse_x,mouse_y,dataPoint);
     dataPoint.x_units = "sec";
     dataPoint.y_units = "uV";  
   }  
-  public void getFFTdataPoint(int mouse_x,int mouse_y,graphDataPoint dataPoint) {
+  public void getFFTdataPoint(int mouse_x,int mouse_y,GraphDataPoint dataPoint) {
     getGraph2DdataPoint(gFFT, mouse_x,mouse_y,dataPoint);
     dataPoint.x_units = "Hz";
     dataPoint.y_units = "uV/sqrt(Hz)";
@@ -457,6 +460,7 @@ class gui_Manager {
       }
     }
   }
-  
-}
+ 
+};
+
 

@@ -26,42 +26,47 @@ final String command_startBinary = "b";
 final String command_startBinary_4chan = "v";
 final String command_activateFilters = "F";
 final String command_deactivateFilters = "f";
-String[] command_deactivate_channel = {"1", "2", "3", "4", "5", "6", "7", "8"};
-String[] command_activate_channel = {"q", "w", "e", "r", "t", "y", "u", "i"};
-String[] command_activate_leadoffP_channel = {"!", "@", "#", "$", "%", "^", "&", "*"};  //shift + 1-8
-String[] command_deactivate_leadoffP_channel = {"Q", "W", "E", "R", "T", "Y", "U", "I"};   //letters (plus shift) right below 1-8
-String[] command_activate_leadoffN_channel = {"A", "S", "D", "F", "G", "H", "J", "K"}; //letters (plus shift) below the letters below 1-8
-String[] command_deactivate_leadoffN_channel = {"Z", "X", "C", "V", "B", "N", "M", "<"};   //letters (plus shift) below the letters below the letters below 1-8
+final String[] command_deactivate_channel = {"1", "2", "3", "4", "5", "6", "7", "8"};
+final String[] command_activate_channel = {"q", "w", "e", "r", "t", "y", "u", "i"};
+final String[] command_activate_leadoffP_channel = {"!", "@", "#", "$", "%", "^", "&", "*"};  //shift + 1-8
+final String[] command_deactivate_leadoffP_channel = {"Q", "W", "E", "R", "T", "Y", "U", "I"};   //letters (plus shift) right below 1-8
+final String[] command_activate_leadoffN_channel = {"A", "S", "D", "F", "G", "H", "J", "K"}; //letters (plus shift) below the letters below 1-8
+final String[] command_deactivate_leadoffN_channel = {"Z", "X", "C", "V", "B", "N", "M", "<"};   //letters (plus shift) below the letters below the letters below 1-8
+ 
+class OpenBCI_ADS1299 {
+ 
+  //final static int DATAMODE_TXT = 0;
+  final static int DATAMODE_BIN = 1;
+  //final static int DATAMODE_BIN_4CHAN = 4;
+  
+  final static int STATE_NOCOM = 0;
+  final static int STATE_COMINIT = 1;
+  final static int STATE_NORMAL = 2;
+  final static int COM_INIT_MSEC = 4000; //you may need to vary this for your computer or your Arduino
+  
+  int[] measured_packet_length = {0,0,0,0,0};
+  int measured_packet_length_ind = 0;
+  int known_packet_length_bytes = 0;
+  
+  final static byte BYTE_START = (byte)0xA0;
+  final static byte BYTE_END = (byte)0xC0;
+  //final byte CHAR_END = byte(0xA0);  //line feed?
+  //final int LEN_SERIAL_BUFF_CHAR = 10000;
+  //final int MIN_PAYLOAD_LEN_INT32 = 1; //8 is the normal number, but there are shorter modes to enable Bluetooth
+  
+  int prefered_datamode = DATAMODE_BIN;
 
-//final int DATAMODE_TXT = 0;
-final int DATAMODE_BIN = 1;
-//final int DATAMODE_BIN_4CHAN = 4;
-
-final int STATE_NOCOM = 0;
-final int STATE_COMINIT = 1;
-final int STATE_NORMAL = 2;
-final int COM_INIT_MSEC = 4000; //you may need to vary this for your computer or your Arduino
-
-int[] measured_packet_length = {0,0,0,0,0};
-int measured_packet_length_ind = 0;
-int known_packet_length_bytes = 0;
-
-final byte BYTE_START = byte(0xA0);
-final byte BYTE_END = byte(0xC0);
-//final byte CHAR_END = byte(0xA0);  //line feed?
-//final int LEN_SERIAL_BUFF_CHAR = 10000;
-//final int MIN_PAYLOAD_LEN_INT32 = 1; //8 is the normal number, but there are shorter modes to enable Bluetooth
-
-int prefered_datamode = DATAMODE_BIN;
-
-class openBCI_ADS1299 {
+  
+  
+  
+  
   Serial serial_openBCI = null;
   int state = STATE_NOCOM;
   int dataMode = prefered_datamode;
   int prevState_millis = 0;
   //byte[] serialBuff;
   //int curBuffIndex = 0;
-  dataPacket_ADS1299 dataPacket;
+  DataPacket_ADS1299 dataPacket;
   boolean isNewDataPacketAvailable = false;
   int num_channels;
   OutputStream output; //for debugging  WEA 2014-01-26
@@ -69,10 +74,10 @@ class openBCI_ADS1299 {
   int serialErrorCounter = 0;
   
   //constructor
-  openBCI_ADS1299(PApplet applet, String comPort, int baud, int nchan) {
+  OpenBCI_ADS1299(PApplet applet, String comPort, int baud, int nchan) {
     num_channels = nchan;
     //serialBuff = new byte[LEN_SERIAL_BUFF_CHAR];  //allocate the serial buffer
-    dataPacket = new dataPacket_ADS1299(num_channels);
+    dataPacket = new DataPacket_ADS1299(num_channels);
     if (serial_openBCI != null) closeSerialPort();
     openSerialPort(applet, comPort, baud);
     
@@ -149,7 +154,7 @@ class openBCI_ADS1299 {
       try {
        output.write(inByte);   //for debugging  WEA 2014-01-26
       } catch (IOException e) {
-        System.err.println("openBCI_ADS1299: Caught IOException: " + e.getMessage());
+        System.err.println("OpenBCI_ADS1299: Caught IOException: " + e.getMessage());
         //do nothing
       }
     }
@@ -158,7 +163,7 @@ class openBCI_ADS1299 {
     return int(inByte);
   }
 
-  /***** Borrowed from Chris Viegl from his OpenBCI parser for BrainBay
+  /* **** Borrowed from Chris Viegl from his OpenBCI parser for BrainBay
   Packet Parser for OpenBCI (1-N channel binary format):
 
   4-byte (long) integers are stored in 'little endian' formant in AVRs
@@ -171,7 +176,7 @@ class openBCI_ADS1299 {
   ...
   Channel N data  : 4 bytes
   End Indcator:    0xC0
-  **********************************************************************/
+  ********************************************************************* */
   int channelsInPacket = 0;
   int localByteCounter=0;
   int localChannelCounter=0;
@@ -179,11 +184,11 @@ class openBCI_ADS1299 {
   byte[] localByteBuffer = {0,0,0,0};
   void interpretBinaryStream(byte actbyte)
   { 
-    //println("openBCI_ADS1299: PACKET_readstate " + PACKET_readstate);
+    //println("OpenBCI_ADS1299: PACKET_readstate " + PACKET_readstate);
     switch (PACKET_readstate) {
       case 0:  
            if (actbyte == byte(0xA0)) {          // look for start indicator
-            //println("openBCI_ADS1299: found 0xA0");
+            //println("OpenBCI_ADS1299: found 0xA0");
             PACKET_readstate++;
            } 
            break;
@@ -191,7 +196,7 @@ class openBCI_ADS1299 {
            channelsInPacket = ((int)actbyte) / 4 - 1;   // get number of channels
            if (channelsInPacket != num_channels) {
             serialErrorCounter++;
-            println("openBCI_ADS1299: given number of channels (" + channelsInPacket + ") is not acceptable.  Ignoring packet. (" + serialErrorCounter + ")");
+            println("OpenBCI_ADS1299: given number of channels (" + channelsInPacket + ") is not acceptable.  Ignoring packet. (" + serialErrorCounter + ")");
             PACKET_readstate=0;
            } else { 
             localByteCounter=0; //prepare for next usage of localByteCounter
@@ -206,7 +211,7 @@ class openBCI_ADS1299 {
             dataPacket.sampleIndex = interpretAsInt32(localByteBuffer); //added WEA
             if ((dataPacket.sampleIndex-prevSampleIndex) != 1) {
               serialErrorCounter++;
-              println("openBCI_ADS1299: apparent sampleIndex jump from Serial data: " + prevSampleIndex + " to  " + dataPacket.sampleIndex + ".  Keeping packet. (" + serialErrorCounter + ")");
+              println("OpenBCI_ADS1299: apparent sampleIndex jump from Serial data: " + prevSampleIndex + " to  " + dataPacket.sampleIndex + ".  Keeping packet. (" + serialErrorCounter + ")");
             }
             prevSampleIndex = dataPacket.sampleIndex;
             localByteCounter=0;//prepare for next usage of localByteCounter
@@ -219,7 +224,7 @@ class openBCI_ADS1299 {
           localByteCounter++;
           if (localByteCounter==4) {
             dataPacket.values[localChannelCounter] = interpretAsInt32(localByteBuffer);
-            //println("openBCI_ADS1299: received chan  = " + localChannelCounter);
+            //println("OpenBCI_ADS1299: received chan  = " + localChannelCounter);
             localChannelCounter++;
             if (localChannelCounter==channelsInPacket) {  
               // all channels arrived !
@@ -236,12 +241,12 @@ class openBCI_ADS1299 {
           isNewDataPacketAvailable = true; //original place for this.  but why not put it in the previous case block
         } else {
           serialErrorCounter++;
-          println("openBCI_ADS1299: expecteding end-of-packet byte is missing.  Discarding packet. (" + serialErrorCounter + ")");
+          println("OpenBCI_ADS1299: expecteding end-of-packet byte is missing.  Discarding packet. (" + serialErrorCounter + ")");
         }
         PACKET_readstate=0;  // either way, look for next packet
         break;
       default: 
-          println("openBCI_ADS1299: Unknown byte: " + actbyte + " ...continuing.");
+          println("OpenBCI_ADS1299: Unknown byte: " + actbyte + " ...continuing.");
           PACKET_readstate=0;  // look for next packet
     }
   } // end of interpretBinaryStream
@@ -279,7 +284,7 @@ class openBCI_ADS1299 {
   }
   
   public void changeImpedanceState(int Ichan,boolean activate,int code_P_N_Both) {
-    //println("openBCI_ADS1299: changeImpedanceState: Ichan " + Ichan + ", activate " + activate + ", code_P_N_Both " + code_P_N_Both);
+    //println("OpenBCI_ADS1299: changeImpedanceState: Ichan " + Ichan + ", activate " + activate + ", code_P_N_Both " + code_P_N_Both);
     if (serial_openBCI != null) {
       if ((Ichan >= 0) && (Ichan < command_activate_leadoffP_channel.length)) {
         if (activate) {
@@ -316,7 +321,7 @@ class openBCI_ADS1299 {
   
 
   
-  int copyDataPacketTo(dataPacket_ADS1299 target) {
+  int copyDataPacketTo(DataPacket_ADS1299 target) {
     isNewDataPacketAvailable = false;
     dataPacket.copyTo(target);
     return 0;
@@ -340,10 +345,12 @@ class openBCI_ADS1299 {
 //      return 0;
 //    } else {
 //      //int n_bytes = int(serialBuff[startInd + 1]); //this is the number of bytes in the payload
-//      //println("openBCI_ADS1299: measurePacketLength = " + (endInd-startInd+1));
+//      //println("OpenBCI_ADS1299: measurePacketLength = " + (endInd-startInd+1));
 //      return endInd-startInd+1;
 //    }
 //  }
       
     
-}
+};
+
+

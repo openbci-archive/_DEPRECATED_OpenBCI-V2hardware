@@ -14,7 +14,7 @@
 //
 ///////////////////////////////////////////////////////////////
 
-class headPlot {
+class HeadPlot {
   private float rel_posX,rel_posY,rel_width,rel_height;
   private int circ_x,circ_y,circ_diam;
   private  int earL_x, earL_y, earR_x, earR_y, ear_width, ear_height;
@@ -34,7 +34,7 @@ class headPlot {
   public boolean drawHeadAsContours;
 
 
-  headPlot(float x,float y,float w,float h,int win_x,int win_y) {
+  HeadPlot(float x,float y,float w,float h,int win_x,int win_y) {
     final int n_elec = 8;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
     nose_x = new int[3];
     nose_y = new int[3];
@@ -211,7 +211,7 @@ class headPlot {
     
     //return
     return table_elec_relXY;
-  }
+  } //end of method
   
   //Here, we do a two-step solution to get the weighting factors.  
   //We do a coarse grid first.  We do our iterative solution on the coarse grid.
@@ -600,7 +600,7 @@ class headPlot {
     }
     //println("headPlot: computeWeightFactor: Ielec " + Ielec + ", solution complete with " + iter_count + " iterations. min and max vals = " + min_val + ", " + max_val);
     if (iter_count >= lim_iter_count) println("headPlot: computeWeightFactor: Ielec " + Ielec + ", solution complete with " + iter_count + " iterations. max_dVal = " + max_dVal);
-  }
+  } //end of method
     
     
     
@@ -683,7 +683,7 @@ class headPlot {
         } //end loop over direction of the target pixel
       } //end loop over Ix
     } //end loop over Iy 
-  }
+  } // end of method
   
   private void whereAreThePixels(int pixelAddress[][][], boolean[][] withinHead,int[][] withinElectrode) {
     int n_wide = pixelAddress.length;
@@ -774,7 +774,6 @@ class headPlot {
         }
       }
     }
-    
   }
   
 
@@ -902,7 +901,6 @@ class headPlot {
   }
   
   public void draw() {
-    
 
     //update electrode colors
     updateElectrodeColors();
@@ -953,7 +951,7 @@ class headPlot {
         text(i+1,electrode_xy[i][0], electrode_xy[i][1]);
     }
     text("R",ref_electrode_xy[0],ref_electrode_xy[1]); 
-  }
+  } //end of draw method
   
 };
 

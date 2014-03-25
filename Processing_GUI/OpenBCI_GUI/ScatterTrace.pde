@@ -22,7 +22,7 @@
 //
 ////////////////
 
-import processing.core.PApplet;
+//import processing.core.PApplet;
 import org.gwoptics.graphics.*;
 import org.gwoptics.graphics.graph2D.*;
 import org.gwoptics.graphics.graph2D.Graph2D;
@@ -187,5 +187,6 @@ class ScatterTrace_FFT extends Blank2DTrace {
       pr.canvas.popStyle(); //restore whatever was the previous style
     }
   }
-}
+};
+
 
