@@ -686,11 +686,12 @@ void mousePressed() {
     redrawScreenNow = true;
   }
   
-  //was the channel_mode button pressed?
-  if (gui.chanModeButton.updateIsMouseHere()) {
+  //was the channel mode button pressed?
+  if (gui.guiModeButton.updateIsMouseHere()) {
+    gui.incrementGUImode();
     //toggle whether to show channel on/off or channel impedance on/off
     gui.showImpedanceButtons = !gui.showImpedanceButtons;
-    gui.chanModeButton.setIsActive(true);
+    gui.guiModeButton.setIsActive(true);
     redrawScreenNow = true;
   }
 
@@ -738,7 +739,7 @@ void mouseReleased() {
   //some buttons light up only when being actively pressed.  Now that we've
   //released the mouse button, turn off those buttons.
   gui.stopButton.setIsActive(false);
-  gui.chanModeButton.setIsActive(false);
+  gui.guiModeButton.setIsActive(false);
   redrawScreenNow = true;
 }
 

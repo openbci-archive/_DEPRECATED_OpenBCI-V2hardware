@@ -23,6 +23,11 @@ import org.gwoptics.graphics.graph2D.backgrounds.*;
 import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 
+final int GUI_MODE_CHANNEL_ONOFF = 0;
+final int GUI_MODE_IMPEDANCE_CHECK = 1;
+final int GUI_MODE_HEADPLOT_SETUP = 2;
+final int N_GUI_MODES = 3;
+
 class gui_Manager {
   ScatterTrace sTrace;
   ScatterTrace_FFT fftTrace;
@@ -32,7 +37,7 @@ class gui_Manager {
   plotFontInfo fontInfo;
   headPlot headPlot1;
   Button[] chanButtons;
-  Button chanModeButton;
+  Button guiModeButton;
   boolean showImpedanceButtons;
   Button[] impedanceButtonsP;
   Button[] impedanceButtonsN;
@@ -40,6 +45,7 @@ class gui_Manager {
   textBox[] chanValuesMontage;
   textBox[] impValuesMontage;
   boolean showMontageValues;
+  int guiMode;
   
   float fftYOffset[];
   float vertScale_uV = 200.f; //this defines the Y-scale on the montage plots...this is the vertical space between traces
@@ -102,10 +108,10 @@ class gui_Manager {
     //int y = win_y - h;
     stopButton = new Button(x,y,w,h,stopButton_pressToStop_txt,fontInfo.buttonLabel_size);
     
-    //setup the channel mode button
+    //setup the gui mode button
     w = 40;
     x = (int)(3*gutter_between_buttons*win_x);
-    chanModeButton = new Button(x,y,w,h,"Mode",fontInfo.buttonLabel_size);
+    guiModeButton = new Button(x,y,w,h,"Mode",fontInfo.buttonLabel_size);
         
     //setup the channel on/off buttons
     int xoffset = x + w + (int)(gutter_between_buttons*win_x);
@@ -130,7 +136,10 @@ class gui_Manager {
     for (int Ibut = 0; Ibut < nchan; Ibut++) {
       x = calcButtonXLocation(Ibut, win_x, w, xoffset, gutter_between_buttons);
       impedanceButtonsN[Ibut] = new Button(x,y+h,w,h,"Imp N" + (Ibut+1),fontInfo.buttonLabel_size);
-    }    
+    }
+
+    //set the initial display mode for the GUI
+    setGUImode(GUI_MODE_CHANNEL_ONOFF);  
   } 
   private int calcButtonXLocation(int Ibut,int win_x,int w, int xoffset, float gutter_between_buttons) {
     return xoffset + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
@@ -325,6 +334,17 @@ class gui_Manager {
     headPlot1.setIntensityData_byRef(dataBuffY_std,is_railed);
   }
   
+  public void setGUImode(int mode) {
+    if ((mode >= 0) && (mode < N_GUI_MODES)) {
+      guiMode = mode;
+    } else {
+      guiMode = 0;
+    }
+  }
+  
+  public void incrementGUImode() {
+    setGUImode( (guiMode+1) % N_GUI_MODES );
+  }
   
   public boolean isMouseOnGraph2D(Graph2D g, int mouse_x, int mouse_y) {
     graphDataPoint dataPoint = new graphDataPoint();
@@ -412,19 +432,23 @@ class gui_Manager {
     gMontage.draw(); titleMontage.draw();//println("completed montage draw..."); 
     gFFT.draw(); titleFFT.draw();//println("completed FFT draw..."); 
     stopButton.draw();
-    chanModeButton.draw();
-    if (showImpedanceButtons == false) {
-      //show channel buttons
-      for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
-        chanButtons[Ichan].draw();
-      }
-    } else {
-      //show impedance buttons and text
-      for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
-        impedanceButtonsP[Ichan].draw();
-        impedanceButtonsN[Ichan].draw();
-        impValuesMontage[Ichan].draw();     
-      }    
+    guiModeButton.draw();
+    
+    switch (guiMode) {
+      //note: GUI_MODE_CHANNEL_ON_OFF is the default at the end
+      case GUI_MODE_IMPEDANCE_CHECK:
+        //show impedance buttons and text
+        for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
+          impedanceButtonsP[Ichan].draw(); //P-channel buttons
+          impedanceButtonsN[Ichan].draw(); //N-channel buttons
+          impValuesMontage[Ichan].draw();  //impedance values on montage plot   
+        }  
+        break;
+      case GUI_MODE_HEADPLOT_SETUP:
+        break;
+      default:  //assume GUI_MODE_CHANNEL_ONOFF:
+        //show channel buttons
+        for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) { chanButtons[Ichan].draw(); }
     }
     
     if (showMontageValues) {
