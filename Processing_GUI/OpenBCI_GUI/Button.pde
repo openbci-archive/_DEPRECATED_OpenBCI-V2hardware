@@ -94,7 +94,23 @@ class Button {
     textFont(font);
     textSize(12);
     textAlign(CENTER, CENTER);
-    text(but_txt,but_x+but_dx/2,but_y+but_dy/2);
+    textLeading(round(0.9*(textAscent()+textDescent())));
+//    int x1 = but_x+but_dx/2;
+//    int y1 = but_y+but_dy/2;
+    int x1, y1;
+    if (false) {
+      //auto wrap
+      x1 = but_x;
+      y1 = but_y;
+      int w = but_dx-2*2; //use a 2 pixel buffer on the left and right sides 
+      int h = but_dy;
+      text(but_txt,x1,y1,w,h);
+    } else {
+      //no auto wrap
+      x1 = but_x+but_dx/2;
+      y1 = but_y+but_dy/2;
+      text(but_txt,x1,y1);
+    }
   }
 };
 

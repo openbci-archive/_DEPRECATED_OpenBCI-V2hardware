@@ -17,7 +17,7 @@
 class HeadPlot {
   private float rel_posX,rel_posY,rel_width,rel_height;
   private int circ_x,circ_y,circ_diam;
-  private  int earL_x, earL_y, earR_x, earR_y, ear_width, ear_height;
+  private int earL_x, earL_y, earR_x, earR_y, ear_width, ear_height;
   private int[] nose_x, nose_y;
   private float[][] electrode_xy;
   private float[] ref_electrode_xy;
@@ -28,11 +28,10 @@ class HeadPlot {
   PFont font;
   public float[] intensity_data_uV;
   private boolean[] is_railed;
-  private float intense_min_uV, intense_max_uV, assumed_railed_voltage_uV;
+  private float intense_min_uV=0, intense_max_uV=1, assumed_railed_voltage_uV=1;
   PImage headImage;
   private int image_x,image_y;
   public boolean drawHeadAsContours;
-
 
   HeadPlot(float x,float y,float w,float h,int win_x,int win_y) {
     final int n_elec = 8;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
@@ -51,13 +50,18 @@ class HeadPlot {
     rel_height = h;
     setWindowDimensions(win_x,win_y);
     
-    intense_min_uV = 5; intense_max_uV = 100;  //default intensity scaling for electrodes
-    assumed_railed_voltage_uV = intense_max_uV;
+    setMaxIntensity_uV(200.0f);  //default intensity scaling for electrodes
   }
   
   public void setIntensityData_byRef(float[] data, boolean[] is_rail) {
     intensity_data_uV = data;  //simply alias the data held externally.  DOES NOT COPY THE DATA ITSEF!  IT'S SIMPLY LINKED!
     is_railed = is_rail;
+  }
+  
+  public void setMaxIntensity_uV(float val_uV) {
+    intense_max_uV = val_uV;
+    intense_min_uV = intense_max_uV / 200.0 * 5.0f;  //set to 200, get 5
+    assumed_railed_voltage_uV = intense_max_uV;
   }
   
   //this method defines all locations of all the subcomponents
@@ -797,10 +801,12 @@ class HeadPlot {
     float weight,elec_volt;
     int n_elec = electrode_xy.length;
     float voltage = 0.0f;
+    float low = intense_min_uV;
+    float high = intense_max_uV;
     
     for (int Ielec=0;Ielec<n_elec;Ielec++) {
       weight = electrode_color_weightFac[Ielec][pixel_Ix][pixel_Iy];
-      elec_volt = max(intense_min_uV,min(intensity_data_uV[Ielec],intense_max_uV));
+      elec_volt = max(low,min(intensity_data_uV[Ielec],high));
       if (is_railed[Ielec]) elec_volt = assumed_railed_voltage_uV;
       voltage += weight*elec_volt;
     }
@@ -813,7 +819,10 @@ class HeadPlot {
     float val;
     
     float intensity = constrain(pixel_volt_uV,intense_min_uV,intense_max_uV);
-    intensity = map(log10(intensity),log10(intense_min_uV),log10(intense_max_uV),0.0f,1.0f);
+    intensity = map(log10(intensity), 
+        log10(intense_min_uV),
+        log10(intense_max_uV),
+        0.0f,1.0f);
       
     //make the intensity fade NOT from black->color, but from white->color
     for (int i=0; i < 3; i++) {
@@ -867,9 +876,13 @@ class HeadPlot {
     float intensity;
     float val;
     int new_rgb[] = new int[3];
+    float low = intense_min_uV;
+    float high = intense_max_uV;
+    float log_low = log10(low);
+    float log_high = log10(high);
     for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
-      intensity = constrain(intensity_data_uV[Ielec],intense_min_uV,intense_max_uV);
-      intensity = map(log10(intensity),log10(intense_min_uV),log10(intense_max_uV),0.0f,1.0f);
+      intensity = constrain(intensity_data_uV[Ielec],low,high);
+      intensity = map(log10(intensity),log_low,log_high,0.0f,1.0f);
       
       //make the intensity fade NOT from black->color, but from white->color
       for (int i=0; i < 3; i++) {
@@ -899,6 +912,7 @@ class HeadPlot {
       return false;
     }    
   }
+  
   
   public void draw() {
 

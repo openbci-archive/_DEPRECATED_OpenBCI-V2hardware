@@ -58,6 +58,10 @@ class ScatterTrace extends Blank2DTrace {
   public void setYOffset_byRef(float[] yoff) {
     plotYOffset = yoff;  //just copies the reference!
   }
+  
+  public void setYScale_uV(float yscale_uV) {
+    setYScaleFac(1.0f/yscale_uV);
+  }
 
   public void setYScaleFac(float yscale) {
     plotYScale = yscale;

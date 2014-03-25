@@ -89,7 +89,7 @@ FFT fftBuff[] = new FFT[nchan];   //from the minim library
 
 //plotting constants
 Gui_Manager gui;
-float vertScale_uV = 200.0f;
+float default_vertScale_uV = 200.0f;
 float displayTime_sec = 5f;
 float dataBuff_len_sec = displayTime_sec+3f; //needs to be wider than actual display so that filter startup is hidden
 
@@ -181,7 +181,7 @@ void setup() {
 
   //initilize the GUI
   String filterDescription = filtCoeff_bp.name + ", " + filtCoeff_notch.name; 
-  gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV,filterDescription);
+  gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,default_vertScale_uV,filterDescription);
   
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
@@ -721,6 +721,10 @@ void mousePressed() {
       }
       break;
     case Gui_Manager.GUI_MODE_HEADPLOT_SETUP:
+      if (gui.intensityFactorButton.updateIsMouseHere()) {
+        gui.incrementVertScaleFactor();
+        gui.intensityFactorButton.setIsActive(true);
+      }
       break;
     //default:
   }
@@ -747,6 +751,7 @@ void mouseReleased() {
   //released the mouse button, turn off those buttons.
   gui.stopButton.setIsActive(false);
   gui.guiModeButton.setIsActive(false);
+  gui.intensityFactorButton.setIsActive(false);
   redrawScreenNow = true;
 }
 

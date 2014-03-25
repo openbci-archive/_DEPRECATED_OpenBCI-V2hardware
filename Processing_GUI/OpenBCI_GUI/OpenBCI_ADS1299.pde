@@ -50,15 +50,9 @@ class OpenBCI_ADS1299 {
   
   final static byte BYTE_START = (byte)0xA0;
   final static byte BYTE_END = (byte)0xC0;
-  //final byte CHAR_END = byte(0xA0);  //line feed?
-  //final int LEN_SERIAL_BUFF_CHAR = 10000;
-  //final int MIN_PAYLOAD_LEN_INT32 = 1; //8 is the normal number, but there are shorter modes to enable Bluetooth
   
   int prefered_datamode = DATAMODE_BIN;
 
-  
-  
-  
   
   Serial serial_openBCI = null;
   int state = STATE_NOCOM;
