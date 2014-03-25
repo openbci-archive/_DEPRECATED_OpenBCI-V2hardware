@@ -35,9 +35,9 @@ int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //int openBCI_baud = 2*115200; //baud rate from the Arduino
 //int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
 
-//here are variables that are used if loading input data from a CSV text file
-//final String playbackData_fname = "openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
-final String playbackData_fname = "openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
+//here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
+//final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
+final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
 int currentTableRowIndex = 0;
 Table playbackData_table;
 
@@ -209,7 +209,7 @@ void setup() {
       playbackData_table = loadTable(playbackData_fname, "header,csv");
       println("OpenBCI_GUI: loading complete.  " + playbackData_table.getRowCount() + " rows of data, which is " + round(float(playbackData_table.getRowCount())/fs_Hz) + " seconds of EEG data");
       
-      println("OpenBCI_GUI: removing first column of data from data file...the first column is a time index and not eeg data.");
+      //removing first column of data from data file...the first column is a time index and not eeg data
       playbackData_table.removeColumn(0);
       break;
     default: 
@@ -876,8 +876,10 @@ void setChannelImpedanceState(int Ichan,boolean newstate,int code_P_N_Both) {
 
 void openNewLogFile() {
   //close the file if it's open
-  println("OpenBCI_GUI: closing log file");
-  if (fileoutput != null) closeLogFile();
+  if (fileoutput != null) {
+    println("OpenBCI_GUI: closing log file");
+    closeLogFile();
+  }
   
   //open the new file
   fileoutput = new OutputFile_rawtxt(fs_Hz);
