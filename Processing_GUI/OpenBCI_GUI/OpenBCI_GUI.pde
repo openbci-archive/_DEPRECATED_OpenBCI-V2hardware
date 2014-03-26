@@ -724,6 +724,12 @@ void mousePressed() {
       if (gui.intensityFactorButton.updateIsMouseHere()) {
         gui.incrementVertScaleFactor();
         gui.intensityFactorButton.setIsActive(true);
+        redrawScreenNow = true;
+      }
+      if (gui.loglinPlotButton.updateIsMouseHere()) {
+        gui.set_vertScaleAsLog(!gui.vertScaleAsLog); //toggle the state
+        gui.loglinPlotButton.setIsActive(true);
+        redrawScreenNow = true;
       }
       break;
     //default:
@@ -752,6 +758,7 @@ void mouseReleased() {
   gui.stopButton.setIsActive(false);
   gui.guiModeButton.setIsActive(false);
   gui.intensityFactorButton.setIsActive(false);
+  gui.loglinPlotButton.setIsActive(false);
   redrawScreenNow = true;
 }
 

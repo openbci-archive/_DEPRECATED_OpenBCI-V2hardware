@@ -37,17 +37,20 @@ class Gui_Manager {
   Button[] impedanceButtonsP;
   Button[] impedanceButtonsN;
   Button intensityFactorButton;
+  Button loglinPlotButton;
   TextBox titleMontage, titleFFT;
   TextBox[] chanValuesMontage;
   TextBox[] impValuesMontage;
   boolean showMontageValues;
   public int guiMode;
+  boolean vertScaleAsLog = true;
   
   private float fftYOffset[];
   private float default_vertScale_uV=200.0; //this defines the Y-scale on the montage plots...this is the vertical space between traces
   private float[] vertScaleFactor = {1.0f, 2.0f, 5.0f, 50.0f, 0.25f, 0.5f};
   private int vertScaleFactor_ind = 0;
   float vertScale_uV=200.0;
+  float vertScaleMin_uV_whenLog = 0.1f;
   float montage_yoffsets[];
   
   public final static int GUI_MODE_CHANNEL_ONOFF = 0;
@@ -153,6 +156,11 @@ class Gui_Manager {
     x = calcButtonXLocation(0, win_x, w, xoffset,gutter_between_buttons);
     intensityFactorButton = new Button(x,y,w,h,"Vert Scale\n" + round(vertScale_uV) + "uV",fontInfo.buttonLabel_size);
     
+    set_vertScaleAsLog(true);
+    x = calcButtonXLocation(1, win_x, w, xoffset,gutter_between_buttons);
+    loglinPlotButton = new Button(x,y,w,h,"Vert Scale\n" + get_vertScaleAsLogText(),fontInfo.buttonLabel_size);
+    
+    
     //set the initial display mode for the GUI
     setGUImode(GUI_MODE_CHANNEL_ONOFF);  
   } 
@@ -178,10 +186,53 @@ class Gui_Manager {
     //println("Gui_Manager: updateVertScale: vertScale_uV = " + vertScale_uV);
     
     //update how the plots are scaled
-    montageTrace.setYScale_uV(vertScale_uV);  //the Y-axis on the montage plot is fixed...the data is simply scaled prior to plotting
-    gFFT.setYAxisMax(vertScale_uV);
+    if (montageTrace != null) montageTrace.setYScale_uV(vertScale_uV);  //the Y-axis on the montage plot is fixed...the data is simply scaled prior to plotting
+    if (gFFT != null) gFFT.setYAxisMax(vertScale_uV);
     headPlot1.setMaxIntensity_uV(vertScale_uV);
     intensityFactorButton.setString("Vert Scale\n" + round(vertScale_uV) + "uV");
+    
+    //update the Yticks on the FFT plot
+    if (gFFT != null) {
+      if (vertScaleAsLog) {
+        gFFT.setYAxisTickSpacing(1);
+      } else {
+        gFFT.setYAxisTickSpacing(pow(10.0,floor(log10(vertScale_uV/4))));
+      }
+    }
+    
+  }
+  public String get_vertScaleAsLogText() {
+    if (vertScaleAsLog) {
+      return "Log";
+    } else {
+      return "Linear";
+    }
+  }
+  public void set_vertScaleAsLog(boolean state) {
+    vertScaleAsLog = state;
+    
+    //change the FFT Plot
+    if (gFFT != null) {
+      if (vertScaleAsLog) {
+          gFFT.setYAxisMin(vertScaleMin_uV_whenLog);
+          Axis2D ay=gFFT.getYAxis();
+          ay.setLogarithmicAxis(true);
+          updateVertScale();  //force a re-do of the Yticks
+      } else {
+          Axis2D ay=gFFT.getYAxis();
+          ay.setLogarithmicAxis(false);
+          gFFT.setYAxisMin(0.0f);
+          updateVertScale();  //force a re-do of the Yticks
+      }
+    }
+    
+    //change the head plot
+    headPlot1.set_plotColorAsLog(vertScaleAsLog);
+    
+    //change the button
+    if (loglinPlotButton != null) {
+      loglinPlotButton.setString("Vert Scale\n" + get_vertScaleAsLogText());
+    }
   }
     
   public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, PlotFontInfo fontInfo,String filterDescription) {
@@ -286,7 +337,7 @@ class Gui_Manager {
     //g.position.y = 0;
   
     //setup the y axis
-    g.setYAxisMin(0.1f);
+    g.setYAxisMin(vertScaleMin_uV_whenLog);
     g.setYAxisMax(vertScale_uV);
     g.setYAxisTickSpacing(1);
     g.setYAxisMinorTicks(0);
@@ -485,6 +536,7 @@ class Gui_Manager {
         break;
       case GUI_MODE_HEADPLOT_SETUP:
         intensityFactorButton.draw();
+        loglinPlotButton.draw();
         break;
       default:  //assume GUI_MODE_CHANNEL_ONOFF:
         //show channel buttons

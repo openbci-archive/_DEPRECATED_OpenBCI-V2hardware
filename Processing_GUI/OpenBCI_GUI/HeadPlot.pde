@@ -28,10 +28,12 @@ class HeadPlot {
   PFont font;
   public float[] intensity_data_uV;
   private boolean[] is_railed;
-  private float intense_min_uV=0, intense_max_uV=1, assumed_railed_voltage_uV=1;
+  private float intense_min_uV=0.0f, intense_max_uV=1.0f, assumed_railed_voltage_uV=1.0f;
+  private float log10_intense_min_uV = 0.0f, log10_intense_max_uV=1.0;
   PImage headImage;
   private int image_x,image_y;
   public boolean drawHeadAsContours;
+  private boolean plot_color_as_log = true;
 
   HeadPlot(float x,float y,float w,float h,int win_x,int win_y) {
     final int n_elec = 8;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
@@ -62,6 +64,13 @@ class HeadPlot {
     intense_max_uV = val_uV;
     intense_min_uV = intense_max_uV / 200.0 * 5.0f;  //set to 200, get 5
     assumed_railed_voltage_uV = intense_max_uV;
+    
+    log10_intense_max_uV = log10(intense_max_uV);
+    log10_intense_min_uV = log10(intense_min_uV);
+  }
+  
+  public void set_plotColorAsLog(boolean state) {
+    plot_color_as_log = state;
   }
   
   //this method defines all locations of all the subcomponents
@@ -819,10 +828,17 @@ class HeadPlot {
     float val;
     
     float intensity = constrain(pixel_volt_uV,intense_min_uV,intense_max_uV);
-    intensity = map(log10(intensity), 
-        log10(intense_min_uV),
-        log10(intense_max_uV),
-        0.0f,1.0f);
+    if (plot_color_as_log) {
+      intensity = map(log10(intensity), 
+                      log10_intense_min_uV,
+                      log10_intense_max_uV,
+                      0.0f,1.0f);
+    } else {
+      intensity = map(intensity, 
+                intense_min_uV,
+                intense_max_uV,
+                0.0f,1.0f);
+    }
       
     //make the intensity fade NOT from black->color, but from white->color
     for (int i=0; i < 3; i++) {
@@ -878,11 +894,15 @@ class HeadPlot {
     int new_rgb[] = new int[3];
     float low = intense_min_uV;
     float high = intense_max_uV;
-    float log_low = log10(low);
-    float log_high = log10(high);
+    float log_low = log10_intense_min_uV;
+    float log_high = log10_intense_max_uV;
     for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
       intensity = constrain(intensity_data_uV[Ielec],low,high);
-      intensity = map(log10(intensity),log_low,log_high,0.0f,1.0f);
+      if (plot_color_as_log) {
+        intensity = map(log10(intensity),log_low,log_high,0.0f,1.0f);
+      } else {
+        intensity = map(intensity,low,high,0.0f,1.0f);
+      }
       
       //make the intensity fade NOT from black->color, but from white->color
       for (int i=0; i < 3; i++) {
