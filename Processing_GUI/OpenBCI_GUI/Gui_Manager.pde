@@ -119,13 +119,13 @@ class Gui_Manager {
     stopButton = new Button(x,y,w,h,stopButton_pressToStop_txt,fontInfo.buttonLabel_size);
     
     //setup the gui page button
-    w = 80;
+    w = 80; //button width
     x = (int)(3*gutter_between_buttons*win_x);
     guiPageButton = new Button(x,y,w,h,"Page\n" + (guiPage+1) + " of " + N_GUI_PAGES,fontInfo.buttonLabel_size);
         
     //setup the channel on/off buttons
     int xoffset = x + w + (int)(2*gutter_between_buttons*win_x);
-    w = 80;   //button width
+    w = w;   //button width
     int w_orig = w;
     if (nchan > 10) w -= (nchan-8)*2; //make the buttons skinnier
     chanButtons = new Button[nchan];

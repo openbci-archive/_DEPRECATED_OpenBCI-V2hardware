@@ -21,7 +21,7 @@ class Button {
   color rectHighlight;
   //boolean isMouseHere = false;
   boolean isActive = false;
-  String but_txt;
+  public String but_txt;
   PFont font;
 
   public Button(int x, int y, int w, int h, String txt, int fontSize) {
@@ -43,6 +43,7 @@ class Button {
   
   public void setString(String txt) {
     but_txt = txt;
+    println("Button: setString: string = " + txt);
   }
   
   public boolean isActive() {

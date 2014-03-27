@@ -226,9 +226,57 @@ int pointCounter = 0;
 int prevBytes = 0; 
 int prevMillis=millis();
 int byteRate_perSec = 0;
+int drawLoop_counter = 0;
 void draw() {
+  drawLoop_counter++;
   if (isRunning) {
+    //get the data, if it is available
+    pointCounter = getDataIfAvailable(pointCounter);
+
+    //has enough data arrived to process it and update the GUI?
+    if (pointCounter >= nPointsPerUpdate) {
+      pointCounter = 0;  //reset for next time
+      
+      //process the data
+      processNewData();
+
+      //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
+      gui.update(data_std_uV,data_elec_imp_ohm);
+      
+      redrawScreenNow=true;
+    } 
+    else {
+      //not enough data has arrived yet.  do nothing more
+    }
+    
+    //either way, update the title of the figure;
     switch (eegDataSource) {
+      case DATASOURCE_NORMAL:
+        frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
+        break;
+      case DATASOURCE_SYNTHETIC:
+        frame.setTitle(int(frameRate) + " fps, " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
+        break;
+      case DATASOURCE_PLAYBACKFILE:
+        frame.setTitle(int(frameRate) + " fps, Playing " + int(float(currentTableRowIndex)/fs_Hz) + " of " + int(float(playbackData_table.getRowCount())/fs_Hz) + " secs, Reading from: " + playbackData_fname + ", Writing to " + output_fname);
+        break;  
+    }       
+  }
+
+  
+  if ((redrawScreenNow) || (drawLoop_counter >= 10000)) {
+    if (drawLoop_counter >= 10000) println("OpenBCI_GUI: redrawing based on loop counter...");
+    drawLoop_counter=0;
+    
+    //redraw the screen...not every time, get paced by when data is being plotted
+    redrawScreenNow = false;  //reset for next time
+    background(0);
+    gui.draw();
+  }
+}
+
+int getDataIfAvailable(int pointCounter) {
+     switch (eegDataSource) {
       case DATASOURCE_NORMAL:   //use live data from the Serial stream
         //first, get the new data (if any is available
         openBCI.updateState();
@@ -276,97 +324,68 @@ void draw() {
       default:
         //no action
     }
-
-    //has enough data arrived to process it and update the GUI?
-    //println("pointCounter " + pointCounter + ", nPointsPerUpdate " + nPointsPerUpdate);
-    if (pointCounter >= nPointsPerUpdate) {
-      pointCounter = 0;  //reset for next time
-      byteRate_perSec = (int)(1000.f * ((float)(openBCI_byteCount - prevBytes)) / ((float)(millis() - prevMillis)));
-      prevBytes = openBCI_byteCount; 
-      prevMillis=millis();
-      float foo_val;
-      float prevFFTdata[] = new float[fftBuff[0].specSize()];
-
-      for (int Ichan=0;Ichan < nchan; Ichan++) {
-        //append data to larger buffer
-        appendAndShift(dataBuffY_uV[Ichan], yLittleBuff_uV[Ichan]);
-        
-        //look to see if the signal is railed
-        is_railed[Ichan]=false;
-        if (abs(dataPacketBuff[lastReadDataPacketInd].values[Ichan]) > threshold_railed) {
-          //println("OpenBCI_GUI: channel " + Ichan + " may be railed at " + dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
-          is_railed[Ichan]=true;
-        }
-
-        //make a copy of the data for further processing
-        dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();
-      } 
-        
-      //recompute the montage to make it be a mean-head reference
-      if (false) rereferenceTheMontage(dataBuffY_filtY_uV);
-        
-      for (int Ichan=0;Ichan < nchan; Ichan++) {  
-        //filter the data in the time domain
-        filterIIR(filtCoeff_notch.b, filtCoeff_notch.a, dataBuffY_filtY_uV[Ichan]); //notch
-        filterIIR(filtCoeff_bp.b, filtCoeff_bp.a, dataBuffY_filtY_uV[Ichan]); //bandpass
-
-        //update the FFT stuff
-        for (int I=0; I < fftBuff[Ichan].specSize(); I++) prevFFTdata[I] = fftBuff[Ichan].getBand(I); //copy the old spectrum values
-        float[] fooData_raw = dataBuffY_uV[Ichan];  //use the raw data
-        fooData_raw = Arrays.copyOfRange(fooData_raw, fooData_raw.length-Nfft, fooData_raw.length);   //just grab the most recent block of data
-        fftBuff[Ichan].forward(fooData_raw); //compute FFT on this channel of data
-        
-        //average the FFT with previous FFT data...log average
-        double min_val = 0.01d;
-        double foo;
-        for (int I=0; I < fftBuff[Ichan].specSize(); I++) {   //loop over each fft bin
-          if (prevFFTdata[I] < min_val) prevFFTdata[I] = (float)min_val; //make sure we're not too small for the log calls
-          foo = fftBuff[Ichan].getBand(I); if (foo < min_val) foo = min_val; //make sure this value isn't too small
-          foo =   (1.0d-fft_smooth_fac) * java.lang.Math.log(java.lang.Math.pow(foo,2));
-          foo += fft_smooth_fac * java.lang.Math.log(java.lang.Math.pow((double)prevFFTdata[I],2)); 
-          foo_val = (float)java.lang.Math.sqrt(java.lang.Math.exp(foo)); //average in dB space
-          fftBuff[Ichan].setBand(I,foo_val);
-        }
     
-        //compute the stddev of the signal...for the head plot
-        float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
-        fooData_filt = Arrays.copyOfRange(fooData_filt, fooData_filt.length-Nfft, fooData_filt.length);   //just grab the most recent block of data
-        data_std_uV[Ichan]=std(fooData_filt);
-        
-        //compute the electrode impedance in a very simple way [rms to amplitude, then uVolt to Volt, then Volt/Amp to Ohm]
-        data_elec_imp_ohm[Ichan] = (sqrt(2.0)*data_std_uV[Ichan]*1.0e-6) / openBCI_impedanceDrive_amps;
-      }
-      
-      //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
-      gui.update(data_std_uV,data_elec_imp_ohm);
-      redrawScreenNow=true;
-    } 
-    else {
-      //not enough data has arrived yet.  do nothing more
+    return pointCounter;
+}
+
+void processNewData() {
+
+  byteRate_perSec = (int)(1000.f * ((float)(openBCI_byteCount - prevBytes)) / ((float)(millis() - prevMillis)));
+  prevBytes = openBCI_byteCount; 
+  prevMillis=millis();
+  float foo_val;
+  float prevFFTdata[] = new float[fftBuff[0].specSize()];
+
+  for (int Ichan=0;Ichan < nchan; Ichan++) {
+    //append data to larger buffer
+    appendAndShift(dataBuffY_uV[Ichan], yLittleBuff_uV[Ichan]);
+    
+    //look to see if the signal is railed
+    is_railed[Ichan]=false;
+    if (abs(dataPacketBuff[lastReadDataPacketInd].values[Ichan]) > threshold_railed) {
+      //println("OpenBCI_GUI: channel " + Ichan + " may be railed at " + dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
+      is_railed[Ichan]=true;
     }
+
+    //make a copy of the data for further processing
+    dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();
+  } 
     
-    //either way, update the title of the figure;
-    switch (eegDataSource) {
-      case DATASOURCE_NORMAL:
-        frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
-        break;
-      case DATASOURCE_SYNTHETIC:
-        frame.setTitle(int(frameRate) + " fps, " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
-        break;
-      case DATASOURCE_PLAYBACKFILE:
-        frame.setTitle(int(frameRate) + " fps, Playing " + int(float(currentTableRowIndex)/fs_Hz) + " of " + int(float(playbackData_table.getRowCount())/fs_Hz) + " secs, Reading from: " + playbackData_fname + ", Writing to " + output_fname);
-        break;  
-    }       
+  //recompute the montage to make it be a mean-head reference
+  if (false) rereferenceTheMontage(dataBuffY_filtY_uV);
+    
+  for (int Ichan=0;Ichan < nchan; Ichan++) {  
+    //filter the data in the time domain
+    filterIIR(filtCoeff_notch.b, filtCoeff_notch.a, dataBuffY_filtY_uV[Ichan]); //notch
+    filterIIR(filtCoeff_bp.b, filtCoeff_bp.a, dataBuffY_filtY_uV[Ichan]); //bandpass
+
+    //update the FFT stuff
+    for (int I=0; I < fftBuff[Ichan].specSize(); I++) prevFFTdata[I] = fftBuff[Ichan].getBand(I); //copy the old spectrum values
+    float[] fooData_raw = dataBuffY_uV[Ichan];  //use the raw data
+    fooData_raw = Arrays.copyOfRange(fooData_raw, fooData_raw.length-Nfft, fooData_raw.length);   //just grab the most recent block of data
+    fftBuff[Ichan].forward(fooData_raw); //compute FFT on this channel of data
+    
+    //average the FFT with previous FFT data...log average
+    double min_val = 0.01d;
+    double foo;
+    for (int I=0; I < fftBuff[Ichan].specSize(); I++) {   //loop over each fft bin
+      if (prevFFTdata[I] < min_val) prevFFTdata[I] = (float)min_val; //make sure we're not too small for the log calls
+      foo = fftBuff[Ichan].getBand(I); if (foo < min_val) foo = min_val; //make sure this value isn't too small
+      foo =   (1.0d-fft_smooth_fac) * java.lang.Math.log(java.lang.Math.pow(foo,2));
+      foo += fft_smooth_fac * java.lang.Math.log(java.lang.Math.pow((double)prevFFTdata[I],2)); 
+      foo_val = (float)java.lang.Math.sqrt(java.lang.Math.exp(foo)); //average in dB space
+      fftBuff[Ichan].setBand(I,foo_val);
+    }
+
+    //compute the stddev of the signal...for the head plot
+    float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
+    fooData_filt = Arrays.copyOfRange(fooData_filt, fooData_filt.length-Nfft, fooData_filt.length);   //just grab the most recent block of data
+    data_std_uV[Ichan]=std(fooData_filt);
+    
+    //compute the electrode impedance in a very simple way [rms to amplitude, then uVolt to Volt, then Volt/Amp to Ohm]
+    data_elec_imp_ohm[Ichan] = (sqrt(2.0)*data_std_uV[Ichan]*1.0e-6) / openBCI_impedanceDrive_amps;
   }
   
-  if (redrawScreenNow) {
-    //redraw the screen...not every time, get paced by when data is being plotted
-    redrawScreenNow = false;  //reset for next time
-    background(0);
-    gui.draw();
-  }
-
-
 }
 
 void serialEvent(Serial port) {
@@ -788,9 +807,11 @@ void stopButtonWasPressed() {
   //update the push button with new text based on the current running state
   //gui.stopButton.setActive(isRunning);
   if (isRunning) {
-    gui.stopButton.setString(Gui_Manager.stopButton_pressToStop_txt);
+    println("OpenBCI_GUI: stopButtonWasPressed (a): changing string to " + Gui_Manager.stopButton_pressToStop_txt);
+    gui.stopButton.setString(Gui_Manager.stopButton_pressToStop_txt); 
   } 
   else {
+    println("OpenBCI_GUI: stopButtonWasPressed (a): changing string to " + Gui_Manager.stopButton_pressToStart_txt);
     gui.stopButton.setString(Gui_Manager.stopButton_pressToStart_txt);
   }
 }
