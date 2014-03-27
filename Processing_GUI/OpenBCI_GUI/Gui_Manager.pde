@@ -38,6 +38,7 @@ class Gui_Manager {
   Button[] impedanceButtonsN;
   Button intensityFactorButton;
   Button loglinPlotButton;
+  Button filtBPButton;
   TextBox titleMontage, titleFFT;
   TextBox[] chanValuesMontage;
   TextBox[] impValuesMontage;
@@ -159,7 +160,9 @@ class Gui_Manager {
     set_vertScaleAsLog(true);
     x = calcButtonXLocation(1, win_x, w, xoffset,gutter_between_buttons);
     loglinPlotButton = new Button(x,y,w,h,"Vert Scale\n" + get_vertScaleAsLogText(),fontInfo.buttonLabel_size);
-    
+  
+    x = calcButtonXLocation(2, win_x, w, xoffset,gutter_between_buttons);
+    filtBPButton = new Button(x,y,w,h,"BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name,fontInfo.buttonLabel_size);
     
     //set the initial display page for the GUI
     setGUIpage(GUI_PAGE_CHANNEL_ONOFF);  
@@ -539,6 +542,7 @@ class Gui_Manager {
       case GUI_PAGE_HEADPLOT_SETUP:
         intensityFactorButton.draw();
         loglinPlotButton.draw();
+        filtBPButton.draw();
         break;
       default:  //assume GUI_PAGE_CHANNEL_ONOFF:
         //show channel buttons

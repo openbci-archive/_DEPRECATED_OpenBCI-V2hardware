@@ -66,22 +66,11 @@ final int threshold_railed = int(pow(2,23)-1000);
 float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate];
 float filtState[] = new float[nchan];
 
-//define filter...Matlab....butter(2,[1 50]/(250/2));  %bandpass filter
-double[] b = new double[]{ 2.001387256580675e-001, 0.0f, -4.002774513161350e-001, 0.0f, 2.001387256580675e-001 };
-double[] a = new double[]{ 1.0f, -2.355934631131582e+000, 1.941257088655214e+000, -7.847063755334187e-001, 1.999076052968340e-001 };
-FilterConstants filtCoeff_bp =  new FilterConstants(b,a,"Bandpass 1-50Hz");
-double[] b2 = new double[]{ 9.650809863447347e-001, -2.424683201757643e-001, 1.945391494128786e+000, -2.424683201757643e-001, 9.650809863447347e-001};
-double[] a2 = new double[]{    1.000000000000000e+000,   -2.467782611297853e-001,    1.944171784691352e+000,   -2.381583792217435e-001,    9.313816821269039e-001}; 
-FilterConstants filtCoeff_notch =  new FilterConstants(b2,a2,"Notch 60Hz");
-
-////The code below causes no filtering of the data
-//double[] b = new double[] {1.0};
-//double[] a = new double[] {1.0};
-//FilterConstants filtCoeff_bp =  new FilterConstants(b,a,"No Filter");
-//double[] b2 = new double[] {1.0};
-//double[] a2 = new double[] {1.0};
-//FilterConstants filtCoeff_notch =  new FilterConstants(b2,a2,"No Filter");
-
+//allocate space for filters
+final int N_FILT_CONFIGS = 5;
+FilterConstants[] filtCoeff_bp = new FilterConstants[N_FILT_CONFIGS];
+FilterConstants[] filtCoeff_notch = new FilterConstants[N_FILT_CONFIGS];
+int currentFilt_ind = 0;
 
 //fft constants
 int Nfft = 256; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
@@ -110,6 +99,71 @@ final int nDataBackBuff = 3*(int)fs_Hz;
 DataPacket_ADS1299 dataPacketBuff[] = new DataPacket_ADS1299[nDataBackBuff]; //allocate the array, but doesn't call constructor.  Still need to call the constructor!
 int curDataPacketInd = -1;
 int lastReadDataPacketInd = -1;
+
+/////////////////////////////////////////////////////////////////////// functions
+
+//define filters...assumes fs = 250 Hz !!!!!
+void defineFilters(FilterConstants[] filtCoeff_bp,FilterConstants[] filtCoeff_notch) {
+  int n_filt = filtCoeff_bp.length;
+  double[] b, a, b2, a2;
+  String filt_txt, filt_txt2;
+  String short_txt, short_txt2; 
+    
+  for (int Ifilt=0;Ifilt<n_filt;Ifilt++) {
+    
+    //define common notch filter
+    b2 = new double[]{ 9.650809863447347e-001, -2.424683201757643e-001, 1.945391494128786e+000, -2.424683201757643e-001, 9.650809863447347e-001};
+    a2 = new double[]{    1.000000000000000e+000,   -2.467782611297853e-001,    1.944171784691352e+000,   -2.381583792217435e-001,    9.313816821269039e-001}; 
+    filtCoeff_notch[Ifilt] =  new FilterConstants(b2,a2,"Notch 60Hz","60Hz");
+    
+    //define bandpass filter
+    switch (Ifilt) {
+      case 0:
+        //butter(2,[1 50]/(250/2));  %bandpass filter
+        b = new double[]{ 2.001387256580675e-001, 0.0f, -4.002774513161350e-001, 0.0f, 2.001387256580675e-001 };
+        a = new double[]{ 1.0f, -2.355934631131582e+000, 1.941257088655214e+000, -7.847063755334187e-001, 1.999076052968340e-001 };
+        filt_txt = "Bandpass 1-50Hz";
+        short_txt = "1-50 Hz";
+        break;
+      case 1:
+        //butter(2,[7 13]/(250/2));
+        b = new double[]{  5.129268366104263e-003, 0.0f,  -1.025853673220853e-002, 0.0f, 5.129268366104263e-003 };
+        a = new double[]{ 1.0f,  -3.678895469764040e+000,  5.179700413522124e+000, -3.305801890016702e+000,8.079495914209149e-001 };
+        filt_txt = "Bandpass 7-13Hz";
+        short_txt = "7-13 Hz";
+        break;      
+      case 2:
+        //butter(2,[15 30]/(250/2));
+        b = new double[]{  2.785976611713614e-002, 0.0f, -5.571953223427228e-002  , 0.0f,    2.785976611713614e-002};
+        a = new double[]{ 1.0f,-2.987359543641179e+000, 3.738077415566927e+000, -2.277230414783372e+000,   5.869195080611911e-001};
+        filt_txt = "Bandpass 15-30Hz";
+        short_txt = "15-30 Hz";  
+        break;    
+      case 3:
+        //butter(2,[5 30]/(250/2));
+        b = new double[]{   6.745527388907288e-002, 0.0f, -1.349105477781458e-001   , 0.0f,  6.745527388907288e-002};
+        a = new double[]{ 1.0f,  -2.990204825208070e+000,3.456335732017884e+000, -1.872893729381472e+000,  4.128015980961884e-001};
+        filt_txt = "Bandpass 5-30Hz";
+        short_txt = "5-30 Hz";
+        break;      
+      default:
+        //no filtering
+        b = new double[] {1.0};
+        a = new double[] {1.0};
+        filt_txt = "No BP Filter";
+        short_txt = "No Filter";
+        b2 = new double[] {1.0};
+        a2 = new double[] {1.0};
+        filtCoeff_notch[Ifilt] =  new FilterConstants(b2,a2,"No Notch","No Notch");
+    }  //end switch block  
+
+    //create the bandpass filter    
+    filtCoeff_bp[Ifilt] =  new FilterConstants(b,a,filt_txt,short_txt);    
+  } //end loop over filters
+  
+} //end defineFilters method 
+ 
+
 
 void appendAndShift(float[] data, float[] newData) {
   int nshift = newData.length;
@@ -173,15 +227,18 @@ void setup() {
 
   //initialize the data
   prepareData(dataBuffX, dataBuffY_uV, fs_Hz);
-  
+
   //initialize the FFT objects
   for (int Ichan=0; Ichan < nchan; Ichan++) { 
     fftBuff[Ichan] = new FFT(Nfft, fs_Hz);
   };  //make the FFT objects
   initializeFFTObjects(fftBuff, dataBuffY_uV, Nfft, fs_Hz);
 
+  //prepare the filters...must be anytime before the GUI
+  defineFilters(filtCoeff_bp,filtCoeff_notch);
+
   //initilize the GUI
-  String filterDescription = filtCoeff_bp.name + ", " + filtCoeff_notch.name; 
+  String filterDescription = filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name; 
   gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,default_vertScale_uV,filterDescription);
   
   //associate the data to the GUI traces
@@ -379,8 +436,8 @@ void processNewData() {
     
   for (int Ichan=0;Ichan < nchan; Ichan++) {  
     //filter the data in the time domain
-    filterIIR(filtCoeff_notch.b, filtCoeff_notch.a, dataBuffY_filtY_uV[Ichan]); //notch
-    filterIIR(filtCoeff_bp.b, filtCoeff_bp.a, dataBuffY_filtY_uV[Ichan]); //bandpass
+    filterIIR(filtCoeff_notch[currentFilt_ind].b, filtCoeff_notch[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //notch
+    filterIIR(filtCoeff_bp[currentFilt_ind].b, filtCoeff_bp[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //bandpass
 
     //update the FFT stuff
     for (int I=0; I < fftBuff[Ichan].specSize(); I++) prevFFTdata[I] = fftBuff[Ichan].getBand(I); //copy the old spectrum values
@@ -767,6 +824,10 @@ void mousePressed() {
         gui.set_vertScaleAsLog(!gui.vertScaleAsLog); //toggle the state
         gui.loglinPlotButton.setIsActive(true);
       }
+      if (gui.filtBPButton.isMouseHere()) {
+        incrementFilterConfiguration();
+        gui.filtBPButton.setIsActive(true);
+      }
       break;
     //default:
   }
@@ -794,6 +855,7 @@ void mouseReleased() {
   gui.guiPageButton.setIsActive(false);
   gui.intensityFactorButton.setIsActive(false);
   gui.loglinPlotButton.setIsActive(false);
+   gui.filtBPButton.setIsActive(false);
   redrawScreenNow = true;
 }
 
@@ -947,6 +1009,18 @@ void openNewLogFile() {
 void closeLogFile() {
   fileoutput.closeFile();
 }
+
+void incrementFilterConfiguration() {
+  //increment the index
+  currentFilt_ind++;
+  if (currentFilt_ind >= N_FILT_CONFIGS) currentFilt_ind = 0;
+  
+  //update the button strings
+  gui.filtBPButton.but_txt = "BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name;
+  gui.titleMontage.string = "EEG Data (" + filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name + ")"; 
+  
+}
+  
 
 
 // here's a function to catch whenever the window is being closed, so that
