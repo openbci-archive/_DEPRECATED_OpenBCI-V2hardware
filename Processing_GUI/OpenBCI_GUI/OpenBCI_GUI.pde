@@ -263,7 +263,7 @@ void draw() {
     }       
   }
 
-  int drawLoopCounter_thresh = 100;
+  int drawLoopCounter_thresh = 200;
   if ((redrawScreenNow) || (drawLoop_counter >= drawLoopCounter_thresh)) {
     if (drawLoop_counter >= drawLoopCounter_thresh) println("OpenBCI_GUI: redrawing based on loop counter...");
     drawLoop_counter=0;
@@ -698,7 +698,6 @@ void parseKeycode(int val) {
 
 //swtich yard if a click is detected
 void mousePressed() {
-   redrawScreenNow = true;
    
   //was the stopButton pressed?
   if (gui.stopButton.isMouseHere()) { 
@@ -761,6 +760,8 @@ void mousePressed() {
     //toggle the display of the montage values
     gui.showMontageValues  = !gui.showMontageValues;
   }
+  
+  redrawScreenNow = true;
 }
 
 void mouseReleased() {
