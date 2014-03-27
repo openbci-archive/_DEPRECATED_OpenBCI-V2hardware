@@ -19,7 +19,7 @@ class Button {
   color color_highlight = color(102);
   color color_notPressed = color(255);
   color rectHighlight;
-  boolean isMouseHere = false;
+  //boolean isMouseHere = false;
   boolean isActive = false;
   String but_txt;
   PFont font;
@@ -53,15 +53,13 @@ class Button {
     isActive = val;
   }
   
-  public boolean updateIsMouseHere() {
+  public boolean isMouseHere() {
     if ( overRect(but_x, but_y, but_dx, but_dy) ) {
-      isMouseHere = true;
+      return true;
     } 
     else {
-      isMouseHere = false;
+      return false;
     }
-    
-    return isMouseHere;
   }
 
   color getColor() {

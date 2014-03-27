@@ -584,7 +584,7 @@ void parseKeycode(int val) {
     case 9:
       println("OpenBCI_GUI: parseKeycode(" + val + "): received TAB keypress.  Toggling Impedance Control...");
       //gui.showImpedanceButtons = !gui.showImpedanceButtons;
-      gui.incrementGUImode();
+      gui.incrementGUIpage();
       break;    
     case 10:
       println("OpenBCI_GUI: parseKeycode(" + val + "): received ENTER keypress.  Ignoring...");
@@ -681,52 +681,52 @@ void parseKeycode(int val) {
 void mousePressed() {
 
   //was the stopButton pressed?
-  if (gui.stopButton.updateIsMouseHere()) { 
+  if (gui.stopButton.isMouseHere()) { 
     stopButtonWasPressed(); 
     gui.stopButton.setIsActive(true);
     redrawScreenNow = true;
   }
   
-  //was the channel mode button pressed?
-  if (gui.guiModeButton.updateIsMouseHere()) {
-    gui.incrementGUImode();
+  //was the gui page button pressed?
+  if (gui.guiPageButton.isMouseHere()) {
+    gui.incrementGUIpage();
     //toggle whether to show channel on/off or channel impedance on/off
     //gui.showImpedanceButtons = !gui.showImpedanceButtons;
-    gui.guiModeButton.setIsActive(true);
+    gui.guiPageButton.setIsActive(true);
     redrawScreenNow = true;
   }
 
   //check the buttons
-  switch (gui.guiMode) {
-    case Gui_Manager.GUI_MODE_CHANNEL_ONOFF:
+  switch (gui.guiPage) {
+    case Gui_Manager.GUI_PAGE_CHANNEL_ONOFF:
       //check the channel buttons
       for (int Ibut = 0; Ibut < gui.chanButtons.length; Ibut++) {
-        if (gui.chanButtons[Ibut].updateIsMouseHere()) { 
+        if (gui.chanButtons[Ibut].isMouseHere()) { 
           toggleChannelState(Ibut);
           redrawScreenNow = true;
         }
       }
       break;
-    case Gui_Manager.GUI_MODE_IMPEDANCE_CHECK:
+    case Gui_Manager.GUI_PAGE_IMPEDANCE_CHECK:
       //check the impedance buttons
       for (int Ibut = 0; Ibut < gui.impedanceButtonsP.length; Ibut++) {
-        if (gui.impedanceButtonsP[Ibut].updateIsMouseHere()) { 
+        if (gui.impedanceButtonsP[Ibut].isMouseHere()) { 
           toggleChannelImpedanceState(gui.impedanceButtonsP[Ibut],Ibut,0);
           redrawScreenNow = true;
         }
-        if (gui.impedanceButtonsN[Ibut].updateIsMouseHere()) { 
+        if (gui.impedanceButtonsN[Ibut].isMouseHere()) { 
           toggleChannelImpedanceState(gui.impedanceButtonsN[Ibut],Ibut,1);
           redrawScreenNow = true;
         }
       }
       break;
-    case Gui_Manager.GUI_MODE_HEADPLOT_SETUP:
-      if (gui.intensityFactorButton.updateIsMouseHere()) {
+    case Gui_Manager.GUI_PAGE_HEADPLOT_SETUP:
+      if (gui.intensityFactorButton.isMouseHere()) {
         gui.incrementVertScaleFactor();
         gui.intensityFactorButton.setIsActive(true);
         redrawScreenNow = true;
       }
-      if (gui.loglinPlotButton.updateIsMouseHere()) {
+      if (gui.loglinPlotButton.isMouseHere()) {
         gui.set_vertScaleAsLog(!gui.vertScaleAsLog); //toggle the state
         gui.loglinPlotButton.setIsActive(true);
         redrawScreenNow = true;
@@ -756,7 +756,7 @@ void mouseReleased() {
   //some buttons light up only when being actively pressed.  Now that we've
   //released the mouse button, turn off those buttons.
   gui.stopButton.setIsActive(false);
-  gui.guiModeButton.setIsActive(false);
+  gui.guiPageButton.setIsActive(false);
   gui.intensityFactorButton.setIsActive(false);
   gui.loglinPlotButton.setIsActive(false);
   redrawScreenNow = true;

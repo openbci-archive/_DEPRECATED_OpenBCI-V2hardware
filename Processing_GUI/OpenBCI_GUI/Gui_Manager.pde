@@ -32,7 +32,7 @@ class Gui_Manager {
   PlotFontInfo fontInfo;
   HeadPlot headPlot1;
   Button[] chanButtons;
-  Button guiModeButton;
+  Button guiPageButton;
   //boolean showImpedanceButtons;
   Button[] impedanceButtonsP;
   Button[] impedanceButtonsN;
@@ -42,7 +42,7 @@ class Gui_Manager {
   TextBox[] chanValuesMontage;
   TextBox[] impValuesMontage;
   boolean showMontageValues;
-  public int guiMode;
+  public int guiPage;
   boolean vertScaleAsLog = true;
   
   private float fftYOffset[];
@@ -53,10 +53,10 @@ class Gui_Manager {
   float vertScaleMin_uV_whenLog = 0.1f;
   float montage_yoffsets[];
   
-  public final static int GUI_MODE_CHANNEL_ONOFF = 0;
-  public final static int GUI_MODE_IMPEDANCE_CHECK = 1;
-  public final static int GUI_MODE_HEADPLOT_SETUP = 2;
-  public final static int N_GUI_MODES = 3;
+  public final static int GUI_PAGE_CHANNEL_ONOFF = 0;
+  public final static int GUI_PAGE_IMPEDANCE_CHECK = 1;
+  public final static int GUI_PAGE_HEADPLOT_SETUP = 2;
+  public final static int N_GUI_PAGES = 3;
   
   public final static String stopButton_pressToStop_txt = "Press to Stop";
   public final static String stopButton_pressToStart_txt = "Press to Start";
@@ -118,10 +118,10 @@ class Gui_Manager {
     //int y = win_y - h;
     stopButton = new Button(x,y,w,h,stopButton_pressToStop_txt,fontInfo.buttonLabel_size);
     
-    //setup the gui mode button
-    w = 60;
+    //setup the gui page button
+    w = 80;
     x = (int)(3*gutter_between_buttons*win_x);
-    guiModeButton = new Button(x,y,w,h,"Mode",fontInfo.buttonLabel_size);
+    guiPageButton = new Button(x,y,w,h,"Page\n" + (guiPage+1) + " of " + N_GUI_PAGES,fontInfo.buttonLabel_size);
         
     //setup the channel on/off buttons
     int xoffset = x + w + (int)(2*gutter_between_buttons*win_x);
@@ -161,8 +161,8 @@ class Gui_Manager {
     loglinPlotButton = new Button(x,y,w,h,"Vert Scale\n" + get_vertScaleAsLogText(),fontInfo.buttonLabel_size);
     
     
-    //set the initial display mode for the GUI
-    setGUImode(GUI_MODE_CHANNEL_ONOFF);  
+    //set the initial display page for the GUI
+    setGUIpage(GUI_PAGE_CHANNEL_ONOFF);  
   } 
   private int calcButtonXLocation(int Ibut,int win_x,int w, int xoffset, float gutter_between_buttons) {
     return xoffset + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
@@ -424,16 +424,18 @@ class Gui_Manager {
     headPlot1.setIntensityData_byRef(dataBuffY_std,is_railed);
   }
   
-  public void setGUImode(int mode) {
-    if ((mode >= 0) && (mode < N_GUI_MODES)) {
-      guiMode = mode;
+  public void setGUIpage(int page) {
+    if ((page >= 0) && (page < N_GUI_PAGES)) {
+      guiPage = page;
     } else {
-      guiMode = 0;
+      guiPage = 0;
     }
+    //update the text on the button
+    guiPageButton.setString("Page\n" + (guiPage+1) + " of " + N_GUI_PAGES);
   }
   
-  public void incrementGUImode() {
-    setGUImode( (guiMode+1) % N_GUI_MODES );
+  public void incrementGUIpage() {
+    setGUIpage( (guiPage+1) % N_GUI_PAGES );
   }
   
   public boolean isMouseOnGraph2D(Graph2D g, int mouse_x, int mouse_y) {
@@ -522,11 +524,11 @@ class Gui_Manager {
     gMontage.draw(); titleMontage.draw();//println("completed montage draw..."); 
     gFFT.draw(); titleFFT.draw();//println("completed FFT draw..."); 
     stopButton.draw();
-    guiModeButton.draw();
+    guiPageButton.draw();
     
-    switch (guiMode) {
-      //note: GUI_MODE_CHANNEL_ON_OFF is the default at the end
-      case GUI_MODE_IMPEDANCE_CHECK:
+    switch (guiPage) {
+      //note: GUI_PAGE_CHANNEL_ON_OFF is the default at the end
+      case GUI_PAGE_IMPEDANCE_CHECK:
         //show impedance buttons and text
         for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
           impedanceButtonsP[Ichan].draw(); //P-channel buttons
@@ -534,11 +536,11 @@ class Gui_Manager {
           impValuesMontage[Ichan].draw();  //impedance values on montage plot   
         }  
         break;
-      case GUI_MODE_HEADPLOT_SETUP:
+      case GUI_PAGE_HEADPLOT_SETUP:
         intensityFactorButton.draw();
         loglinPlotButton.draw();
         break;
-      default:  //assume GUI_MODE_CHANNEL_ONOFF:
+      default:  //assume GUI_PAGE_CHANNEL_ONOFF:
         //show channel buttons
         for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) { chanButtons[Ichan].draw(); }
     }
