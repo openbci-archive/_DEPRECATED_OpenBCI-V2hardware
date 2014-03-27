@@ -263,9 +263,9 @@ void draw() {
     }       
   }
 
-  
-  if ((redrawScreenNow) || (drawLoop_counter >= 10000)) {
-    if (drawLoop_counter >= 10000) println("OpenBCI_GUI: redrawing based on loop counter...");
+  int drawLoopCounter_thresh = 100;
+  if ((redrawScreenNow) || (drawLoop_counter >= drawLoopCounter_thresh)) {
+    if (drawLoop_counter >= drawLoopCounter_thresh) println("OpenBCI_GUI: redrawing based on loop counter...");
     drawLoop_counter=0;
     
     //redraw the screen...not every time, get paced by when data is being plotted
@@ -698,12 +698,12 @@ void parseKeycode(int val) {
 
 //swtich yard if a click is detected
 void mousePressed() {
-
+   redrawScreenNow = true;
+   
   //was the stopButton pressed?
   if (gui.stopButton.isMouseHere()) { 
     stopButtonWasPressed(); 
     gui.stopButton.setIsActive(true);
-    redrawScreenNow = true;
   }
   
   //was the gui page button pressed?
@@ -712,7 +712,6 @@ void mousePressed() {
     //toggle whether to show channel on/off or channel impedance on/off
     //gui.showImpedanceButtons = !gui.showImpedanceButtons;
     gui.guiPageButton.setIsActive(true);
-    redrawScreenNow = true;
   }
 
   //check the buttons
@@ -722,7 +721,6 @@ void mousePressed() {
       for (int Ibut = 0; Ibut < gui.chanButtons.length; Ibut++) {
         if (gui.chanButtons[Ibut].isMouseHere()) { 
           toggleChannelState(Ibut);
-          redrawScreenNow = true;
         }
       }
       break;
@@ -731,7 +729,6 @@ void mousePressed() {
       for (int Ibut = 0; Ibut < gui.impedanceButtonsP.length; Ibut++) {
         if (gui.impedanceButtonsP[Ibut].isMouseHere()) { 
           toggleChannelImpedanceState(gui.impedanceButtonsP[Ibut],Ibut,0);
-          redrawScreenNow = true;
         }
         if (gui.impedanceButtonsN[Ibut].isMouseHere()) { 
           toggleChannelImpedanceState(gui.impedanceButtonsN[Ibut],Ibut,1);
@@ -743,12 +740,10 @@ void mousePressed() {
       if (gui.intensityFactorButton.isMouseHere()) {
         gui.incrementVertScaleFactor();
         gui.intensityFactorButton.setIsActive(true);
-        redrawScreenNow = true;
       }
       if (gui.loglinPlotButton.isMouseHere()) {
         gui.set_vertScaleAsLog(!gui.vertScaleAsLog); //toggle the state
         gui.loglinPlotButton.setIsActive(true);
-        redrawScreenNow = true;
       }
       break;
     //default:
@@ -759,15 +754,12 @@ void mousePressed() {
     GraphDataPoint dataPoint = new GraphDataPoint();
     gui.getFFTdataPoint(mouseX,mouseY,dataPoint);
     println("OpenBCI_GUI: FFT data point: " + String.format("%4.2f",dataPoint.x) + " " + dataPoint.x_units + ", " + String.format("%4.2f",dataPoint.y) + " " + dataPoint.y_units);
-    redrawScreenNow = true;
   } else if (gui.headPlot1.isPixelInsideHead(mouseX,mouseY)) {
     //toggle the head plot contours
     gui.headPlot1.drawHeadAsContours = !gui.headPlot1.drawHeadAsContours;
-    redrawScreenNow = true;
   } else if (gui.isMouseOnMontage(mouseX,mouseY)) {
     //toggle the display of the montage values
     gui.showMontageValues  = !gui.showMontageValues;
-    redrawScreenNow = true;
   }
 }
 
@@ -807,11 +799,11 @@ void stopButtonWasPressed() {
   //update the push button with new text based on the current running state
   //gui.stopButton.setActive(isRunning);
   if (isRunning) {
-    println("OpenBCI_GUI: stopButtonWasPressed (a): changing string to " + Gui_Manager.stopButton_pressToStop_txt);
+    //println("OpenBCI_GUI: stopButtonWasPressed (a): changing string to " + Gui_Manager.stopButton_pressToStop_txt);
     gui.stopButton.setString(Gui_Manager.stopButton_pressToStop_txt); 
   } 
   else {
-    println("OpenBCI_GUI: stopButtonWasPressed (a): changing string to " + Gui_Manager.stopButton_pressToStart_txt);
+    //println("OpenBCI_GUI: stopButtonWasPressed (a): changing string to " + Gui_Manager.stopButton_pressToStart_txt);
     gui.stopButton.setString(Gui_Manager.stopButton_pressToStart_txt);
   }
 }

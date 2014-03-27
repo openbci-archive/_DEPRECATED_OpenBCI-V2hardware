@@ -43,7 +43,7 @@ class Button {
   
   public void setString(String txt) {
     but_txt = txt;
-    println("Button: setString: string = " + txt);
+    //println("Button: setString: string = " + txt);
   }
   
   public boolean isActive() {
