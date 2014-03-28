@@ -880,6 +880,7 @@ void stopButtonWasPressed() {
   else { //not running
     println("openBCI_GUI: startButton was pressed...starting data transfer...");
     startRunning();
+    lastPlayback_millis = millis();  //used for synthesizeData and readFromFile.  This restarts the clock that keeps the playback at the right pace.
   }
 
   //update the push button with new text based on the current running state
@@ -916,8 +917,9 @@ int getPlaybackDataFromTable(Table datatable, int currentTableRowIndex, float sc
   //check to see if we can load a value from the table
   if (currentTableRowIndex >= datatable.getRowCount()) {
     //end of file
-    println("OpenBCI_GUI: hit the end of the playback data file.  stopping.");
-    if (isRunning) stopRunning();
+    println("OpenBCI_GUI: hit the end of the playback data file.  starting over...");
+    //if (isRunning) stopRunning();
+    currentTableRowIndex = 0;
   } else {
     //get the row
     TableRow row = datatable.getRow(currentTableRowIndex);
