@@ -34,6 +34,7 @@ class HeadPlot {
   private int image_x,image_y;
   public boolean drawHeadAsContours;
   private boolean plot_color_as_log = true;
+  public float smooth_fac = 0.0f;  
 
   HeadPlot(float x,float y,float w,float h,int win_x,int win_y) {
     final int n_elec = 8;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
@@ -796,7 +797,7 @@ class HeadPlot {
         //is this pixel inside the head?
         if (electrode_color_weightFac[0][Ix][Iy] >= 0.0) { //zero and positive values are inside the head
           //it is inside the head.  set the voltage based on the electrodes
-          headVoltage[Ix][Iy] = calcPixelVoltage(Ix,Iy);
+          headVoltage[Ix][Iy] = calcPixelVoltage(Ix,Iy,headVoltage[Ix][Iy]);
 
         } else {  //negative values are outside of the head
           //pixel is outside the head.
@@ -806,7 +807,7 @@ class HeadPlot {
     }
   }    
 
-  private float calcPixelVoltage(int pixel_Ix,int pixel_Iy) {
+  private float calcPixelVoltage(int pixel_Ix,int pixel_Iy,float prev_val) {
     float weight,elec_volt;
     int n_elec = electrode_xy.length;
     float voltage = 0.0f;
@@ -819,6 +820,10 @@ class HeadPlot {
       if (is_railed[Ielec]) elec_volt = assumed_railed_voltage_uV;
       voltage += weight*elec_volt;
     }
+    
+    //smooth in time
+    if (smooth_fac > 0.0f) voltage = smooth_fac*prev_val + (1.0-smooth_fac)*voltage;     
+    
     return voltage;
   }
       

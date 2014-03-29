@@ -39,6 +39,8 @@ class Gui_Manager {
   Button intensityFactorButton;
   Button loglinPlotButton;
   Button filtBPButton;
+  Button fftNButton;
+  Button smoothingButton;
   TextBox titleMontage, titleFFT;
   TextBox[] chanValuesMontage;
   TextBox[] impValuesMontage;
@@ -62,7 +64,8 @@ class Gui_Manager {
   public final static String stopButton_pressToStop_txt = "Press to Stop";
   public final static String stopButton_pressToStart_txt = "Press to Start";
   
-  Gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float default_yScale_uV, String filterDescription) {  
+  Gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float default_yScale_uV, 
+    String filterDescription, float smooth_fac) {  
     
      //define some layout parameters
     int axes_x, axes_y;
@@ -107,8 +110,10 @@ class Gui_Manager {
     float[] axisHead_relPos = axisFFT_relPos.clone();
     axisHead_relPos[1] = gutter_topbot;  //set y position to be at top of left side
     axisHead_relPos[3] = available_top2bot*up_down_split  - gutter_topbot;
-    headPlot1 = new HeadPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y);  
-
+    headPlot1 = new HeadPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y);
+    setSmoothFac(smooth_fac);
+    
+    //setup the buttons
     int w,h,x,y;
            
     //setup stop button
@@ -152,17 +157,23 @@ class Gui_Manager {
     }
 
     //setup the headPlot buttons
-    w = w_orig;
-    h = h;
-    x = calcButtonXLocation(0, win_x, w, xoffset,gutter_between_buttons);
-    intensityFactorButton = new Button(x,y,w,h,"Vert Scale\n" + round(vertScale_uV) + "uV",fontInfo.buttonLabel_size);
+    int Ibut=0;    w = w_orig;    h = h;
     
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    filtBPButton = new Button(x,y,w,h,"BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name,fontInfo.buttonLabel_size);
+  
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    intensityFactorButton = new Button(x,y,w,h,"Vert Scale\n" + round(vertScale_uV) + "uV",fontInfo.buttonLabel_size);
+  
+    //x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    //fftNButton = new Button(x,y,w,h,"FFT N\n" + Nfft,fontInfo.buttonLabel_size);
+   
     set_vertScaleAsLog(true);
-    x = calcButtonXLocation(1, win_x, w, xoffset,gutter_between_buttons);
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     loglinPlotButton = new Button(x,y,w,h,"Vert Scale\n" + get_vertScaleAsLogText(),fontInfo.buttonLabel_size);
   
-    x = calcButtonXLocation(2, win_x, w, xoffset,gutter_between_buttons);
-    filtBPButton = new Button(x,y,w,h,"BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name,fontInfo.buttonLabel_size);
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    smoothingButton = new Button(x,y,w,h,"Smooth\n" + headPlot1.smooth_fac,fontInfo.buttonLabel_size);
     
     //set the initial display page for the GUI
     setGUIpage(GUI_PAGE_CHANNEL_ONOFF);  
@@ -236,6 +247,10 @@ class Gui_Manager {
     if (loglinPlotButton != null) {
       loglinPlotButton.setString("Vert Scale\n" + get_vertScaleAsLogText());
     }
+  }
+  
+  public void setSmoothFac(float fac) {
+    headPlot1.smooth_fac = fac;
   }
     
   public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, PlotFontInfo fontInfo,String filterDescription) {
@@ -543,6 +558,8 @@ class Gui_Manager {
         intensityFactorButton.draw();
         loglinPlotButton.draw();
         filtBPButton.draw();
+        //fftNButton.draw();
+        smoothingButton.draw();
         break;
       default:  //assume GUI_PAGE_CHANNEL_ONOFF:
         //show channel buttons

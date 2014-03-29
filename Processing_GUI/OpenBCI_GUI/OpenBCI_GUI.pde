@@ -74,8 +74,12 @@ int currentFilt_ind = 0;
 
 //fft constants
 int Nfft = 256; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
-float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
+//float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
+float[] smoothFac = new float[]{0.75, 0.9, 0.95, 0.98, 0.0, 0.5};
+final int N_SMOOTHEFAC = 6;
+int smoothFac_ind = 0;
+
 
 //plotting constants
 Gui_Manager gui;
@@ -239,7 +243,7 @@ void setup() {
 
   //initilize the GUI
   String filterDescription = filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name; 
-  gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,default_vertScale_uV,filterDescription);
+  gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,default_vertScale_uV,filterDescription,smoothFac[smoothFac_ind]);
   
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
@@ -432,8 +436,8 @@ void processNewData() {
     for (int I=0; I < fftBuff[Ichan].specSize(); I++) {   //loop over each fft bin
       if (prevFFTdata[I] < min_val) prevFFTdata[I] = (float)min_val; //make sure we're not too small for the log calls
       foo = fftBuff[Ichan].getBand(I); if (foo < min_val) foo = min_val; //make sure this value isn't too small
-      foo =   (1.0d-fft_smooth_fac) * java.lang.Math.log(java.lang.Math.pow(foo,2));
-      foo += fft_smooth_fac * java.lang.Math.log(java.lang.Math.pow((double)prevFFTdata[I],2)); 
+      foo =   (1.0d-smoothFac[smoothFac_ind]) * java.lang.Math.log(java.lang.Math.pow(foo,2));
+      foo += smoothFac[smoothFac_ind] * java.lang.Math.log(java.lang.Math.pow((double)prevFFTdata[I],2)); 
       foo_val = (float)java.lang.Math.sqrt(java.lang.Math.exp(foo)); //average in dB space
       fftBuff[Ichan].setBand(I,foo_val);
     }
@@ -762,16 +766,14 @@ void mousePressed() {
    
   //was the stopButton pressed?
   if (gui.stopButton.isMouseHere()) { 
-    stopButtonWasPressed(); 
     gui.stopButton.setIsActive(true);
+    stopButtonWasPressed(); 
   }
   
   //was the gui page button pressed?
   if (gui.guiPageButton.isMouseHere()) {
-    gui.incrementGUIpage();
-    //toggle whether to show channel on/off or channel impedance on/off
-    //gui.showImpedanceButtons = !gui.showImpedanceButtons;
     gui.guiPageButton.setIsActive(true);
+    gui.incrementGUIpage();
   }
 
   //check the buttons
@@ -798,16 +800,20 @@ void mousePressed() {
       break;
     case Gui_Manager.GUI_PAGE_HEADPLOT_SETUP:
       if (gui.intensityFactorButton.isMouseHere()) {
-        gui.incrementVertScaleFactor();
         gui.intensityFactorButton.setIsActive(true);
+        gui.incrementVertScaleFactor();
       }
       if (gui.loglinPlotButton.isMouseHere()) {
-        gui.set_vertScaleAsLog(!gui.vertScaleAsLog); //toggle the state
         gui.loglinPlotButton.setIsActive(true);
+        gui.set_vertScaleAsLog(!gui.vertScaleAsLog); //toggle the state
       }
       if (gui.filtBPButton.isMouseHere()) {
-        incrementFilterConfiguration();
         gui.filtBPButton.setIsActive(true);
+        incrementFilterConfiguration();
+      }
+      if (gui.smoothingButton.isMouseHere()) {
+        gui.smoothingButton.setIsActive(true);
+        incrementSmoothing();
       }
       break;
     //default:
@@ -836,7 +842,8 @@ void mouseReleased() {
   gui.guiPageButton.setIsActive(false);
   gui.intensityFactorButton.setIsActive(false);
   gui.loglinPlotButton.setIsActive(false);
-   gui.filtBPButton.setIsActive(false);
+  gui.filtBPButton.setIsActive(false);
+  gui.smoothingButton.setIsActive(false);
   redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is released
 }
 
@@ -935,7 +942,6 @@ void toggleChannelState(int Ichan) {
 }
 
 
-
 //Ichan is zero referenced (not one referenced)
 boolean isChannelActive(int Ichan) {
   boolean return_val = false;
@@ -1023,7 +1029,17 @@ void incrementFilterConfiguration() {
   
 }
   
-
+void incrementSmoothing() {
+  smoothFac_ind++;
+  if (smoothFac_ind >= N_SMOOTHEFAC) smoothFac_ind = 0;
+  
+  //tell the GUI
+  gui.setSmoothFac(smoothFac[smoothFac_ind]);
+  
+  //update the buttons
+  gui.smoothingButton.but_txt = "Smooth\n" + smoothFac[smoothFac_ind];
+}
+  
 
 // here's a function to catch whenever the window is being closed, so that
 // it stops OpenBCI
