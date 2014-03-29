@@ -40,7 +40,7 @@ int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
 int currentTableRowIndex = 0;
 Table playbackData_table;
-int lastPlayback_millis = -100; //any negative number
+int nextPlayback_millis = -100; //any negative number
 
 //properties of the openBCI board
 float fs_Hz = 250.0f;  //sample rate used by OpenBCI board
@@ -334,78 +334,57 @@ void draw() {
 }
 
 int getDataIfAvailable(int pointCounter) {
-     switch (eegDataSource) {
-      case DATASOURCE_NORMAL:   //use live data from the Serial stream
-        //first, get the new data (if any is available
-        openBCI.updateState();
-        
-        //next, gather any new data into the "little buffer"
-        while ( (curDataPacketInd != lastReadDataPacketInd) && (pointCounter < nPointsPerUpdate)) {
-          lastReadDataPacketInd = (lastReadDataPacketInd+1) % dataPacketBuff.length;  //increment to read the next packet
-          for (int Ichan=0; Ichan < nchan; Ichan++) {   //loop over each cahnnel
-            //scale the data into engineering units ("microvolts") and save to the "little buffer"
-            yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan] * scale_fac_uVolts_per_count;
-          } 
-          pointCounter++; //increment counter for "little buffer"
-        }
-        break;
-      case DATASOURCE_SYNTHETIC: //use synthetic data (for GUI debugging)
-        //has enough time passed?
-        if (millis() >= lastPlayback_millis + round(nPointsPerUpdate*1000.f/fs_Hz)) {
-          //prepare for next time
-          if (lastPlayback_millis < 0) { 
-            lastPlayback_millis = millis();
-          } else {
-            lastPlayback_millis += + round(nPointsPerUpdate*1000.f/fs_Hz);
-          }
-          
-          //now generate the data
-          lastReadDataPacketInd = 0;
-          for (int i = 0; i < nPointsPerUpdate; i++) {
-            //synthesize data
-            dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
-            synthesizeData(nchan, fs_Hz, scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
-    
-            //gather the data into the "little buffer"
-            for (int Ichan=0; Ichan < nchan; Ichan++) {
-              //scale the data into engineering units..."microvolts"
-              yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
-            }
-            pointCounter++;
-          }
-        }
-        break;
-      case DATASOURCE_PLAYBACKFILE:
-        //has enough time passed?
-        if (millis() >= lastPlayback_millis + round(nPointsPerUpdate*1000.f/fs_Hz)) {
-          //prepare for next time
-          if (lastPlayback_millis < 0) { 
-            lastPlayback_millis = millis();
-          } else {
-            lastPlayback_millis += + round(nPointsPerUpdate*1000.f/fs_Hz);
-          }
-          
-          //get the data
-          lastReadDataPacketInd = 0;
-          for (int i = 0; i < nPointsPerUpdate; i++) {
-            //get one data point and put it into the packet buffer (as if the data were coming in from the Serial port)
-            dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
-            currentTableRowIndex=getPlaybackDataFromTable(playbackData_table,currentTableRowIndex,scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
   
-            //gather the data into the "little buffer"
-            for (int Ichan=0; Ichan < nchan; Ichan++) {
-              //scale the data into engineering units..."microvolts"
-              yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
-            }
-            pointCounter++;
-          }
+  if (eegDataSource == DATASOURCE_NORMAL) {
+    //get data from serial port as it streams in
+
+      //first, get the new data (if any is available
+      openBCI.updateState();
+      
+      //next, gather any new data into the "little buffer"
+      while ( (curDataPacketInd != lastReadDataPacketInd) && (pointCounter < nPointsPerUpdate)) {
+        lastReadDataPacketInd = (lastReadDataPacketInd+1) % dataPacketBuff.length;  //increment to read the next packet
+        for (int Ichan=0; Ichan < nchan; Ichan++) {   //loop over each cahnnel
+          //scale the data into engineering units ("microvolts") and save to the "little buffer"
+          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan] * scale_fac_uVolts_per_count;
+        } 
+        pointCounter++; //increment counter for "little buffer"
+      }
+  } else {
+    // make or load data to simulate real time
+        
+    //has enough time passed?
+    int current_millis = millis();
+    if (current_millis >= nextPlayback_millis) {
+      //prepare for next time
+      int increment_millis = int(round(float(nPointsPerUpdate)*1000.f/fs_Hz));
+      if (nextPlayback_millis < 0) nextPlayback_millis = current_millis;
+      nextPlayback_millis += increment_millis;
+
+      // generate or read the data
+      lastReadDataPacketInd = 0;
+      for (int i = 0; i < nPointsPerUpdate; i++) {
+        dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
+        switch (eegDataSource) {
+          case DATASOURCE_SYNTHETIC: //use synthetic data (for GUI debugging)   
+            synthesizeData(nchan, fs_Hz, scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
+            break;
+          case DATASOURCE_PLAYBACKFILE: 
+            currentTableRowIndex=getPlaybackDataFromTable(playbackData_table,currentTableRowIndex,scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
+            break;
+          default:
+            //no action
         }
-        break;
-      default:
-        //no action
-    }
-    
-    return pointCounter;
+        //gather the data into the "little buffer"
+        for (int Ichan=0; Ichan < nchan; Ichan++) {
+          //scale the data into engineering units..."microvolts"
+          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
+        }
+        pointCounter++;
+      } //close the loop over data points
+    } // close "has enough time passed"
+  } 
+  return pointCounter;
 }
 
 void processNewData() {
@@ -880,7 +859,7 @@ void stopButtonWasPressed() {
   else { //not running
     println("openBCI_GUI: startButton was pressed...starting data transfer...");
     startRunning();
-    lastPlayback_millis = millis();  //used for synthesizeData and readFromFile.  This restarts the clock that keeps the playback at the right pace.
+    nextPlayback_millis = millis();  //used for synthesizeData and readFromFile.  This restarts the clock that keeps the playback at the right pace.
   }
 
   //update the push button with new text based on the current running state
