@@ -879,7 +879,7 @@ void stopButtonWasPressed() {
 void synthesizeData(int nchan, float fs_Hz, float scale_fac_uVolts_per_count, DataPacket_ADS1299 curDataPacket) {
   float val_uV;
   for (int Ichan=0; Ichan < nchan; Ichan++) {
-    if (gui.chanButtons[Ichan].isActive()==false) { //an INACTIVE button has not been pressed, which means that the channel itself is ACTIVE
+    if (isChannelActive(Ichan)) { 
       val_uV = randomGaussian()*sqrt(fs_Hz/2.0f); // ensures that it has amplitude of one unit per sqrt(Hz) of signal bandwidth
       //val_uV = random(1)*sqrt(fs_Hz/2.0f); // ensures that it has amplitude of one unit per sqrt(Hz) of signal bandwidth
       if (Ichan==0) val_uV*= 10f;  //scale one channel higher
@@ -908,7 +908,7 @@ int getPlaybackDataFromTable(Table datatable, int currentTableRowIndex, float sc
     
     //get each value
     for (int Ichan=0; Ichan < nchan; Ichan++) {
-      if (Ichan < datatable.getColumnCount()) {
+      if (isChannelActive(Ichan) && (Ichan < datatable.getColumnCount())) {
         val_uV = row.getFloat(Ichan);
       } else {
         //use zeros
@@ -925,18 +925,37 @@ int getPlaybackDataFromTable(Table datatable, int currentTableRowIndex, float sc
 //toggleChannelState: : Ichan is [0 nchan-1]
 void toggleChannelState(int Ichan) {
   if ((Ichan >= 0) && (Ichan < gui.chanButtons.length)) {
-    if (gui.chanButtons[Ichan].isActive()) { //button is pressed, which means the channel was NOT active
-      //change to activate
-      activateChannel(Ichan);
+    if (isChannelActive(Ichan)) {
+      deactivateChannel(Ichan);      
     } 
-    else {  //button is not pressed, which means the channel is active
-      //change to activate
-      deactivateChannel(Ichan);
+    else {
+      activateChannel(Ichan);
     }
   }
 }
 
-//activateChannel: Ichan is [0 nchan-1]
+
+
+//Ichan is zero referenced (not one referenced)
+boolean isChannelActive(int Ichan) {
+  boolean return_val = false;
+  
+  //account for 16 channel case...because the channel 9-16 (aka 8-15) are coupled to channels 1-8 (aka 0-7)
+  if ((Ichan > 7) && (OpenBCI_Nchannels > 8)) Ichan = Ichan - 8;
+    
+  //now check the state of the corresponding channel button
+  if ((Ichan >= 0) && (Ichan < gui.chanButtons.length)) {
+    boolean button_is_pressed = gui.chanButtons[Ichan].isActive();
+    if (button_is_pressed) { //button is pressed, which means the channel was NOT active
+      return_val = false;
+    } else { //button is not pressed, so channel is active
+      return_val = true;
+    }
+  }
+  return return_val;
+}
+
+//activateChannel: Ichan is [0 nchan-1] (aka zero referenced)
 void activateChannel(int Ichan) {
   println("OpenBCI_GUI: activating channel " + (Ichan+1));
   if (openBCI != null) openBCI.changeChannelState(Ichan, true); //activate
