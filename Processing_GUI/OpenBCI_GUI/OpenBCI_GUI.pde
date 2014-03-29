@@ -202,18 +202,18 @@ void initializeFFTObjects(FFT[] fftBuff, float[][] dataBuffY_uV, int N, float fs
   }
 }
 
-
+//set window size
+int win_x = 1200;  int win_y = 768;  //desktop PC
 void setup() {
 
-  println("Starting setup...");
-  //open window
-  int win_x = 1200;  
-  int win_y = 768;  //desktop PC
   size(win_x, win_y, P2D);
   //if (frame != null) frame.setResizable(true);  //make window resizable
   //attach exit handler
   //prepareExitHandler();
-
+  
+  println("Starting setup...");
+  //open window
+  
   //prepare data variables
   dataBuffX = new float[(int)(dataBuff_len_sec * fs_Hz)];
   dataBuffY_uV = new float[nchan][dataBuffX.length];
@@ -307,7 +307,7 @@ void draw() {
       //not enough data has arrived yet.  do nothing more
     }
     
-    //either way, update the title of the figure;
+    //update the title of the figure;
     switch (eegDataSource) {
       case DATASOURCE_NORMAL:
         frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
@@ -324,12 +324,12 @@ void draw() {
   int drawLoopCounter_thresh = 100;
   if ((redrawScreenNow) || (drawLoop_counter >= drawLoopCounter_thresh)) {
     //if (drawLoop_counter >= drawLoopCounter_thresh) println("OpenBCI_GUI: redrawing based on loop counter...");
-    drawLoop_counter=0;
+    drawLoop_counter=0; //reset for next time
+    redrawScreenNow = false;  //reset for next time
     
     //redraw the screen...not every time, get paced by when data is being plotted
-    redrawScreenNow = false;  //reset for next time
-    background(0);
-    gui.draw();
+    background(0);  //clear the screen
+    gui.draw(); //draw the GUI
   }
 }
 
@@ -338,8 +338,8 @@ int getDataIfAvailable(int pointCounter) {
   if (eegDataSource == DATASOURCE_NORMAL) {
     //get data from serial port as it streams in
 
-      //first, get the new data (if any is available
-      openBCI.updateState();
+      //first, get the new data (if any is available)
+      openBCI.updateState(); //this is trying to listen to the openBCI hardware.  New data is put into dataPacketBuff and increments curDataPacketInd.
       
       //next, gather any new data into the "little buffer"
       while ( (curDataPacketInd != lastReadDataPacketInd) && (pointCounter < nPointsPerUpdate)) {
@@ -382,6 +382,8 @@ int getDataIfAvailable(int pointCounter) {
         }
         pointCounter++;
       } //close the loop over data points
+      //if (eegDataSource==DATASOURCE_PLAYBACKFILE) println("OpenBCI_GUI: getDataIfAvailable: currentTableRowIndex = " + currentTableRowIndex);
+      //println("OpenBCI_GUI: getDataIfAvailable: pointCounter = " + pointCounter);
     } // close "has enough time passed"
   } 
   return pointCounter;
@@ -824,7 +826,7 @@ void mousePressed() {
     gui.showMontageValues  = !gui.showMontageValues;
   }
   
-  redrawScreenNow = true;
+  redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is pressed
 }
 
 void mouseReleased() {
@@ -835,7 +837,7 @@ void mouseReleased() {
   gui.intensityFactorButton.setIsActive(false);
   gui.loglinPlotButton.setIsActive(false);
    gui.filtBPButton.setIsActive(false);
-  redrawScreenNow = true;
+  redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is released
 }
 
 void stopRunning() {
