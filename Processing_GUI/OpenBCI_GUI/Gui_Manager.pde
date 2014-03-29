@@ -501,6 +501,7 @@ class Gui_Manager {
     //assume new data has already arrived via the pre-existing references to dataBuffX and dataBuffY and FftBuff
     montageTrace.generate();  //graph doesn't update without this
     fftTrace.generate(); //graph doesn't update without this
+    headPlot1.update();
 
     //update the text strings
     String fmt; float val;

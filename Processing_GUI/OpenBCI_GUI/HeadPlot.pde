@@ -938,9 +938,9 @@ class HeadPlot {
     }    
   }
   
-  
-  public void draw() {
-
+  public void update() {
+    //do this when new data is available
+    
     //update electrode colors
     updateElectrodeColors();
     
@@ -952,7 +952,10 @@ class HeadPlot {
       updateHeadVoltages();
       convertVoltagesToHeadImage();
     }
-       
+  }
+  
+  public void draw() {
+
     //draw head parts
     fill(255,255,255);
     stroke(63,63,63);
