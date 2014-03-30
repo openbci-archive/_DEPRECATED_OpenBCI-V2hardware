@@ -48,6 +48,7 @@ final float ADS1299_Vref = 4.5f;  //reference voltage for ADC in ADS1299
 final float ADS1299_gain = 24;  //assumed gain setting for ADS1299
 final float scale_fac_uVolts_per_count = ADS1299_Vref / (pow(2,23)-1) / ADS1299_gain  * 1000000.f; //ADS1299 datasheet Table 7, confirmed through experiment
 final float openBCI_impedanceDrive_amps = 6.0e-9;  //6 nA
+boolean isBiasAuto = true;
 
 //other data fields
 float dataBuffX[];
@@ -243,7 +244,7 @@ void setup() {
 
   //initilize the GUI
   String filterDescription = filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name; 
-  gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,default_vertScale_uV,filterDescription,smoothFac[smoothFac_ind]);
+  gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,default_vertScale_uV,filterDescription, smoothFac[smoothFac_ind]);
   
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
@@ -276,6 +277,9 @@ void setup() {
       break;
     default: 
   }
+
+  //final config
+  setBiasState(isBiasAuto);
 
   //start
   isRunning=true;
@@ -794,9 +798,12 @@ void mousePressed() {
         }
         if (gui.impedanceButtonsN[Ibut].isMouseHere()) { 
           toggleChannelImpedanceState(gui.impedanceButtonsN[Ibut],Ibut,1);
-          redrawScreenNow = true;
         }
       }
+      if (gui.biasButton.isMouseHere()) { 
+        gui.biasButton.setIsActive(true);
+        setBiasState(!isBiasAuto);
+      }      
       break;
     case Gui_Manager.GUI_PAGE_HEADPLOT_SETUP:
       if (gui.intensityFactorButton.isMouseHere()) {
@@ -844,6 +851,7 @@ void mouseReleased() {
   gui.loglinPlotButton.setIsActive(false);
   gui.filtBPButton.setIsActive(false);
   gui.smoothingButton.setIsActive(false);
+  gui.biasButton.setIsActive(false);
   redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is released
 }
 
@@ -999,6 +1007,21 @@ void setChannelImpedanceState(int Ichan,boolean newstate,int code_P_N_Both) {
       gui.impedanceButtonsN[Ichan].setIsActive(newstate);
     }
   }
+}
+
+void setBiasState(boolean state) {
+  isBiasAuto = state;
+  
+  //send message to openBCI
+  if (openBCI != null) openBCI.setBiasAutoState(state);
+  
+  //change button text
+  if (isBiasAuto) {
+    gui.biasButton.but_txt = "Bias\nAuto";
+  } else {
+    gui.biasButton.but_txt = "Bias\nRef Only";
+  }
+  
 }
 
 void openNewLogFile() {

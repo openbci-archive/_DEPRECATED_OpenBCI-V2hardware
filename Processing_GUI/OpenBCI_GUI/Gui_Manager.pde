@@ -36,6 +36,7 @@ class Gui_Manager {
   //boolean showImpedanceButtons;
   Button[] impedanceButtonsP;
   Button[] impedanceButtonsN;
+  Button biasButton;
   Button intensityFactorButton;
   Button loglinPlotButton;
   Button filtBPButton;
@@ -155,6 +156,9 @@ class Gui_Manager {
       x = calcButtonXLocation(Ibut, win_x, w1, xoffset, gutter_between_buttons);
       impedanceButtonsN[Ibut] = new Button(x,y+h-h1,w1,h1,"Imp N" + (Ibut+1),fontInfo.buttonLabel_size);
     }
+    h1 = h;
+    x = calcButtonXLocation(8, win_x, w1, xoffset, gutter_between_buttons);
+    biasButton = new Button(x,y,w1,h1,"Bias\n" + "Auto",fontInfo.buttonLabel_size);
 
     //setup the headPlot buttons
     int Ibut=0;    w = w_orig;    h = h;
@@ -553,7 +557,8 @@ class Gui_Manager {
           impedanceButtonsP[Ichan].draw(); //P-channel buttons
           impedanceButtonsN[Ichan].draw(); //N-channel buttons
           impValuesMontage[Ichan].draw();  //impedance values on montage plot   
-        }  
+        }
+        biasButton.draw();
         break;
       case GUI_PAGE_HEADPLOT_SETUP:
         intensityFactorButton.draw();

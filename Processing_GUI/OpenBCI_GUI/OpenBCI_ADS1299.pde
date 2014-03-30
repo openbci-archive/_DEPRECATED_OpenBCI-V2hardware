@@ -25,13 +25,15 @@ final String command_startText = "x";
 final String command_startBinary = "b";
 final String command_startBinary_4chan = "v";
 final String command_activateFilters = "F";
-final String command_deactivateFilters = "f";
+final String command_deactivateFilters = "g";
 final String[] command_deactivate_channel = {"1", "2", "3", "4", "5", "6", "7", "8"};
 final String[] command_activate_channel = {"q", "w", "e", "r", "t", "y", "u", "i"};
 final String[] command_activate_leadoffP_channel = {"!", "@", "#", "$", "%", "^", "&", "*"};  //shift + 1-8
 final String[] command_deactivate_leadoffP_channel = {"Q", "W", "E", "R", "T", "Y", "U", "I"};   //letters (plus shift) right below 1-8
 final String[] command_activate_leadoffN_channel = {"A", "S", "D", "F", "G", "H", "J", "K"}; //letters (plus shift) below the letters below 1-8
 final String[] command_deactivate_leadoffN_channel = {"Z", "X", "C", "V", "B", "N", "M", "<"};   //letters (plus shift) below the letters below the letters below 1-8
+final String command_biasAuto = "`";
+final String command_biasRef = "~";
  
 class OpenBCI_ADS1299 {
  
@@ -302,6 +304,17 @@ class OpenBCI_ADS1299 {
     }
   }
   
+  public void setBiasAutoState(boolean isAuto) {
+    if (serial_openBCI != null) {
+      if (isAuto) {
+        println("OpenBCI_ADS1299: setBiasAutoState: setting bias to AUTO");
+        serial_openBCI.write(command_biasAuto + "\n");
+      } else {
+        println("OpenBCI_ADS1299: setBiasAutoState: setting bias to REF ONLY");
+        serial_openBCI.write(command_biasRef + "\n");
+      }
+    }
+  }
   
   int interpretAsInt32(byte[] byteArray) {     
     //little endian
