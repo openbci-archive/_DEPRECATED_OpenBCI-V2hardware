@@ -33,7 +33,7 @@ final String[] command_deactivate_leadoffP_channel = {"Q", "W", "E", "R", "T", "
 final String[] command_activate_leadoffN_channel = {"A", "S", "D", "F", "G", "H", "J", "K"}; //letters (plus shift) below the letters below 1-8
 final String[] command_deactivate_leadoffN_channel = {"Z", "X", "C", "V", "B", "N", "M", "<"};   //letters (plus shift) below the letters below the letters below 1-8
 final String command_biasAuto = "`";
-final String command_biasRef = "~";
+final String command_biasFixed = "~";
  
 class OpenBCI_ADS1299 {
  
@@ -311,7 +311,7 @@ class OpenBCI_ADS1299 {
         serial_openBCI.write(command_biasAuto + "\n");
       } else {
         println("OpenBCI_ADS1299: setBiasAutoState: setting bias to REF ONLY");
-        serial_openBCI.write(command_biasRef + "\n");
+        serial_openBCI.write(command_biasFixed + "\n");
       }
     }
   }

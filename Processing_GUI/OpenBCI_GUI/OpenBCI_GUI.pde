@@ -1019,7 +1019,7 @@ void setBiasState(boolean state) {
   if (isBiasAuto) {
     gui.biasButton.but_txt = "Bias\nAuto";
   } else {
-    gui.biasButton.but_txt = "Bias\nRef Only";
+    gui.biasButton.but_txt = "Bias\nFixed";
   }
   
 }
