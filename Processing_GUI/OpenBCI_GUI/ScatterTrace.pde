@@ -36,7 +36,7 @@ class ScatterTrace extends Blank2DTrace {
   private float plotYScale = 1f;  //multiplied to data prior to plotting
   private float plotYOffset[];  //added to data prior to plotting, after applying plotYScale
   private int decimate_factor = 1;  // set to 1 to plot all points, 2 to plot every other point, 3 for every third point
-  private boolean[] is_railed;
+  private DataStatus[] is_railed;
   PFont font = createFont("Arial",16);
 
   public ScatterTrace() {
@@ -67,7 +67,7 @@ class ScatterTrace extends Blank2DTrace {
     plotYScale = yscale;
   }
 
-  public void set_isRailed(boolean[] is_rail) {
+  public void set_isRailed(DataStatus[] is_rail) {
     is_railed = is_rail;
   }
 

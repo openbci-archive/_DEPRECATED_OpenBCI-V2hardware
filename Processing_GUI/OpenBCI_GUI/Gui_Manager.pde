@@ -430,7 +430,7 @@ class Gui_Manager {
   }
     
     
-  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std, boolean[] is_railed) {      
+  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std, DataStatus[] is_railed) {      
     //initialize the time-domain montage-plot traces
     montageTrace = new ScatterTrace();
     montage_yoffsets = new float[nchan];
@@ -514,8 +514,10 @@ class Gui_Manager {
       val = data_std_uV[Ichan];
       chanValuesMontage[Ichan].string = String.format(getFmt(val),val) + " uVrms";
       if (montageTrace.is_railed != null) {
-        if (montageTrace.is_railed[Ichan] == true) {
+        if (montageTrace.is_railed[Ichan].is_railed == true) {
           chanValuesMontage[Ichan].string = "RAILED";
+        } else if (montageTrace.is_railed[Ichan].is_railed_warn == true) {
+          chanValuesMontage[Ichan].string = "NEAR RAILED";
         }
       } 
       
@@ -523,7 +525,7 @@ class Gui_Manager {
       val = data_elec_imp_ohm[Ichan]/1000;
       impValuesMontage[Ichan].string = String.format(getFmt(val),val) + " kOhm";
       if (montageTrace.is_railed != null) {
-        if (montageTrace.is_railed[Ichan] == true) {
+        if (montageTrace.is_railed[Ichan].is_railed == true) {
           impValuesMontage[Ichan].string = "RAILED";
         }
       }

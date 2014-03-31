@@ -31,7 +31,26 @@ class DataPacket_ADS1299 {
   }
 };
 
-
+class DataStatus {
+  public boolean is_railed;
+  private int threshold_railed;
+  public boolean is_railed_warn;
+  private int threshold_railed_warn;
+  
+  DataStatus(int thresh_railed, int thresh_railed_warn) {
+    is_railed = false;
+    threshold_railed = thresh_railed;
+    is_railed_warn = false;
+    threshold_railed_warn = thresh_railed_warn;
+  }
+  public void update(int data_value) {
+    is_railed = false;
+    if (abs(data_value) >= threshold_railed) is_railed = true;
+    is_railed_warn = false;
+    if (abs(data_value) >= threshold_railed_warn) is_railed_warn = true;
+  }
+};
+    
 
 public class FilterConstants {
   public double[] a;

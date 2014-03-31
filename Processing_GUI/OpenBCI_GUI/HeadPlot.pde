@@ -27,7 +27,7 @@ class HeadPlot {
   private int elec_diam;
   PFont font;
   public float[] intensity_data_uV;
-  private boolean[] is_railed;
+  private DataStatus[] is_railed;
   private float intense_min_uV=0.0f, intense_max_uV=1.0f, assumed_railed_voltage_uV=1.0f;
   private float log10_intense_min_uV = 0.0f, log10_intense_max_uV=1.0;
   PImage headImage;
@@ -56,7 +56,7 @@ class HeadPlot {
     setMaxIntensity_uV(200.0f);  //default intensity scaling for electrodes
   }
   
-  public void setIntensityData_byRef(float[] data, boolean[] is_rail) {
+  public void setIntensityData_byRef(float[] data, DataStatus[] is_rail) {
     intensity_data_uV = data;  //simply alias the data held externally.  DOES NOT COPY THE DATA ITSEF!  IT'S SIMPLY LINKED!
     is_railed = is_rail;
   }
@@ -817,7 +817,7 @@ class HeadPlot {
     for (int Ielec=0;Ielec<n_elec;Ielec++) {
       weight = electrode_color_weightFac[Ielec][pixel_Ix][pixel_Iy];
       elec_volt = max(low,min(intensity_data_uV[Ielec],high));
-      if (is_railed[Ielec]) elec_volt = assumed_railed_voltage_uV;
+      if (is_railed[Ielec].is_railed) elec_volt = assumed_railed_voltage_uV;
       voltage += weight*elec_volt;
     }
     
@@ -917,7 +917,7 @@ class HeadPlot {
       }
       
       //change color to dark RED if railed
-      if (is_railed[Ielec])  new_rgb = new int[]{127,0,0};
+      if (is_railed[Ielec].is_railed)  new_rgb = new int[]{127,0,0};
       
       //set the electrode color
       electrode_rgb[0][Ielec] = new_rgb[0];

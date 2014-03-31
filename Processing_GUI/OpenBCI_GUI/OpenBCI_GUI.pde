@@ -22,7 +22,7 @@ import processing.core.PApplet;
 final int DATASOURCE_NORMAL =  0;
 final int DATASOURCE_SYNTHETIC = 1;
 final int DATASOURCE_PLAYBACKFILE = 2;
-final int eegDataSource = DATASOURCE_PLAYBACKFILE;
+final int eegDataSource = DATASOURCE_NORMAL;
 
 //Serial communications constants
 OpenBCI_ADS1299 openBCI;
@@ -60,8 +60,9 @@ int nchan = OpenBCI_Nchannels;
 int prev_time_millis = 0;
 final int nPointsPerUpdate = 50; //update screen after this many data points.  
 float yLittleBuff[] = new float[nPointsPerUpdate];
-boolean is_railed[];
+DataStatus is_railed[];
 final int threshold_railed = int(pow(2,23)-1000);
+final int threshold_railed_warn = int(pow(2,23)*0.75);
 
 //filter constants
 float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate];
@@ -225,7 +226,8 @@ void setup() {
   dataBuffY_filtY_uV = new float[nchan][dataBuffX.length];
   data_std_uV = new float[nchan];
   data_elec_imp_ohm = new float[nchan];
-  is_railed = new boolean[nchan]; 
+  is_railed = new DataStatus[nchan];
+  for (int i=0; i<nchan;i++) is_railed[i] = new DataStatus(threshold_railed,threshold_railed_warn);
   for (int i=0; i<nDataBackBuff;i++) { 
     dataPacketBuff[i] = new DataPacket_ADS1299(nchan);
   }
@@ -410,11 +412,12 @@ void processNewData() {
     appendAndShift(dataBuffY_uV[Ichan], yLittleBuff_uV[Ichan]);
     
     //look to see if the signal is railed
-    is_railed[Ichan]=false;
-    if (abs(dataPacketBuff[lastReadDataPacketInd].values[Ichan]) > threshold_railed) {
-      //println("OpenBCI_GUI: channel " + Ichan + " may be railed at " + dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
-      is_railed[Ichan]=true;
-    }
+    is_railed[Ichan].update(dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
+//    is_railed[Ichan].is_railed=false;
+//    if (abs(dataPacketBuff[lastReadDataPacketInd].values[Ichan]) > threshold_railed) {
+//      //println("OpenBCI_GUI: channel " + Ichan + " may be railed at " + dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
+//      is_railed[Ichan]=true;
+//    }
 
     //make a copy of the data for further processing
     dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();
