@@ -963,15 +963,17 @@ class HeadPlot {
     ellipse(earL_x, earL_y, ear_width, ear_height); //little circle for the ear
     ellipse(earR_x, earR_y, ear_width, ear_height); //little circle for the ear
     
-    //draw head itself    
+    //draw head itself   
+   fill(255,255,255,255);  //fill in a white head 
+   strokeWeight(2);
+   ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
     if (drawHeadAsContours) {
+      //add the contnours
       image(headImage,image_x,image_y);
       noFill(); //overlay a circle as an outline, but no fill
-    } else {
-      fill(255,255,255,255);
+      strokeWeight(2);
+      ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
     }
-    strokeWeight(2);
-    ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
   
     //draw electrodes on the head
     strokeWeight(1);
