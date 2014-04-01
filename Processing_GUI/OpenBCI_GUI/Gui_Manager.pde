@@ -257,15 +257,15 @@ class Gui_Manager {
     headPlot1.smooth_fac = fac;
   }
   
-//  public void setDoNotPlotOutsideXlim(boolean state) {
-//    if (state) {
-//      //println("GUI_Manager: setDoNotPlotAboveXlim: " + gFFT.getXAxis().getMaxValue());
-//      fftTrace.set_plotXlim(gFFT.getXAxis().getMinValue(),gFFT.getXAxis().getMaxValue());
-//      montageTrace.set_plotXlim(gMontage.getXAxis().getMinValue(),gMontage.getXAxis().getMaxValue());
-//    } else {
-//      fftTrace.set_plotXlim(Float.NaN,Float.NaN);
-//    }
-//  }
+  public void setDoNotPlotOutsideXlim(boolean state) {
+    if (state) {
+      //println("GUI_Manager: setDoNotPlotAboveXlim: " + gFFT.getXAxis().getMaxValue());
+      fftTrace.set_plotXlim(gFFT.getXAxis().getMinValue(),gFFT.getXAxis().getMaxValue());
+      montageTrace.set_plotXlim(gMontage.getXAxis().getMinValue(),gMontage.getXAxis().getMaxValue());
+    } else {
+      fftTrace.set_plotXlim(Float.NaN,Float.NaN);
+    }
+  }
   public void setDecimateFactor(int fac) {
     montageTrace.setDecimateFactor(fac);
   }

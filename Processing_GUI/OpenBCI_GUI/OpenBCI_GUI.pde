@@ -252,7 +252,7 @@ void setup() {
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
 
   //limit how much data is plotted
-//  gui.setDoNotPlotOutsideXlim(true);
+  gui.setDoNotPlotOutsideXlim(true);
   gui.setDecimateFactor(2);
 
   //open the data file for writing

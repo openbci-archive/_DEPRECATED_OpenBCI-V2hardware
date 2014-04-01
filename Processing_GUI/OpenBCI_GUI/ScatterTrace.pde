@@ -113,14 +113,14 @@ class ScatterTrace extends Blank2DTrace {
           prev_x = new_x;
           prev_y = new_y;
           x_val = dataX[i];
-          //if ((plotXlim[0] != Float.NaN) && (x_val >= plotXlim[0]) && (x_val <= plotXlim[1])) {
+          if ( (Float.isNaN(plotXlim[0])) || ((x_val >= plotXlim[0]) && (x_val <= plotXlim[1])) ) {
             new_x = pr.valToX(x_val);
             new_y = pr.valToY(dataY[iChan][i]*plotYScale+plotYOffset[iChan]);
             pr.canvas.line(prev_x, prev_y, new_x, new_y);
             //if (i==1)  println("ScatterTrace: first point: new_x, new_y = " + new_x + ", " + new_y);   
-          //} else {
+          } else {
            //do nothing
-          //}     
+          }     
         }
      
         //add annotation for is_railed...doesn't work right
@@ -144,7 +144,7 @@ class ScatterTrace extends Blank2DTrace {
   
   public void setDecimateFactor(int val) {
     decimate_factor = max(1,val);
-    println("ScatterTrace: setDecimateFactor to " + decimate_factor);
+    //println("ScatterTrace: setDecimateFactor to " + decimate_factor);
   }
 }
 
@@ -217,14 +217,14 @@ class ScatterTrace_FFT extends Blank2DTrace {
           prev_x = new_x;
           prev_y = new_y;
           x_val = fftData[iChan].indexToFreq(i);
-          //if ((plotXlim[0] == Float.NaN) || ((x_val >= plotXlim[0]) && (x_val <= plotXlim[1]))) {
+          if ( (Float.isNaN(plotXlim[0])) || ((x_val >= plotXlim[0]) && (x_val <= plotXlim[1])) ) {
             new_x = pr.valToX(x_val);
             spec_value = fftData[iChan].getBand(i)/fftData[iChan].specSize();
             new_y = pr.valToY(spec_value+plotYOffset[iChan]);
             pr.canvas.line(prev_x, prev_y, new_x, new_y);
-          //} else {
+          } else {
             //do nothing
-         // }
+          }
         }       
       }
       pr.canvas.popStyle(); //restore whatever was the previous style
