@@ -22,7 +22,7 @@ import processing.core.PApplet;
 final int DATASOURCE_NORMAL =  0;
 final int DATASOURCE_SYNTHETIC = 1;
 final int DATASOURCE_PLAYBACKFILE = 2;
-final int eegDataSource = DATASOURCE_NORMAL;
+final int eegDataSource = DATASOURCE_PLAYBACKFILE;
 
 //Serial communications constants
 OpenBCI_ADS1299 openBCI;
@@ -250,6 +250,10 @@ void setup() {
   
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
+
+  //limit how much data is plotted
+//  gui.setDoNotPlotOutsideXlim(true);
+  gui.setDecimateFactor(2);
 
   //open the data file for writing
   openNewLogFile();
