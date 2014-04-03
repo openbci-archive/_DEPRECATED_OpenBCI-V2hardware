@@ -26,6 +26,19 @@ http://www.gwoptics.org/processing/gwoptics_p5lib/
 Updates
 --------
 
+2014-04-03 OpenBCI_GUI:
+		: Added controls for lead_off detection (ie, impedance checking)
+		: Added controls for filtering and smoothing and vertical scale
+                  factor.  Added buttons to control all of these settings.
+		: Added control to toggle bias to a fixed voltage from the
+		  normal "auto" generation of the bias based on the common-mode
+		  of the active electrodes 
+		: Added loading of electrode locations from a text file
+		: Added fancier "contour" plotting of EEG voltages on the
+		  head plot.
+		: Added playback of pre-recorded data from a text file along
+		  with a couple of example recorded data files.
+
 2014-02-02 OpenBCI_GUI and OpenBCI_GUI_Simpler:
 		: More refinements in handling of incoming serial binary data.
                   Most stable at 115200 bps
