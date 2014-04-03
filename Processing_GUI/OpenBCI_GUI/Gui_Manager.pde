@@ -111,7 +111,7 @@ class Gui_Manager {
     float[] axisHead_relPos = axisFFT_relPos.clone();
     axisHead_relPos[1] = gutter_topbot;  //set y position to be at top of left side
     axisHead_relPos[3] = available_top2bot*up_down_split  - gutter_topbot;
-    headPlot1 = new HeadPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y);
+    headPlot1 = new HeadPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y,nchan);
     setSmoothFac(smooth_fac);
     
     //setup the buttons
@@ -130,15 +130,22 @@ class Gui_Manager {
     x = (int)(3*gutter_between_buttons*win_x);
     guiPageButton = new Button(x,y,w,h,"Page\n" + (guiPage+1) + " of " + N_GUI_PAGES,fontInfo.buttonLabel_size);
         
-    //setup the channel on/off buttons
+    //setup the channel on/off buttons...only plot 8 buttons, even if there are more channels
+    //because as of 4/3/2014, you can only turn on/off the higher channels (the ones above chan 8)
+    //by also turning off the corresponding lower channel.  So, deactiving channel 9 must also
+    //deactivate channel 1, therefore, we might as well use just the 1 button.
     int xoffset = x + w + (int)(2*gutter_between_buttons*win_x);
     w = w;   //button width
     int w_orig = w;
-    if (nchan > 10) w -= (nchan-8)*2; //make the buttons skinnier
-    chanButtons = new Button[nchan];
-    for (int Ibut = 0; Ibut < nchan; Ibut++) {
+    //if (nchan > 10) w -= (nchan-8)*2; //make the buttons skinnier
+    int nChanBut = min(nchan,8);
+    chanButtons = new Button[nChanBut];
+    String txt;
+    for (int Ibut = 0; Ibut < nChanBut; Ibut++) {
       x = calcButtonXLocation(Ibut, win_x, w, xoffset,gutter_between_buttons);
-      chanButtons[Ibut] = new Button(x,y,w,h,"Ch " + (Ibut+1),fontInfo.buttonLabel_size);
+      txt = "Chan\n" + Integer.toString(Ibut+1);
+      if (nchan > 8) txt = txt + "+" + Integer.toString(Ibut+1+8);
+      chanButtons[Ibut] = new Button(x,y,w,h,txt,fontInfo.buttonLabel_size);
     }
     
     //setup the impedance measurement (lead-off) control buttons

@@ -36,8 +36,8 @@ class HeadPlot {
   private boolean plot_color_as_log = true;
   public float smooth_fac = 0.0f;  
 
-  HeadPlot(float x,float y,float w,float h,int win_x,int win_y) {
-    final int n_elec = 8;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
+  HeadPlot(float x,float y,float w,float h,int win_x,int win_y,int n) {
+    final int n_elec = n;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
     nose_x = new int[3];
     nose_y = new int[3];
     electrode_xy = new float[n_elec][2];   //x-y position of electrodes (pixels?) 
@@ -183,22 +183,33 @@ class HeadPlot {
     
     //regular electrodes
     float[][] elec_relXY = new float[16][2]; 
-    elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*(0.5f+0.2f);
-    elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1];
-    elec_relXY[2][0] = -0.2f;            elec_relXY[2][1] = 0f;
-    elec_relXY[3][0] = -elec_relXY[2][0];  elec_relXY[3][1] = elec_relXY[2][1];
+    elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*(0.5f+0.2f); //FP1
+    elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1]; //FP2
     
-    elec_relXY[4][0] = -0.3425f;            elec_relXY[4][1] = 0.27f;
-    elec_relXY[5][0] = -elec_relXY[4][0];  elec_relXY[5][1] = elec_relXY[4][1];
+    elec_relXY[2][0] = -0.2f;            elec_relXY[2][1] = 0f; //C3
+    elec_relXY[3][0] = -elec_relXY[2][0];  elec_relXY[3][1] = elec_relXY[2][1]; //C4
     
-    elec_relXY[6][0] = -0.125f;             elec_relXY[6][1] = +0.5f - elec_relDiam*(0.5f+0.2f);
-    elec_relXY[7][0] = -elec_relXY[6][0];  elec_relXY[7][1] = elec_relXY[6][1];
-      
-    //need to add the other 8 electrodes!!!!!!!!!!!!!!!!!!1
+    elec_relXY[4][0] = -0.3425f;            elec_relXY[4][1] = 0.27f; //T5 (aka P7)
+    elec_relXY[5][0] = -elec_relXY[4][0];  elec_relXY[5][1] = elec_relXY[4][1]; //T6 (aka P8)
+    
+    elec_relXY[6][0] = -0.125f;             elec_relXY[6][1] = +0.5f - elec_relDiam*(0.5f+0.2f); //O1
+    elec_relXY[7][0] = -elec_relXY[6][0];  elec_relXY[7][1] = elec_relXY[6][1];  //O2
+
+    elec_relXY[8][0] = elec_relXY[4][0];  elec_relXY[8][1] = -elec_relXY[4][1]; //F7
+    elec_relXY[9][0] = -elec_relXY[8][0];  elec_relXY[9][1] = elec_relXY[8][1]; //F8
+    
+    elec_relXY[10][0] = -0.18f;            elec_relXY[10][1] = -0.15f; //C3
+    elec_relXY[11][0] = -elec_relXY[10][0];  elec_relXY[11][1] = elec_relXY[10][1]; //C4    
+    
+    elec_relXY[12][0] =  -0.5f +elec_relDiam*(0.5f+0.15f);  elec_relXY[12][1] = 0f; //T3 (aka T7?)
+    elec_relXY[13][0] = -elec_relXY[12][0];  elec_relXY[13][1] = elec_relXY[12][1]; //T4 (aka T8)    
+    
+    elec_relXY[14][0] = elec_relXY[10][0];   elec_relXY[14][1] = -elec_relXY[10][1]; //CP3
+    elec_relXY[15][0] = -elec_relXY[14][0];  elec_relXY[15][1] = elec_relXY[14][1]; //CP4    
       
     //reference electrode
     float[] ref_elec_relXY = new float[2];
-    ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = -0.275f;   
+    ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = 0.0f;   
     
     //put it all into a table
     Table table_elec_relXY = new Table();

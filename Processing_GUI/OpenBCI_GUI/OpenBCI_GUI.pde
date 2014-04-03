@@ -925,7 +925,7 @@ int getPlaybackDataFromTable(Table datatable, int currentTableRowIndex, float sc
       if (isChannelActive(Ichan) && (Ichan < datatable.getColumnCount())) {
         val_uV = row.getFloat(Ichan);
       } else {
-        //use zeros
+        //use zeros for the missing channels
         val_uV = 0.0f;
       }
       
