@@ -13,7 +13,7 @@ Here are some graphical user interfaces for OpenBCI, as written for Processing. 
 Dependencies
 ------------
 
-These GUIs require you to download the Processing environment.  This code was developed using Processing 2.0.3.  It uses the built-in Serial library to communicate to the Arduino (or whatever) microcontroller is hosting the OpenBCI shield.  This GUI also uses the built in 'minim' library for executing the FFT to make the frequency-domain display.
+These GUIs require you to download the Processing environment.  This code was primarily developed using Processing 2.0.3 (* See Note).  It uses the built-in Serial library to communicate to the Arduin (or whatever) microcontroller is hosting the OpenBCI shield.  This GUI also uses the built in 'minim' library for executing the FFT to make the frequency-domain display.
 
 http://processing.org
 
@@ -21,6 +21,7 @@ The OpenBCI Processing GUI requires the 'gwoptics' graphing library.  We develop
 
 http://www.gwoptics.org/processing/gwoptics_p5lib/
 
+(* This code does NOT work with Processing 2.1 due to the Serial library, which seems to be fixed in Processing 2.1.1.  This code has not been extensively tested in 2.1.1.)
 
 
 Updates
