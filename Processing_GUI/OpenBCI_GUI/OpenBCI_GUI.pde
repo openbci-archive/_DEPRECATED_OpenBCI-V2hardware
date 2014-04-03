@@ -860,7 +860,7 @@ void stopRunning() {
     isRunning = false;
 }
 void startRunning() {
-    if (eegDataSource==DATSOURCE_NORMAL) openNewLogFile();  //open a new log file
+    if (eegDataSource == DATASOURCE_NORMAL) openNewLogFile();  //open a new log file
     if (openBCI != null) openBCI.startDataTransfer(); //use whatever was the previous data transfer mode (TXT vs BINARY)
     isRunning = true;
 }
