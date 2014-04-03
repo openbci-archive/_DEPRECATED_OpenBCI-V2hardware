@@ -251,12 +251,9 @@ void setup() {
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
 
-  //limit how much data is plotted
+  //limit how much data is plotted...hopefully to speed things up a little
   gui.setDoNotPlotOutsideXlim(true);
   gui.setDecimateFactor(2);
-
-  //open the data file for writing
-  openNewLogFile();
 
   //prepare the source of the input data
   switch (eegDataSource) {
@@ -288,7 +285,7 @@ void setup() {
   setBiasState(isBiasAuto);
 
   //start
-  isRunning=true;
+  startRunning();
 
   println("setup: Setup complete...");
 }
@@ -863,7 +860,7 @@ void stopRunning() {
     isRunning = false;
 }
 void startRunning() {
-    openNewLogFile();  //open a new log file
+    if (eegDataSource==DATSOURCE_NORMAL) openNewLogFile();  //open a new log file
     if (openBCI != null) openBCI.startDataTransfer(); //use whatever was the previous data transfer mode (TXT vs BINARY)
     isRunning = true;
 }
@@ -1040,7 +1037,7 @@ void openNewLogFile() {
 }
 
 void closeLogFile() {
-  fileoutput.closeFile();
+  if (fileoutput != null) fileoutput.closeFile();
 }
 
 void incrementFilterConfiguration() {
