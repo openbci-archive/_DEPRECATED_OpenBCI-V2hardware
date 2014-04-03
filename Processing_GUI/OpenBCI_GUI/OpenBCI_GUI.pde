@@ -2,7 +2,7 @@
 //
 // GUI for controlling the ADS1299-based OpenBCI Shield
 //
-// Created: Chip Audette, Oct 2013 - Mar 2014
+// Created: Chip Audette, Oct 2013 - Apr 2014
 //
 // Requires gwoptics graphing library for processing.  Built on V0.5.0
 // http://www.gwoptics.org/processing/gwoptics_p5lib/
@@ -304,7 +304,7 @@ void draw() {
   if (isRunning) {
     //get the data, if it is available
     pointCounter = getDataIfAvailable(pointCounter);
-
+    
     //has enough data arrived to process it and update the GUI?
     if (pointCounter >= nPointsPerUpdate) {
       pointCounter = 0;  //reset for next time
@@ -320,6 +320,13 @@ void draw() {
     else {
       //not enough data has arrived yet.  do nothing more
     }
+  }
+    
+  int drawLoopCounter_thresh = 100;
+  if ((redrawScreenNow) || (drawLoop_counter >= drawLoopCounter_thresh)) {
+    //if (drawLoop_counter >= drawLoopCounter_thresh) println("OpenBCI_GUI: redrawing based on loop counter...");
+    drawLoop_counter=0; //reset for next time
+    redrawScreenNow = false;  //reset for next time
     
     //update the title of the figure;
     switch (eegDataSource) {
@@ -331,17 +338,10 @@ void draw() {
         break;
       case DATASOURCE_PLAYBACKFILE:
         frame.setTitle(int(frameRate) + " fps, Playing " + int(float(currentTableRowIndex)/fs_Hz) + " of " + int(float(playbackData_table.getRowCount())/fs_Hz) + " secs, Reading from: " + playbackData_fname);
-        break;  
-    }       
-  }
-
-  int drawLoopCounter_thresh = 100;
-  if ((redrawScreenNow) || (drawLoop_counter >= drawLoopCounter_thresh)) {
-    //if (drawLoop_counter >= drawLoopCounter_thresh) println("OpenBCI_GUI: redrawing based on loop counter...");
-    drawLoop_counter=0; //reset for next time
-    redrawScreenNow = false;  //reset for next time
+        break;
+    } 
     
-    //redraw the screen...not every time, get paced by when data is being plotted
+    //redraw the screen...not every time, get paced by when data is being plotted    
     background(0);  //clear the screen
     gui.draw(); //draw the GUI
   }
@@ -417,11 +417,6 @@ void processNewData() {
     
     //look to see if the signal is railed
     is_railed[Ichan].update(dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
-//    is_railed[Ichan].is_railed=false;
-//    if (abs(dataPacketBuff[lastReadDataPacketInd].values[Ichan]) > threshold_railed) {
-//      //println("OpenBCI_GUI: channel " + Ichan + " may be railed at " + dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
-//      is_railed[Ichan]=true;
-//    }
 
     //make a copy of the data for further processing
     dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();
