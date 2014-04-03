@@ -103,7 +103,7 @@ void setup() {
   // tell the controlling program that we're ready to start!
   Serial.println(F("Press '?' to query and print ADS1299 register settings again")); //read it straight from flash
   Serial.println(F("Press 1-8 to disable EEG Channels, q-i to enable (all enabled by default)"));
-  Serial.println(F("Press 'F' to enable filters.  'f' to disable filters (disabled by default)"));
+  Serial.println(F("Press 'f' to enable filters.  'g' to disable filters"));
   Serial.println(F("Press 'x' (text) or 'b' (binary) to begin streaming data..."));    
  
 } // end of setup
@@ -294,6 +294,12 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         changeChannelLeadOffDetection_maintainRunningState(7,DEACTIVATE,NCHAN); break;
       case '<':
         changeChannelLeadOffDetection_maintainRunningState(8,DEACTIVATE,NCHAN); break; 
+        
+      //control the bias generation
+      case '`':
+        ADSManager.setAutoBiasGeneration(true); break;
+      case '~': 
+        ADSManager.setAutoBiasGeneration(false); break; 
         
       //control test signals
       case '0':

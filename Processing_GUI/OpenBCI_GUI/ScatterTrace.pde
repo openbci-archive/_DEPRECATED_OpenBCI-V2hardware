@@ -22,7 +22,7 @@
 //
 ////////////////
 
-import processing.core.PApplet;
+//import processing.core.PApplet;
 import org.gwoptics.graphics.*;
 import org.gwoptics.graphics.graph2D.*;
 import org.gwoptics.graphics.graph2D.Graph2D;
@@ -36,11 +36,13 @@ class ScatterTrace extends Blank2DTrace {
   private float plotYScale = 1f;  //multiplied to data prior to plotting
   private float plotYOffset[];  //added to data prior to plotting, after applying plotYScale
   private int decimate_factor = 1;  // set to 1 to plot all points, 2 to plot every other point, 3 for every third point
-  private boolean[] is_railed;
+  private DataStatus[] is_railed;
   PFont font = createFont("Arial",16);
+  float[] plotXlim;
 
   public ScatterTrace() {
     //font = createFont("Arial",10);
+    plotXlim = new float[]{Float.NaN, Float.NaN};
   }
 
   /* set the plot's X and Y data by overwriting the existing data */
@@ -58,16 +60,30 @@ class ScatterTrace extends Blank2DTrace {
   public void setYOffset_byRef(float[] yoff) {
     plotYOffset = yoff;  //just copies the reference!
   }
+  
+  public void setYScale_uV(float yscale_uV) {
+    setYScaleFac(1.0f/yscale_uV);
+  }
 
   public void setYScaleFac(float yscale) {
     plotYScale = yscale;
   }
-
-  public void set_isRailed(boolean[] is_rail) {
+  public void set_plotXlim(float val_low,float val_high) {
+    if (val_high < val_low) {
+      float foo = val_low;
+      val_low = val_high;
+      val_high = foo;
+    }
+    plotXlim[0]=val_low;
+    plotXlim[1]=val_high;
+  }
+  public void set_isRailed(DataStatus[] is_rail) {
     is_railed = is_rail;
   }
 
   public void TraceDraw(Blank2DTrace.PlotRenderer pr) {
+    float x_val;
+    
     if (dataX.length > 0) {       
       pr.canvas.pushStyle();      //save whatever was the previous style
       //pr.canvas.stroke(255, 0, 0);  //set the new line's color
@@ -96,11 +112,15 @@ class ScatterTrace extends Blank2DTrace {
         for (int i=1; i < dataY[iChan].length; i+= decimate_factor) {
           prev_x = new_x;
           prev_y = new_y;
-          new_x = pr.valToX(dataX[i]);
-          new_y = pr.valToY(dataY[iChan][i]*plotYScale+plotYOffset[iChan]);
-          pr.canvas.line(prev_x, prev_y, new_x, new_y);
-          //if (i==1)  println("ScatterTrace: first point: new_x, new_y = " + new_x + ", " + new_y);
-          
+          x_val = dataX[i];
+          if ( (Float.isNaN(plotXlim[0])) || ((x_val >= plotXlim[0]) && (x_val <= plotXlim[1])) ) {
+            new_x = pr.valToX(x_val);
+            new_y = pr.valToY(dataY[iChan][i]*plotYScale+plotYOffset[iChan]);
+            pr.canvas.line(prev_x, prev_y, new_x, new_y);
+            //if (i==1)  println("ScatterTrace: first point: new_x, new_y = " + new_x + ", " + new_y);   
+          } else {
+           //do nothing
+          }     
         }
      
         //add annotation for is_railed...doesn't work right
@@ -124,14 +144,19 @@ class ScatterTrace extends Blank2DTrace {
   
   public void setDecimateFactor(int val) {
     decimate_factor = max(1,val);
+    //println("ScatterTrace: setDecimateFactor to " + decimate_factor);
   }
 }
 
+
+// /////////////////////////////////////////////////////////////////////////////////////////////
 class ScatterTrace_FFT extends Blank2DTrace {
   private FFT[] fftData;
   private float plotYOffset[];
+  private float[] plotXlim = new float[]{Float.NaN,Float.NaN};
 
   public ScatterTrace_FFT() {
+    //plotXlim = new float[]{Float.NaN,Float.NaN};
   }
 
   public ScatterTrace_FFT(FFT foo_fft[]) {
@@ -148,8 +173,21 @@ class ScatterTrace_FFT extends Blank2DTrace {
   public void setYOffset(float yoff[]) {
     plotYOffset = yoff;
   }
-
+  public void set_plotXlim(float val_low,float val_high) {
+    if (val_high < val_low) {
+      float foo = val_low;
+      val_low = val_high;
+      val_high = foo;
+    }
+    plotXlim[0]=val_low;
+    plotXlim[1]=val_high;
+  }
+//  public void setDecimateFactor(int val) {
+//    decimate_factor = max(1,val);
+//  }
   public void TraceDraw(Blank2DTrace.PlotRenderer pr) {
+    float x_val,spec_value;
+    
     if (fftData != null) {      
       pr.canvas.pushStyle();      //save whatever was the previous style
       //pr.canvas.stroke(255, 0, 0);  //set the new line's color
@@ -178,14 +216,20 @@ class ScatterTrace_FFT extends Blank2DTrace {
         for (int i=1; i < fftData[iChan].specSize(); i++) {
           prev_x = new_x;
           prev_y = new_y;
-          new_x = pr.valToX(fftData[iChan].indexToFreq(i));
-          float spec_value = fftData[iChan].getBand(i)/fftData[iChan].specSize();
-          new_y = pr.valToY(spec_value+plotYOffset[iChan]);
-          pr.canvas.line(prev_x, prev_y, new_x, new_y);
+          x_val = fftData[iChan].indexToFreq(i);
+          if ( (Float.isNaN(plotXlim[0])) || ((x_val >= plotXlim[0]) && (x_val <= plotXlim[1])) ) {
+            new_x = pr.valToX(x_val);
+            spec_value = fftData[iChan].getBand(i)/fftData[iChan].specSize();
+            new_y = pr.valToY(spec_value+plotYOffset[iChan]);
+            pr.canvas.line(prev_x, prev_y, new_x, new_y);
+          } else {
+            //do nothing
+          }
         }       
       }
       pr.canvas.popStyle(); //restore whatever was the previous style
     }
   }
-}
+};
+
 

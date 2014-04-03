@@ -77,10 +77,11 @@ class ADS1299Manager : public ADS1299 {
     void initialize(int version);                              //initialize the ADS1299 controller.  Call once.  Set which version of OpenBCI you're using.
     void setVersionOpenBCI(int version);			//Set which version of OpenBCI you're using.
     void reset(void);                                          //reset all the ADS1299's settings.  Call however you'd like
-    void activateChannel(int N, byte gainCode,byte inputCode); //setup the channel 1-8
-    void deactivateChannel(int N);                            //disable given channel 1-8
+    boolean isChannelActive(int N_oneRef);
+    void activateChannel(int N_oneRef, byte gainCode,byte inputCode); //setup the channel 1-8
+    void deactivateChannel(int N_oneRef);                            //disable given channel 1-8
     void configureLeadOffDetection(byte amplitudeCode, byte freqCode);  //configure the lead-off detection signal parameters
-    void changeChannelLeadOffDetection(int N, int code_OFF_ON, int code_P_N_Both);
+    void changeChannelLeadOffDetection(int N_oneRef, int code_OFF_ON, int code_P_N_Both);
     void configureInternalTestSignal(byte amplitudeCode, byte freqCode);  //configure the test signal parameters
     void start(void);
     void stop(void);
@@ -92,10 +93,16 @@ class ADS1299Manager : public ADS1299 {
     void writeChannelDataAsOpenEEG_P2(long int sampleNumber, boolean useSyntheticData);
     void printAllRegisters(void);
     void setSRB1(boolean desired_state);
+    void alterBiasBasedOnChannelState(int N_oneRef);
+    void deactivateBiasForChannel(int N_oneRef);
+    void activateBiasForChannel(int N_oneRef);
+    void setAutoBiasGeneration(boolean state);
+    
     
   private:
     boolean use_neg_inputs;
     boolean use_SRB2[OPENBCI_NCHAN];
+    boolean use_channels_for_bias;
     boolean use_SRB1(void);
     long int makeSyntheticSample(long sampleNumber,int chan);
 };

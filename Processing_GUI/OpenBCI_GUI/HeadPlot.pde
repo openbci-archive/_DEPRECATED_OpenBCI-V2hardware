@@ -14,10 +14,10 @@
 //
 ///////////////////////////////////////////////////////////////
 
-class headPlot {
+class HeadPlot {
   private float rel_posX,rel_posY,rel_width,rel_height;
   private int circ_x,circ_y,circ_diam;
-  private  int earL_x, earL_y, earR_x, earR_y, ear_width, ear_height;
+  private int earL_x, earL_y, earR_x, earR_y, ear_width, ear_height;
   private int[] nose_x, nose_y;
   private float[][] electrode_xy;
   private float[] ref_electrode_xy;
@@ -27,15 +27,17 @@ class headPlot {
   private int elec_diam;
   PFont font;
   public float[] intensity_data_uV;
-  private boolean[] is_railed;
-  private float intense_min_uV, intense_max_uV, assumed_railed_voltage_uV;
+  private DataStatus[] is_railed;
+  private float intense_min_uV=0.0f, intense_max_uV=1.0f, assumed_railed_voltage_uV=1.0f;
+  private float log10_intense_min_uV = 0.0f, log10_intense_max_uV=1.0;
   PImage headImage;
   private int image_x,image_y;
   public boolean drawHeadAsContours;
+  private boolean plot_color_as_log = true;
+  public float smooth_fac = 0.0f;  
 
-
-  headPlot(float x,float y,float w,float h,int win_x,int win_y) {
-    final int n_elec = 8;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
+  HeadPlot(float x,float y,float w,float h,int win_x,int win_y,int n) {
+    final int n_elec = n;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
     nose_x = new int[3];
     nose_y = new int[3];
     electrode_xy = new float[n_elec][2];   //x-y position of electrodes (pixels?) 
@@ -51,13 +53,25 @@ class headPlot {
     rel_height = h;
     setWindowDimensions(win_x,win_y);
     
-    intense_min_uV = 5; intense_max_uV = 100;  //default intensity scaling for electrodes
-    assumed_railed_voltage_uV = intense_max_uV;
+    setMaxIntensity_uV(200.0f);  //default intensity scaling for electrodes
   }
   
-  public void setIntensityData_byRef(float[] data, boolean[] is_rail) {
+  public void setIntensityData_byRef(float[] data, DataStatus[] is_rail) {
     intensity_data_uV = data;  //simply alias the data held externally.  DOES NOT COPY THE DATA ITSEF!  IT'S SIMPLY LINKED!
     is_railed = is_rail;
+  }
+  
+  public void setMaxIntensity_uV(float val_uV) {
+    intense_max_uV = val_uV;
+    intense_min_uV = intense_max_uV / 200.0 * 5.0f;  //set to 200, get 5
+    assumed_railed_voltage_uV = intense_max_uV;
+    
+    log10_intense_max_uV = log10(intense_max_uV);
+    log10_intense_min_uV = log10(intense_min_uV);
+  }
+  
+  public void set_plotColorAsLog(boolean state) {
+    plot_color_as_log = state;
   }
   
   //this method defines all locations of all the subcomponents
@@ -169,22 +183,33 @@ class headPlot {
     
     //regular electrodes
     float[][] elec_relXY = new float[16][2]; 
-    elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*(0.5f+0.2f);
-    elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1];
-    elec_relXY[2][0] = -0.2f;            elec_relXY[2][1] = 0f;
-    elec_relXY[3][0] = -elec_relXY[2][0];  elec_relXY[3][1] = elec_relXY[2][1];
+    elec_relXY[0][0] = -0.125f;             elec_relXY[0][1] = -0.5f + elec_relDiam*(0.5f+0.2f); //FP1
+    elec_relXY[1][0] = -elec_relXY[0][0];  elec_relXY[1][1] = elec_relXY[0][1]; //FP2
     
-    elec_relXY[4][0] = -0.3425f;            elec_relXY[4][1] = 0.27f;
-    elec_relXY[5][0] = -elec_relXY[4][0];  elec_relXY[5][1] = elec_relXY[4][1];
+    elec_relXY[2][0] = -0.2f;            elec_relXY[2][1] = 0f; //C3
+    elec_relXY[3][0] = -elec_relXY[2][0];  elec_relXY[3][1] = elec_relXY[2][1]; //C4
     
-    elec_relXY[6][0] = -0.125f;             elec_relXY[6][1] = +0.5f - elec_relDiam*(0.5f+0.2f);
-    elec_relXY[7][0] = -elec_relXY[6][0];  elec_relXY[7][1] = elec_relXY[6][1];
-      
-    //need to add the other 8 electrodes!!!!!!!!!!!!!!!!!!1
+    elec_relXY[4][0] = -0.3425f;            elec_relXY[4][1] = 0.27f; //T5 (aka P7)
+    elec_relXY[5][0] = -elec_relXY[4][0];  elec_relXY[5][1] = elec_relXY[4][1]; //T6 (aka P8)
+    
+    elec_relXY[6][0] = -0.125f;             elec_relXY[6][1] = +0.5f - elec_relDiam*(0.5f+0.2f); //O1
+    elec_relXY[7][0] = -elec_relXY[6][0];  elec_relXY[7][1] = elec_relXY[6][1];  //O2
+
+    elec_relXY[8][0] = elec_relXY[4][0];  elec_relXY[8][1] = -elec_relXY[4][1]; //F7
+    elec_relXY[9][0] = -elec_relXY[8][0];  elec_relXY[9][1] = elec_relXY[8][1]; //F8
+    
+    elec_relXY[10][0] = -0.18f;            elec_relXY[10][1] = -0.15f; //C3
+    elec_relXY[11][0] = -elec_relXY[10][0];  elec_relXY[11][1] = elec_relXY[10][1]; //C4    
+    
+    elec_relXY[12][0] =  -0.5f +elec_relDiam*(0.5f+0.15f);  elec_relXY[12][1] = 0f; //T3 (aka T7?)
+    elec_relXY[13][0] = -elec_relXY[12][0];  elec_relXY[13][1] = elec_relXY[12][1]; //T4 (aka T8)    
+    
+    elec_relXY[14][0] = elec_relXY[10][0];   elec_relXY[14][1] = -elec_relXY[10][1]; //CP3
+    elec_relXY[15][0] = -elec_relXY[14][0];  elec_relXY[15][1] = elec_relXY[14][1]; //CP4    
       
     //reference electrode
     float[] ref_elec_relXY = new float[2];
-    ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = -0.275f;   
+    ref_elec_relXY[0] = 0.0f;    ref_elec_relXY[1] = 0.0f;   
     
     //put it all into a table
     Table table_elec_relXY = new Table();
@@ -211,7 +236,7 @@ class headPlot {
     
     //return
     return table_elec_relXY;
-  }
+  } //end of method
   
   //Here, we do a two-step solution to get the weighting factors.  
   //We do a coarse grid first.  We do our iterative solution on the coarse grid.
@@ -600,7 +625,7 @@ class headPlot {
     }
     //println("headPlot: computeWeightFactor: Ielec " + Ielec + ", solution complete with " + iter_count + " iterations. min and max vals = " + min_val + ", " + max_val);
     if (iter_count >= lim_iter_count) println("headPlot: computeWeightFactor: Ielec " + Ielec + ", solution complete with " + iter_count + " iterations. max_dVal = " + max_dVal);
-  }
+  } //end of method
     
     
     
@@ -683,7 +708,7 @@ class headPlot {
         } //end loop over direction of the target pixel
       } //end loop over Ix
     } //end loop over Iy 
-  }
+  } // end of method
   
   private void whereAreThePixels(int pixelAddress[][][], boolean[][] withinHead,int[][] withinElectrode) {
     int n_wide = pixelAddress.length;
@@ -774,7 +799,6 @@ class headPlot {
         }
       }
     }
-    
   }
   
 
@@ -784,7 +808,7 @@ class headPlot {
         //is this pixel inside the head?
         if (electrode_color_weightFac[0][Ix][Iy] >= 0.0) { //zero and positive values are inside the head
           //it is inside the head.  set the voltage based on the electrodes
-          headVoltage[Ix][Iy] = calcPixelVoltage(Ix,Iy);
+          headVoltage[Ix][Iy] = calcPixelVoltage(Ix,Iy,headVoltage[Ix][Iy]);
 
         } else {  //negative values are outside of the head
           //pixel is outside the head.
@@ -794,17 +818,23 @@ class headPlot {
     }
   }    
 
-  private float calcPixelVoltage(int pixel_Ix,int pixel_Iy) {
+  private float calcPixelVoltage(int pixel_Ix,int pixel_Iy,float prev_val) {
     float weight,elec_volt;
     int n_elec = electrode_xy.length;
     float voltage = 0.0f;
+    float low = intense_min_uV;
+    float high = intense_max_uV;
     
     for (int Ielec=0;Ielec<n_elec;Ielec++) {
       weight = electrode_color_weightFac[Ielec][pixel_Ix][pixel_Iy];
-      elec_volt = max(intense_min_uV,min(intensity_data_uV[Ielec],intense_max_uV));
-      if (is_railed[Ielec]) elec_volt = assumed_railed_voltage_uV;
+      elec_volt = max(low,min(intensity_data_uV[Ielec],high));
+      if (is_railed[Ielec].is_railed) elec_volt = assumed_railed_voltage_uV;
       voltage += weight*elec_volt;
     }
+    
+    //smooth in time
+    if (smooth_fac > 0.0f) voltage = smooth_fac*prev_val + (1.0-smooth_fac)*voltage;     
+    
     return voltage;
   }
       
@@ -814,7 +844,17 @@ class headPlot {
     float val;
     
     float intensity = constrain(pixel_volt_uV,intense_min_uV,intense_max_uV);
-    intensity = map(log10(intensity),log10(intense_min_uV),log10(intense_max_uV),0.0f,1.0f);
+    if (plot_color_as_log) {
+      intensity = map(log10(intensity), 
+                      log10_intense_min_uV,
+                      log10_intense_max_uV,
+                      0.0f,1.0f);
+    } else {
+      intensity = map(intensity, 
+                intense_min_uV,
+                intense_max_uV,
+                0.0f,1.0f);
+    }
       
     //make the intensity fade NOT from black->color, but from white->color
     for (int i=0; i < 3; i++) {
@@ -868,9 +908,17 @@ class headPlot {
     float intensity;
     float val;
     int new_rgb[] = new int[3];
+    float low = intense_min_uV;
+    float high = intense_max_uV;
+    float log_low = log10_intense_min_uV;
+    float log_high = log10_intense_max_uV;
     for (int Ielec=0; Ielec < electrode_xy.length; Ielec++) {
-      intensity = constrain(intensity_data_uV[Ielec],intense_min_uV,intense_max_uV);
-      intensity = map(log10(intensity),log10(intense_min_uV),log10(intense_max_uV),0.0f,1.0f);
+      intensity = constrain(intensity_data_uV[Ielec],low,high);
+      if (plot_color_as_log) {
+        intensity = map(log10(intensity),log_low,log_high,0.0f,1.0f);
+      } else {
+        intensity = map(intensity,low,high,0.0f,1.0f);
+      }
       
       //make the intensity fade NOT from black->color, but from white->color
       for (int i=0; i < 3; i++) {
@@ -880,7 +928,7 @@ class headPlot {
       }
       
       //change color to dark RED if railed
-      if (is_railed[Ielec])  new_rgb = new int[]{127,0,0};
+      if (is_railed[Ielec].is_railed)  new_rgb = new int[]{127,0,0};
       
       //set the electrode color
       electrode_rgb[0][Ielec] = new_rgb[0];
@@ -901,9 +949,9 @@ class headPlot {
     }    
   }
   
-  public void draw() {
+  public void update() {
+    //do this when new data is available
     
-
     //update electrode colors
     updateElectrodeColors();
     
@@ -915,7 +963,10 @@ class headPlot {
       updateHeadVoltages();
       convertVoltagesToHeadImage();
     }
-       
+  }
+  
+  public void draw() {
+
     //draw head parts
     fill(255,255,255);
     stroke(63,63,63);
@@ -923,15 +974,17 @@ class headPlot {
     ellipse(earL_x, earL_y, ear_width, ear_height); //little circle for the ear
     ellipse(earR_x, earR_y, ear_width, ear_height); //little circle for the ear
     
-    //draw head itself    
+    //draw head itself   
+   fill(255,255,255,255);  //fill in a white head 
+   strokeWeight(2);
+   ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
     if (drawHeadAsContours) {
+      //add the contnours
       image(headImage,image_x,image_y);
       noFill(); //overlay a circle as an outline, but no fill
-    } else {
-      fill(255,255,255,255);
+      strokeWeight(2);
+      ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
     }
-    strokeWeight(2);
-    ellipse(circ_x, circ_y, circ_diam, circ_diam); //big circle for the head
   
     //draw electrodes on the head
     strokeWeight(1);
@@ -953,7 +1006,7 @@ class headPlot {
         text(i+1,electrode_xy[i][0], electrode_xy[i][1]);
     }
     text("R",ref_electrode_xy[0],ref_electrode_xy[1]); 
-  }
+  } //end of draw method
   
 };
 

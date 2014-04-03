@@ -47,7 +47,7 @@ class OutputFile_rawtxt {
   }
 
   
-  public void writeRawData_dataPacket(dataPacket_ADS1299 data,float scale_to_uV) {
+  public void writeRawData_dataPacket(DataPacket_ADS1299 data,float scale_to_uV) {
     int nchan = data.values.length;
     rowsWritten = 0;
    
@@ -76,4 +76,5 @@ class OutputFile_rawtxt {
     return rowsWritten;
   }
 };
+
 

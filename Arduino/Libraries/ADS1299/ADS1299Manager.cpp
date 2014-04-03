@@ -82,7 +82,7 @@ void ADS1299Manager::reset(void)
   }
   
   setSRB1(use_SRB1());  //set whether SRB1 is active or not
-  
+  setAutoBiasGeneration(true); //configure ADS1299 so that bias is generated based on channel state
 };
 
 
@@ -100,26 +100,15 @@ void ADS1299Manager::deactivateChannel(int N)
   ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
 
   //shut down the channel
-  N = constrain(N-1,0,OPENBCI_NCHAN-1);  //subtracts 1 so that we're counting from 0, not 1
-  reg = CH1SET+(byte)N;
+  int N_zeroRef = constrain(N-1,0,OPENBCI_NCHAN-1);  //subtracts 1 so that we're counting from 0, not 1
+  reg = CH1SET+(byte)N_zeroRef;
   config = ADS1299::RREG(reg); delay(1);
   bitSet(config,7);  //left-most bit (bit 7) = 1, so this shuts down the channel
   if (use_neg_inputs) bitClear(config,3);  //bit 3 = 0 disconnects SRB2
   ADS1299::WREG(reg,config); delay(1);
   
-  //remove the channel from the bias generation...
-  //see ADS1299 datasheet, PDF p44.
-  //per Chip's experiments, if using the P inputs, just include the P inputs
-  //per Joel's experiements, if using the N inputs, include both P and N inputs
-  int nLoop = 1;  if (use_neg_inputs) nLoop=2;
-  for (int i=0; i < nLoop; i++) {
-  	  reg = BIAS_SENSP;
-  	  if (i > 0) reg = BIAS_SENSN;
-  	  config = ADS1299::RREG(reg); //get the current bias settings
-  	  bitClear(config,N);                   //set this channel's bit
-  	  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
-  }
-  
+  //set how this channel affects the bias generation...
+  alterBiasBasedOnChannelState(N);
 }; 
     
         
@@ -149,17 +138,7 @@ void ADS1299Manager::activateChannel(int N,byte gainCode,byte inputCode)
   ADS1299::WREG(CH1SET+(byte)N,configByte); delay(1);
 
   //add this channel to the bias generation
-  //see ADS1299 datasheet, PDF p44.
-  //per Chip's experiments, if using the P inputs, just include the P inputs
-  //per Joel's experiements, if using the N inputs, include both P and N inputs
-  int nLoop = 1;  if (use_neg_inputs) nLoop=2;
-  for (int i=0; i < nLoop; i++) {
-  	  reg = BIAS_SENSP;
-  	  if (i > 0) reg = BIAS_SENSN;
-  	  config = ADS1299::RREG(reg); //get the current bias settings
-  	  bitSet(config,N);                   //set this channel's bit
-  	  ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
-  }
+  alterBiasBasedOnChannelState(N);
   
   // // Now, these actions are necessary whenever there is at least one active channel
   // // though they don't strictly need to be done EVERY time we activate a channel.
@@ -171,6 +150,74 @@ void ADS1299Manager::activateChannel(int N,byte gainCode,byte inputCode)
   //Finalize the bias setup...activate buffer and use internal reference for center of bias creation, datasheet PDF p42
   ADS1299::WREG(CONFIG3,0b11101100); delay(1); 
 };
+
+//note that N here one-referenced (ie [1...N]), not [0...N-1]
+boolean ADS1299Manager::isChannelActive(int N_oneRef) {
+	 int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN-1);  //subtracts 1 so that we're counting from 0, not 1
+	 
+	 //get whether channel is active or not
+	 byte reg = CH1SET+(byte)N_zeroRef;
+	 byte config = ADS1299::RREG(reg); delay(1);
+	 boolean chanState = bitRead(config,7);
+	 return chanState;
+}
+
+void ADS1299Manager::setAutoBiasGeneration(boolean state) {
+	use_channels_for_bias = state;
+	
+	//step through the channels are recompute the bias state
+	for (int Ichan=1; Ichan<OPENBCI_NCHAN;Ichan++) {
+		alterBiasBasedOnChannelState(Ichan);
+	}
+}
+
+//note that N here one-referenced (ie [1...N]), not [0...N-1]
+void ADS1299Manager::alterBiasBasedOnChannelState(int N_oneRef) {
+	 int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN-1);  //subtracts 1 so that we're counting from 0, not 1
+	
+	 boolean activateBias = false;
+	 if ((use_channels_for_bias==true) && (isChannelActive(N_oneRef))) {
+	 	 //activate this channel's bias
+	 	 activateBiasForChannel(N_oneRef);
+	 } else {
+	 	 deactivateBiasForChannel(N_oneRef);
+	 }
+}
+	
+
+void ADS1299Manager::deactivateBiasForChannel(int N_oneRef) {
+	int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN-1); //subtracts 1 so that we're counting from 0, not 1
+ 	
+	//deactivate this channel's bias...both positive and negative
+	//see ADS1299 datasheet, PDF p44.
+	byte reg, config;
+	for (int I=0;I<2;I++) {
+		if (I==0) {
+			reg = BIAS_SENSP;
+		} else {
+			reg = BIAS_SENSN;
+		}
+		config = ADS1299::RREG(reg); delay(1);//get the current bias settings
+		bitClear(config,N_zeroRef);          //clear this channel's bit to remove from bias generation
+		ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+	}
+}
+void ADS1299Manager::activateBiasForChannel(int N_oneRef) {
+	int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN-1); //subtracts 1 so that we're counting from 0, not 1
+ 	
+	//see ADS1299 datasheet, PDF p44.
+	//per Chip's experiments, if using the P inputs, just include the P inputs
+	//per Joel's experiements, if using the N inputs, include both P and N inputs
+	byte reg, config;
+	int nLoop = 1;  if (use_neg_inputs) nLoop=2;
+	for (int i=0; i < nLoop; i++) {
+		reg = BIAS_SENSP;
+		if (i > 0) reg = BIAS_SENSN;
+		config = ADS1299::RREG(reg); //get the current bias settings
+		bitSet(config,N_zeroRef);                   //set this channel's bit
+		ADS1299::WREG(reg,config); delay(1);  //send the modified byte back to the ADS
+	}
+}	
 
 
 //change the given channel's lead-off detection state...note: stops data colleciton to issue its commands

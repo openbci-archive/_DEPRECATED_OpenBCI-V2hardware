@@ -13,7 +13,7 @@
 ///////////////////////////////////////////////////
 
 
-import processing.core.PApplet;
+//import processing.core.PApplet;
 import org.gwoptics.graphics.*;
 import org.gwoptics.graphics.graph2D.*;
 import org.gwoptics.graphics.graph2D.Graph2D;
@@ -23,29 +23,50 @@ import org.gwoptics.graphics.graph2D.backgrounds.*;
 import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 
-class gui_Manager {
-  ScatterTrace sTrace;
+class Gui_Manager {
+  ScatterTrace montageTrace;
   ScatterTrace_FFT fftTrace;
   Graph2D gMontage, gFFT;
   GridBackground gbMontage, gbFFT;
   Button stopButton;
-  plotFontInfo fontInfo;
-  headPlot headPlot1;
+  PlotFontInfo fontInfo;
+  HeadPlot headPlot1;
   Button[] chanButtons;
-  Button chanModeButton;
-  boolean showImpedanceButtons;
+  Button guiPageButton;
+  //boolean showImpedanceButtons;
   Button[] impedanceButtonsP;
   Button[] impedanceButtonsN;
-  textBox titleMontage, titleFFT;
-  textBox[] chanValuesMontage;
-  textBox[] impValuesMontage;
+  Button biasButton;
+  Button intensityFactorButton;
+  Button loglinPlotButton;
+  Button filtBPButton;
+  Button fftNButton;
+  Button smoothingButton;
+  TextBox titleMontage, titleFFT;
+  TextBox[] chanValuesMontage;
+  TextBox[] impValuesMontage;
   boolean showMontageValues;
+  public int guiPage;
+  boolean vertScaleAsLog = true;
   
-  float fftYOffset[];
-  float vertScale_uV = 200.f; //this defines the Y-scale on the montage plots...this is the vertical space between traces
+  private float fftYOffset[];
+  private float default_vertScale_uV=200.0; //this defines the Y-scale on the montage plots...this is the vertical space between traces
+  private float[] vertScaleFactor = {1.0f, 2.0f, 5.0f, 50.0f, 0.25f, 0.5f};
+  private int vertScaleFactor_ind = 0;
+  float vertScale_uV=200.0;
+  float vertScaleMin_uV_whenLog = 0.1f;
   float montage_yoffsets[];
   
-  gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float yScale_uV, String filterDescription) {  
+  public final static int GUI_PAGE_CHANNEL_ONOFF = 0;
+  public final static int GUI_PAGE_IMPEDANCE_CHECK = 1;
+  public final static int GUI_PAGE_HEADPLOT_SETUP = 2;
+  public final static int N_GUI_PAGES = 3;
+  
+  public final static String stopButton_pressToStop_txt = "Press to Stop";
+  public final static String stopButton_pressToStart_txt = "Press to Start";
+  
+  Gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float default_yScale_uV, 
+    String filterDescription, float smooth_fac) {  
     
      //define some layout parameters
     int axes_x, axes_y;
@@ -58,10 +79,10 @@ class gui_Manager {
     float up_down_split = 0.55f;   //notional dividing line between top and bottom plots, measured from top
     float gutter_between_buttons = 0.005f; //space between buttons
     float title_gutter = 0.02f;
-    fontInfo = new plotFontInfo();
+    fontInfo = new PlotFontInfo();
   
     //setup the montage plot...the right side 
-    vertScale_uV = yScale_uV;  //here is the vertical scaling of the traces
+    default_vertScale_uV = default_yScale_uV;  //here is the vertical scaling of the traces
     float[] axisMontage_relPos = { 
       left_right_split+gutter_left, 
       gutter_topbot+title_gutter, 
@@ -90,53 +111,173 @@ class gui_Manager {
     float[] axisHead_relPos = axisFFT_relPos.clone();
     axisHead_relPos[1] = gutter_topbot;  //set y position to be at top of left side
     axisHead_relPos[3] = available_top2bot*up_down_split  - gutter_topbot;
-    headPlot1 = new headPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y);  
-
+    headPlot1 = new HeadPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y,nchan);
+    setSmoothFac(smooth_fac);
+    
+    //setup the buttons
     int w,h,x,y;
            
     //setup stop button
-    w = 100;    //button width
-    h = 25;     //button height
+    w = 120;    //button width
+    h = 35;     //button height, was 25
     x = win_x - int(gutter_right*float(win_x)) - w;
     y = win_y - int(0.5*gutter_topbot*float(win_y)) - h;
     //int y = win_y - h;
     stopButton = new Button(x,y,w,h,stopButton_pressToStop_txt,fontInfo.buttonLabel_size);
     
-    //setup the channel mode button
-    w = 40;
+    //setup the gui page button
+    w = 80; //button width
     x = (int)(3*gutter_between_buttons*win_x);
-    chanModeButton = new Button(x,y,w,h,"Mode",fontInfo.buttonLabel_size);
+    guiPageButton = new Button(x,y,w,h,"Page\n" + (guiPage+1) + " of " + N_GUI_PAGES,fontInfo.buttonLabel_size);
         
-    //setup the channel on/off buttons
-    int xoffset = x + w + (int)(gutter_between_buttons*win_x);
-    w = 70;   //button width
-    if (nchan > 10) w -= (nchan-8)*2; //make the buttons skinnier
-    chanButtons = new Button[nchan];
-    for (int Ibut = 0; Ibut < nchan; Ibut++) {
+    //setup the channel on/off buttons...only plot 8 buttons, even if there are more channels
+    //because as of 4/3/2014, you can only turn on/off the higher channels (the ones above chan 8)
+    //by also turning off the corresponding lower channel.  So, deactiving channel 9 must also
+    //deactivate channel 1, therefore, we might as well use just the 1 button.
+    int xoffset = x + w + (int)(2*gutter_between_buttons*win_x);
+    w = w;   //button width
+    int w_orig = w;
+    //if (nchan > 10) w -= (nchan-8)*2; //make the buttons skinnier
+    int nChanBut = min(nchan,8);
+    chanButtons = new Button[nChanBut];
+    String txt;
+    for (int Ibut = 0; Ibut < nChanBut; Ibut++) {
       x = calcButtonXLocation(Ibut, win_x, w, xoffset,gutter_between_buttons);
-      chanButtons[Ibut] = new Button(x,y,w,h,"Ch " + (Ibut+1),fontInfo.buttonLabel_size);
+      txt = "Chan\n" + Integer.toString(Ibut+1);
+      if (nchan > 8) txt = txt + "+" + Integer.toString(Ibut+1+8);
+      chanButtons[Ibut] = new Button(x,y,w,h,txt,fontInfo.buttonLabel_size);
     }
-
+    
     //setup the impedance measurement (lead-off) control buttons
-    showImpedanceButtons = false; //by default, do not show the buttons
-    w = w;  //use same width as for buttons above
-    h = h/2;  //use buttons with half the height
+    //showImpedanceButtons = false; //by default, do not show the buttons
+    int vertspace_pix = max(1,int(gutter_between_buttons*win_x/4));
+    int w1 = w_orig;  //use same width as for buttons above
+    int h1 = h/2-vertspace_pix;  //use buttons with half the height
     impedanceButtonsP = new Button[nchan];
     for (int Ibut = 0; Ibut < nchan; Ibut++) {
-      x = calcButtonXLocation(Ibut, win_x, w, xoffset, gutter_between_buttons);
-      impedanceButtonsP[Ibut] = new Button(x,y-5,w,h,"Imp P" + (Ibut+1),fontInfo.buttonLabel_size);
+      x = calcButtonXLocation(Ibut, win_x, w1, xoffset, gutter_between_buttons);
+      impedanceButtonsP[Ibut] = new Button(x,y,w1,h1,"Imp P" + (Ibut+1),fontInfo.buttonLabel_size);
     }    
     impedanceButtonsN = new Button[nchan];
     for (int Ibut = 0; Ibut < nchan; Ibut++) {
-      x = calcButtonXLocation(Ibut, win_x, w, xoffset, gutter_between_buttons);
-      impedanceButtonsN[Ibut] = new Button(x,y+h,w,h,"Imp N" + (Ibut+1),fontInfo.buttonLabel_size);
-    }    
+      x = calcButtonXLocation(Ibut, win_x, w1, xoffset, gutter_between_buttons);
+      impedanceButtonsN[Ibut] = new Button(x,y+h-h1,w1,h1,"Imp N" + (Ibut+1),fontInfo.buttonLabel_size);
+    }
+    h1 = h;
+    x = calcButtonXLocation(8, win_x, w1, xoffset, gutter_between_buttons);
+    biasButton = new Button(x,y,w1,h1,"Bias\n" + "Auto",fontInfo.buttonLabel_size);
+
+    //setup the headPlot buttons
+    int Ibut=0;    w = w_orig;    h = h;
+    
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    filtBPButton = new Button(x,y,w,h,"BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name,fontInfo.buttonLabel_size);
+  
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    intensityFactorButton = new Button(x,y,w,h,"Vert Scale\n" + round(vertScale_uV) + "uV",fontInfo.buttonLabel_size);
+  
+    //x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    //fftNButton = new Button(x,y,w,h,"FFT N\n" + Nfft,fontInfo.buttonLabel_size);
+   
+    set_vertScaleAsLog(true);
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    loglinPlotButton = new Button(x,y,w,h,"Vert Scale\n" + get_vertScaleAsLogText(),fontInfo.buttonLabel_size);
+  
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    smoothingButton = new Button(x,y,w,h,"Smooth\n" + headPlot1.smooth_fac,fontInfo.buttonLabel_size);
+    
+    //set the initial display page for the GUI
+    setGUIpage(GUI_PAGE_CHANNEL_ONOFF);  
   } 
   private int calcButtonXLocation(int Ibut,int win_x,int w, int xoffset, float gutter_between_buttons) {
     return xoffset + (Ibut * (w + (int)(gutter_between_buttons*win_x)));
   }
+  
+  
+  public void setDefaultVertScale(float val_uV) {
+    default_vertScale_uV = val_uV;
+    updateVertScale();
+  }
+  public void setVertScaleFactor_ind(int ind) {
+    vertScaleFactor_ind = max(0,ind);
+    if (ind >= vertScaleFactor.length) vertScaleFactor_ind = 0;
+    updateVertScale();
+  }
+  public void incrementVertScaleFactor() {
+    setVertScaleFactor_ind(vertScaleFactor_ind+1);  //wrap-around is handled inside the function
+  }
+  public void updateVertScale() {
+    vertScale_uV = default_vertScale_uV*vertScaleFactor[vertScaleFactor_ind];
+    //println("Gui_Manager: updateVertScale: vertScale_uV = " + vertScale_uV);
     
-  public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, plotFontInfo fontInfo,String filterDescription) {
+    //update how the plots are scaled
+    if (montageTrace != null) montageTrace.setYScale_uV(vertScale_uV);  //the Y-axis on the montage plot is fixed...the data is simply scaled prior to plotting
+    if (gFFT != null) gFFT.setYAxisMax(vertScale_uV);
+    headPlot1.setMaxIntensity_uV(vertScale_uV);
+    intensityFactorButton.setString("Vert Scale\n" + round(vertScale_uV) + "uV");
+    
+    //update the Yticks on the FFT plot
+    if (gFFT != null) {
+      if (vertScaleAsLog) {
+        gFFT.setYAxisTickSpacing(1);
+      } else {
+        gFFT.setYAxisTickSpacing(pow(10.0,floor(log10(vertScale_uV/4))));
+      }
+    }
+    
+  }
+  public String get_vertScaleAsLogText() {
+    if (vertScaleAsLog) {
+      return "Log";
+    } else {
+      return "Linear";
+    }
+  }
+  public void set_vertScaleAsLog(boolean state) {
+    vertScaleAsLog = state;
+    
+    //change the FFT Plot
+    if (gFFT != null) {
+      if (vertScaleAsLog) {
+          gFFT.setYAxisMin(vertScaleMin_uV_whenLog);
+          Axis2D ay=gFFT.getYAxis();
+          ay.setLogarithmicAxis(true);
+          updateVertScale();  //force a re-do of the Yticks
+      } else {
+          Axis2D ay=gFFT.getYAxis();
+          ay.setLogarithmicAxis(false);
+          gFFT.setYAxisMin(0.0f);
+          updateVertScale();  //force a re-do of the Yticks
+      }
+    }
+    
+    //change the head plot
+    headPlot1.set_plotColorAsLog(vertScaleAsLog);
+    
+    //change the button
+    if (loglinPlotButton != null) {
+      loglinPlotButton.setString("Vert Scale\n" + get_vertScaleAsLogText());
+    }
+  }
+  
+  public void setSmoothFac(float fac) {
+    headPlot1.smooth_fac = fac;
+  }
+  
+  public void setDoNotPlotOutsideXlim(boolean state) {
+    if (state) {
+      //println("GUI_Manager: setDoNotPlotAboveXlim: " + gFFT.getXAxis().getMaxValue());
+      fftTrace.set_plotXlim(gFFT.getXAxis().getMinValue(),gFFT.getXAxis().getMaxValue());
+      montageTrace.set_plotXlim(gMontage.getXAxis().getMinValue(),gMontage.getXAxis().getMaxValue());
+    } else {
+      fftTrace.set_plotXlim(Float.NaN,Float.NaN);
+    }
+  }
+  public void setDecimateFactor(int fac) {
+    montageTrace.setDecimateFactor(fac);
+  }
+    
+  public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, PlotFontInfo fontInfo,String filterDescription) {
   
     g.setAxisColour(220, 220, 220);
     g.setFontColour(255, 255, 255);
@@ -172,7 +313,7 @@ class gui_Manager {
     g.setBackground(gbMontage);
     
     // add title
-    titleMontage = new textBox("EEG Data (" + filterDescription + ")",0,0);
+    titleMontage = new TextBox("EEG Data (" + filterDescription + ")",0,0);
     int x2 = x1 + int(round(0.5*axis_relPos[2]*float(win_x)));
     int y2 = y1 - 2;  //deflect two pixels upward
     titleMontage.x = x2;
@@ -184,9 +325,9 @@ class gui_Manager {
     //add channel data values and impedance values
     int x3, y3;
     //float w = int(round(axis_relPos[2]*win_x));
-    textBox fooBox = new textBox("",0,0); 
-    chanValuesMontage = new textBox[nchan];
-    impValuesMontage = new textBox[nchan];
+    TextBox fooBox = new TextBox("",0,0); 
+    chanValuesMontage = new TextBox[nchan];
+    impValuesMontage = new TextBox[nchan];
     Axis2D xAxis = g.getXAxis();
     Axis2D yAxis = g.getYAxis();
     int h = int(round(axis_relPos[3]*win_y));
@@ -197,12 +338,12 @@ class gui_Manager {
           case 0:
             //voltage value text
             x3 = x1 + xAxis.valueToPosition(xAxis.getMaxValue()) - 2;  //set to right edge of plot.  nudge 2 pixels to the left
-            fooBox = new textBox("0.00 uVrms",x3,y3);
+            fooBox = new TextBox("0.00 uVrms",x3,y3);
             break;
           case 1:
             //impedance value text
             x3 = x1 + xAxis.valueToPosition(xAxis.getMinValue()) + 2;  //set to left edge of plot.  nudge 2 pixels to the right
-            fooBox = new textBox("0.00 kOhm",x3,y3);
+            fooBox = new TextBox("0.00 kOhm",x3,y3);
             break;
         }
         fooBox.textColor = color(0,0,0);
@@ -225,7 +366,7 @@ class gui_Manager {
     showMontageValues = true;  // default to having them NOT displayed    
   }
   
-  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,plotFontInfo fontInfo) {
+  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,PlotFontInfo fontInfo) {
   
     g.setAxisColour(220, 220, 220);
     g.setFontColour(255, 255, 255);
@@ -238,7 +379,7 @@ class gui_Manager {
     //g.position.y = 0;
   
     //setup the y axis
-    g.setYAxisMin(0.1f);
+    g.setYAxisMin(vertScaleMin_uV_whenLog);
     g.setYAxisMax(vertScale_uV);
     g.setYAxisTickSpacing(1);
     g.setYAxisMinorTicks(0);
@@ -268,7 +409,7 @@ class gui_Manager {
     g.setBackground(gbFFT);
     
     // add title
-    titleFFT = new textBox("EEG Data (As Received)",0,0);
+    titleFFT = new TextBox("EEG Data (As Received)",0,0);
     int x2 = x1 + int(round(0.5*axis_relPos[2]*float(win_x)));
     int y2 = y1 - 2;  //deflect two pixels upward
     titleFFT.x = x2;
@@ -282,17 +423,17 @@ class gui_Manager {
   public void initializeMontageTraces(float[] dataBuffX, float [][] dataBuffY) {
     
     //create the trace object, add it to the  plotting object, and set the data and scale factor
-    //sTrace  = new ScatterTrace();  //I can't have this here because it dies. It must be in setup()
-    gMontage.addTrace(sTrace);
-    sTrace.setXYData_byRef(dataBuffX, dataBuffY);
-    sTrace.setYScaleFac(1f / vertScale_uV);
+    //montageTrace  = new ScatterTrace();  //I can't have this here because it dies. It must be in setup()
+    gMontage.addTrace(montageTrace);
+    montageTrace.setXYData_byRef(dataBuffX, dataBuffY);
+    montageTrace.setYScaleFac(1f / vertScale_uV);
     
     //set the y-offsets for each trace in the fft plot.
     //have each trace bumped down by -1.0.
     for (int Ichan=0; Ichan < nchan; Ichan++) {
       montage_yoffsets[Ichan]=(float)(-(Ichan+1));
     }
-    sTrace.setYOffset_byRef(montage_yoffsets);
+    montageTrace.setYOffset_byRef(montage_yoffsets);
   }
   
   
@@ -309,12 +450,12 @@ class gui_Manager {
   }
     
     
-  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std, boolean[] is_railed) {      
+  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std, DataStatus[] is_railed) {      
     //initialize the time-domain montage-plot traces
-    sTrace = new ScatterTrace();
+    montageTrace = new ScatterTrace();
     montage_yoffsets = new float[nchan];
     initializeMontageTraces(dataBuffX,dataBuffY);
-    sTrace.set_isRailed(is_railed);
+    montageTrace.set_isRailed(is_railed);
   
     //initialize the FFT traces
     fftTrace = new ScatterTrace_FFT(fftBuff); //can't put this here...must be in setup()
@@ -325,9 +466,22 @@ class gui_Manager {
     headPlot1.setIntensityData_byRef(dataBuffY_std,is_railed);
   }
   
+  public void setGUIpage(int page) {
+    if ((page >= 0) && (page < N_GUI_PAGES)) {
+      guiPage = page;
+    } else {
+      guiPage = 0;
+    }
+    //update the text on the button
+    guiPageButton.setString("Page\n" + (guiPage+1) + " of " + N_GUI_PAGES);
+  }
+  
+  public void incrementGUIpage() {
+    setGUIpage( (guiPage+1) % N_GUI_PAGES );
+  }
   
   public boolean isMouseOnGraph2D(Graph2D g, int mouse_x, int mouse_y) {
-    graphDataPoint dataPoint = new graphDataPoint();
+    GraphDataPoint dataPoint = new GraphDataPoint();
     getGraph2DdataPoint(g,mouse_x,mouse_y,dataPoint);
     if ( (dataPoint.x >= g.getXAxis().getMinValue()) &
          (dataPoint.x <= g.getXAxis().getMaxValue()) &
@@ -346,18 +500,18 @@ class gui_Manager {
     return isMouseOnGraph2D(gFFT,mouse_x,mouse_y);
   }
 
-  public void getGraph2DdataPoint(Graph2D g, int mouse_x,int mouse_y, graphDataPoint dataPoint) {
+  public void getGraph2DdataPoint(Graph2D g, int mouse_x,int mouse_y, GraphDataPoint dataPoint) {
     int rel_x = mouse_x - int(g.position.x);
     int rel_y = g.getYAxis().getLength() - (mouse_y - int(g.position.y));
     dataPoint.x = g.getXAxis().positionToValue(rel_x);
     dataPoint.y = g.getYAxis().positionToValue(rel_y);
   }
-  public void getMontageDataPoint(int mouse_x, int mouse_y, graphDataPoint dataPoint) {
+  public void getMontageDataPoint(int mouse_x, int mouse_y, GraphDataPoint dataPoint) {
     getGraph2DdataPoint(gMontage,mouse_x,mouse_y,dataPoint);
     dataPoint.x_units = "sec";
     dataPoint.y_units = "uV";  
   }  
-  public void getFFTdataPoint(int mouse_x,int mouse_y,graphDataPoint dataPoint) {
+  public void getFFTdataPoint(int mouse_x,int mouse_y,GraphDataPoint dataPoint) {
     getGraph2DdataPoint(gFFT, mouse_x,mouse_y,dataPoint);
     dataPoint.x_units = "Hz";
     dataPoint.y_units = "uV/sqrt(Hz)";
@@ -369,8 +523,9 @@ class gui_Manager {
   
   public void update(float[] data_std_uV,float[] data_elec_imp_ohm) {
     //assume new data has already arrived via the pre-existing references to dataBuffX and dataBuffY and FftBuff
-    sTrace.generate();  //graph doesn't update without this
+    montageTrace.generate();  //graph doesn't update without this
     fftTrace.generate(); //graph doesn't update without this
+    headPlot1.update();
 
     //update the text strings
     String fmt; float val;
@@ -378,17 +533,19 @@ class gui_Manager {
       //update the voltage values
       val = data_std_uV[Ichan];
       chanValuesMontage[Ichan].string = String.format(getFmt(val),val) + " uVrms";
-      if (sTrace.is_railed != null) {
-        if (sTrace.is_railed[Ichan] == true) {
+      if (montageTrace.is_railed != null) {
+        if (montageTrace.is_railed[Ichan].is_railed == true) {
           chanValuesMontage[Ichan].string = "RAILED";
+        } else if (montageTrace.is_railed[Ichan].is_railed_warn == true) {
+          chanValuesMontage[Ichan].string = "NEAR RAILED";
         }
       } 
       
       //update the impedance values
       val = data_elec_imp_ohm[Ichan]/1000;
       impValuesMontage[Ichan].string = String.format(getFmt(val),val) + " kOhm";
-      if (sTrace.is_railed != null) {
-        if (sTrace.is_railed[Ichan] == true) {
+      if (montageTrace.is_railed != null) {
+        if (montageTrace.is_railed[Ichan].is_railed == true) {
           impValuesMontage[Ichan].string = "RAILED";
         }
       }
@@ -412,19 +569,29 @@ class gui_Manager {
     gMontage.draw(); titleMontage.draw();//println("completed montage draw..."); 
     gFFT.draw(); titleFFT.draw();//println("completed FFT draw..."); 
     stopButton.draw();
-    chanModeButton.draw();
-    if (showImpedanceButtons == false) {
-      //show channel buttons
-      for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
-        chanButtons[Ichan].draw();
-      }
-    } else {
-      //show impedance buttons and text
-      for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
-        impedanceButtonsP[Ichan].draw();
-        impedanceButtonsN[Ichan].draw();
-        impValuesMontage[Ichan].draw();     
-      }    
+    guiPageButton.draw();
+    
+    switch (guiPage) {
+      //note: GUI_PAGE_CHANNEL_ON_OFF is the default at the end
+      case GUI_PAGE_IMPEDANCE_CHECK:
+        //show impedance buttons and text
+        for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
+          impedanceButtonsP[Ichan].draw(); //P-channel buttons
+          impedanceButtonsN[Ichan].draw(); //N-channel buttons
+          impValuesMontage[Ichan].draw();  //impedance values on montage plot   
+        }
+        biasButton.draw();
+        break;
+      case GUI_PAGE_HEADPLOT_SETUP:
+        intensityFactorButton.draw();
+        loglinPlotButton.draw();
+        filtBPButton.draw();
+        //fftNButton.draw();
+        smoothingButton.draw();
+        break;
+      default:  //assume GUI_PAGE_CHANNEL_ONOFF:
+        //show channel buttons
+        for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) { chanButtons[Ichan].draw(); }
     }
     
     if (showMontageValues) {
@@ -433,6 +600,7 @@ class gui_Manager {
       }
     }
   }
-  
-}
+ 
+};
+
 

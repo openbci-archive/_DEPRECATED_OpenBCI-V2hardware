@@ -13,7 +13,7 @@ Here are some graphical user interfaces for OpenBCI, as written for Processing. 
 Dependencies
 ------------
 
-These GUIs require you to download the Processing environment.  This code was developed using Processing 2.0.3.  It uses the built-in Serial library to communicate to the Arduino (or whatever) microcontroller is hosting the OpenBCI shield.  This GUI also uses the built in 'minim' library for executing the FFT to make the frequency-domain display.
+These GUIs require you to download the Processing environment.  This code was primarily developed using Processing 2.0.3 (* See Note).  It uses the built-in Serial library to communicate to the Arduin (or whatever) microcontroller is hosting the OpenBCI shield.  This GUI also uses the built in 'minim' library for executing the FFT to make the frequency-domain display.
 
 http://processing.org
 
@@ -21,17 +21,24 @@ The OpenBCI Processing GUI requires the 'gwoptics' graphing library.  We develop
 
 http://www.gwoptics.org/processing/gwoptics_p5lib/
 
+(* This code does NOT work with Processing 2.1 due to the Serial library, which seems to be fixed in Processing 2.1.1.  This code has not been extensively tested in 2.1.1.)
 
 
 Updates
 --------
 
-2014-03-23 OpenBCI_GUI: Lots of added features
-		: HeadPlot now shows full contours, not just the signal at
-		  the electrodes.  Click on the head to go back to the old.
-		: GUI can now play back previously recorded OpenBCI data.  Added
-		  some example data so that you can see it in action.
-		: Beginning hooks for checking the impedance of the electrodes
+2014-04-03 OpenBCI_GUI:
+		: Added controls for lead_off detection (ie, impedance checking)
+		: Added controls for filtering and smoothing and vertical scale
+                  factor.  Added buttons to control all of these settings.
+		: Added control to toggle bias to a fixed voltage from the
+		  normal "auto" generation of the bias based on the common-mode
+		  of the active electrodes 
+		: Added loading of electrode locations from a text file
+		: Added fancier "contour" plotting of EEG voltages on the
+		  head plot.
+		: Added playback of pre-recorded data from a text file along
+		  with a couple of example recorded data files.
 
 2014-02-02 OpenBCI_GUI and OpenBCI_GUI_Simpler:
 		: More refinements in handling of incoming serial binary data.
