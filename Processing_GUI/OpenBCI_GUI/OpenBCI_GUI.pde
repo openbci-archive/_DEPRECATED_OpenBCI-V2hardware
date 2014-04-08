@@ -995,7 +995,7 @@ void toggleChannelImpedanceState(Button but, int Ichan, int code_P_N_Both) {
 void setChannelImpedanceState(int Ichan,boolean newstate,int code_P_N_Both) {
   if ((Ichan >= 0) && (Ichan < gui.impedanceButtonsP.length)) {
     //change the state of the OpenBCI channel itself
-    openBCI.changeImpedanceState(Ichan,newstate,code_P_N_Both);
+    if (openBCI != null) openBCI.changeImpedanceState(Ichan,newstate,code_P_N_Both);
     
     //now update the button state
     if ((code_P_N_Both == 0) || (code_P_N_Both == 2)) {
