@@ -19,14 +19,14 @@ import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's
 import processing.core.PApplet;
 
 //choose where to get the EEG data
-final int DATASOURCE_NORMAL =  0;
-final int DATASOURCE_SYNTHETIC = 1;
-final int DATASOURCE_PLAYBACKFILE = 2;
-final int eegDataSource = DATASOURCE_PLAYBACKFILE;
+final int DATASOURCE_NORMAL =  0;      //Receive LIVE data from OpenBCI
+final int DATASOURCE_SYNTHETIC = 1;    //Generate synthetic signals (steady noise)
+final int DATASOURCE_PLAYBACKFILE = 2; //Playback previously recorded data...see "playbackData_fname" down below
+final int eegDataSource = DATASOURCE_NORMAL;
 
 //Serial communications constants
 OpenBCI_ADS1299 openBCI;
-String openBCI_portName = "COM21";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+String openBCI_portName = "COM28";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the Arduino
