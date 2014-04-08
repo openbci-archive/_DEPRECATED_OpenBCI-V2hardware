@@ -72,7 +72,8 @@ void setup() {
   pinMode(2,INPUT);  digitalWrite(2,HIGH); //activate pullup...for detecting which version of OpenBCI PCB
   pinMode(3,OUTPUT); digitalWrite(3,LOW);  //act as a ground pin...for detecting which version of OpenBCI PCB
   if (digitalRead(2) == LOW) OpenBCI_version = OPENBCI_V1; //check pins to see if there is a jumper.  if so, it is the older board
-  ADSManager.initialize(OpenBCI_version);  //must do this VERY early in the setup...preferably first
+  boolean isDaisy = false; if (MAX_N_CHANNELS > 8) isDaisy = true;
+  ADSManager.initialize(OpenBCI_version,isDaisy);  //must do this VERY early in the setup...preferably first
 
   // setup the serial link to the PC
   Serial.begin(115200);  //Need 115200 for 16-channels, only need 115200 for 8-channels but let's do 115200*2 for consistency

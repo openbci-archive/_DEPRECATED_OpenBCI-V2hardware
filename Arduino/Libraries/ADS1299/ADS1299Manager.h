@@ -74,7 +74,7 @@
 class ADS1299Manager : public ADS1299 {
   public:
     void initialize(void);                                     //initialize the ADS1299 controller.  Call once.  Assumes OpenBCI_V2
-    void initialize(int version);                              //initialize the ADS1299 controller.  Call once.  Set which version of OpenBCI you're using.
+    void initialize(int version,boolean isDaisy);              //initialize the ADS1299 controller.  Call once.  Set which version of OpenBCI you're using.
     void setVersionOpenBCI(int version);			//Set which version of OpenBCI you're using.
     void reset(void);                                          //reset all the ADS1299's settings.  Call however you'd like
     boolean isChannelActive(int N_oneRef);
