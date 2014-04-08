@@ -14,7 +14,7 @@
 //Pick which version of OpenBCI you have
 #define OPENBCI_V1 (1)    //Sept 2013
 #define OPENBCI_V2 (2)    //Oct 24, 2013
-#define OPENBCI_NCHAN (8)  // number of EEG channels
+#define OPENBCI_NCHAN_PER_BOARD (8)  // number of EEG channels
 
 /*   Arduino Uno - Pin Assignments
   SCK = 13
@@ -101,10 +101,11 @@ class ADS1299Manager : public ADS1299 {
     
   private:
     boolean use_neg_inputs;
-    boolean use_SRB2[OPENBCI_NCHAN];
+    boolean use_SRB2[OPENBCI_NCHAN_PER_BOARD];
     boolean use_channels_for_bias;
     boolean use_SRB1(void);
     long int makeSyntheticSample(long sampleNumber,int chan);
+    int n_chan_all_boards;
 };
 
 #endif

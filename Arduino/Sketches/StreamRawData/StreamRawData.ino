@@ -17,14 +17,10 @@ typedef long int int32;
 //for using a single OpenBCI board
 #include <ADS1299Manager.h>  //for a single OpenBCI board
 ADS1299Manager ADSManager; //Uses SPI bus and pins to say data is ready.  Uses Pins 13,12,11,10,9,8,4
-#define MAX_N_CHANNELS (N_CHANNELS_PER_OPENBCI)   //use this for a single OpenBCI board
-int nActiveChannels = 8;   //how many active channels would I like? 
+#define MAX_N_CHANNELS (N_CHANNELS_PER_OPENBCI)   //how many channels are available in hardware
+//#define MAX_N_CHANNELS (2*N_CHANNELS_PER_OPENBCI)   //how many channels are available in hardware...use this for daisy-chained board
+int nActiveChannels = MAX_N_CHANNELS;   //how many active channels would I like?
 
-//for using two daisy-chained OpenBCI boards
-//#include <ADS1299DaisyManager.h>  //for daisy chaining
-//ADS1299DaisyManager ADSManager; //Uses SPI bus and pins to say data is ready.  Uses Pins 13,12,11,10,9,8,4
-//#define MAX_N_CHANNELS (2*N_CHANNELS_PER_OPENBCI)   //use this for daisy chaining
-//int nActiveChannels = 16;   //how many active channels would I like?  
 
 //other settings for OpenBCI
 byte gainCode = ADS_GAIN24;   //how much gain do I want
@@ -76,9 +72,14 @@ void setup() {
   ADSManager.initialize(OpenBCI_version,isDaisy);  //must do this VERY early in the setup...preferably first
 
   // setup the serial link to the PC
-  Serial.begin(115200);  //Need 115200 for 16-channels, only need 115200 for 8-channels but let's do 115200*2 for consistency
+  if (MAX_N_CHANNELS > 8) {
+    Serial.begin(115200*2);  //Need 115200 for 16-channels, only need 115200 for 8-channels but let's do 115200*2 for consistency
+  } else {
+    Serial.begin(115200);
+  }
   Serial.println(F("ADS1299-Arduino UNO - Stream Raw Data")); //read the string from Flash to save RAM
-  Serial.print(F("Configured as OpenBCI_Version code = "));Serial.println(OpenBCI_version);
+  Serial.print(F("Configured as OpenBCI_Version code = "));Serial.print(OpenBCI_version); Serial.print(F(", isDaisy = "));Serial.println(ADSManager.isDaisy);
+  Serial.print(F("Configured for "));Serial.print(MAX_N_CHANNELS); Serial.println(F(" Channels"));
   Serial.flush();
   
   // setup the channels as desired on the ADS1299..set gain, input type, referece (SRB1), and patient bias signal

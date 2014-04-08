@@ -53,8 +53,7 @@ public:
     byte regData [24];	// array is used to mirror register data
     long channelData [16];	// array used when reading channel data board 1+2
     boolean verbose;		// turn on/off Serial feedback
-private:
-	boolean isDaisy;		// does this have a daisy chain board?
+    boolean isDaisy;		// does this have a daisy chain board?
     
     
 };
