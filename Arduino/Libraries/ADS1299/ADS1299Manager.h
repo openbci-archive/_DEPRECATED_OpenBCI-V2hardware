@@ -89,6 +89,9 @@ class ADS1299Manager : public ADS1299 {
     void printChannelDataAsText(int N, long int sampleNumber);
     void writeChannelDataAsBinary(int N, long int sampleNumber);
     void writeChannelDataAsBinary(int N, long int sampleNumber, boolean useSyntheticData);
+    void writeChannelDataAsBinary(int N, long int sampleNumber, long int auxValue);
+    void writeChannelDataAsBinary(int N, long int sampleNumber, long int auxValue, boolean useSyntheticData);
+    void writeChannelDataAsBinary(int N, long int sampleNumber, boolean sendAuxValue,long int auxValue, boolean useSyntheticData);
     void writeChannelDataAsOpenEEG_P2(long int sampleNumber);
     void writeChannelDataAsOpenEEG_P2(long int sampleNumber, boolean useSyntheticData);
     void printAllRegisters(void);

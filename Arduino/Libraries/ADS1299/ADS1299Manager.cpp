@@ -364,29 +364,37 @@ void ADS1299Manager::printChannelDataAsText(int N, long int sampleNumber)
 int32 val;
 byte *val_ptr = (byte *)(&val);
 void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber){
-	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,false);
+	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,false,0,false);
 }
-void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean useSyntheticData)
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean useSyntheticData){
+	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,false,0,useSyntheticData);
+}
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,long int auxValue){
+	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,true,auxValue,false);
+}
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,long int auxValue, boolean useSyntheticData){
+	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,true,auxValue,useSyntheticData);
+}
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean sendAuxValue, 
+	long int auxValue, boolean useSyntheticData)
 {
 	//check the inputs
 	if ((N < 1) || (N > n_chan_all_boards)) return;
 	
-	// Write header
+	// Write start byte
 	Serial.write( (byte) PCKT_START);
+	
+	//write the length of the payload
 	//byte byte_val = (1+8)*4;
-	Serial.write((1+N)*4);  //length of data payload, bytes
-	
-	
-		
-	//print the sample number, if not disabled
-	val = sampleNumber;
-	//val = 1L;	
-	//ptr = (uint8_t *)(&val);  //pretend that it is a string buffer so that Serial.write works easier
-	//if (sampleNumber >= 0) {
-		Serial.write(val_ptr,4); //4 bytes long
-	//}
+	byte payloadBytes = (byte)((1+N)*4);    //length of data payload, bytes
+	if (sendAuxValue) payloadBytes+= (byte)4;  //add four more bytes for the aux value
+	Serial.write(payloadBytes);  //write the payload length
 
-	//print each channel
+	//write the sample number, if not disabled
+	val = sampleNumber;
+	Serial.write(val_ptr,4); //4 bytes long
+	
+	//write each channel
 	for (int chan = 0; chan < N; chan++ )
 	{
 		//get this channel's data
@@ -397,6 +405,12 @@ void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean u
 			//get the real EEG data for this channel
 			val = channelData[chan];
 		}
+		Serial.write(val_ptr,4); //4 bytes long
+	}
+	
+	// Write the AUX value
+	if (sendAuxValue) {
+		val = auxValue;
 		Serial.write(val_ptr,4); //4 bytes long
 	}
 	

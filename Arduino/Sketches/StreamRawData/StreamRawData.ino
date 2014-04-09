@@ -17,8 +17,8 @@ typedef long int int32;
 //for using a single OpenBCI board
 #include <ADS1299Manager.h>  //for a single OpenBCI board
 ADS1299Manager ADSManager; //Uses SPI bus and pins to say data is ready.  Uses Pins 13,12,11,10,9,8,4
-#define MAX_N_CHANNELS (N_CHANNELS_PER_OPENBCI)   //how many channels are available in hardware
-//#define MAX_N_CHANNELS (2*N_CHANNELS_PER_OPENBCI)   //how many channels are available in hardware...use this for daisy-chained board
+//#define MAX_N_CHANNELS (N_CHANNELS_PER_OPENBCI)   //how many channels are available in hardware
+#define MAX_N_CHANNELS (2*N_CHANNELS_PER_OPENBCI)   //how many channels are available in hardware...use this for daisy-chained board
 int nActiveChannels = MAX_N_CHANNELS;   //how many active channels would I like?
 
 
@@ -36,6 +36,10 @@ boolean is_running = false;    // this flag is set in serialEvent on reciept of 
 boolean startBecauseOfPin = false;
 boolean startBecauseOfSerial = false;
 
+//analog input
+#define PIN_ANALOGINPUT (A0)
+int analogVal = 0;
+
 #define OUTPUT_NOTHING (0)
 #define OUTPUT_TEXT (1)
 #define OUTPUT_BINARY (2)
@@ -43,6 +47,7 @@ boolean startBecauseOfSerial = false;
 #define OUTPUT_BINARY_4CHAN (4)
 #define OUTPUT_BINARY_OPENEEG (6)
 #define OUTPUT_BINARY_OPENEEG_SYNTHETIC (7)
+#define OUTPUT_BINARY_WITH_AUX (8)
 int outputType;
 
 //Design filters  (This BIQUAD class requires ~6K of program space!  Ouch.)
@@ -137,38 +142,41 @@ void loop(){
     unsigned long start_micros = micros();
   
     //get the data
-    ADSManager.updateChannelData();          // update the channelData array 
-    sampleCounter++;                        // increment my sample counter
+    analogVal = analogRead(PIN_ANALOGINPUT);   // get analog value
+    ADSManager.updateChannelData();            // update the channelData array 
+    sampleCounter++;                           // increment my sample counter
     
     //Apply  filers to the data
     if (useFilters) applyFilters();
 
     //print the data
-    //if ((sampleCounter % 1) == 0) {
-      switch (outputType) {
-        case OUTPUT_NOTHING:
-          //don't output anything...the Arduino is still collecting data from the OpenBCI board...just nothing is being done with it
-          //if ((sampleCounter % 250) == 1) { Serial.print(F("Free RAM = ")); Serial.println(freeRam()); }; //print memory status
-          break;
-        case OUTPUT_BINARY:
-          ADSManager.writeChannelDataAsBinary(MAX_N_CHANNELS,sampleCounter);  //print all channels, whether active or not
-          break;
-        case OUTPUT_BINARY_SYNTHETIC:
-          ADSManager.writeChannelDataAsBinary(MAX_N_CHANNELS,sampleCounter,true);  //print all channels, whether active or not
-          break; 
-        case OUTPUT_BINARY_4CHAN:
-          ADSManager.writeChannelDataAsBinary(4,sampleCounter);  //print 4 channels, whether active or not
-          break; 
-        case OUTPUT_BINARY_OPENEEG:
-          ADSManager.writeChannelDataAsOpenEEG_P2(sampleCounter);  //this format accepts 6 channels, so that's what it does
-          break; 
-        case OUTPUT_BINARY_OPENEEG_SYNTHETIC:
-          ADSManager.writeChannelDataAsOpenEEG_P2(sampleCounter,true);  //his format accepts 6 channels, so that's what it does
-          break;           
-        default:
-          ADSManager.printChannelDataAsText(MAX_N_CHANNELS,sampleCounter);  //print all channels, whether active or not
-      }
-    //}
+    switch (outputType) {
+      case OUTPUT_NOTHING:
+        //don't output anything...the Arduino is still collecting data from the OpenBCI board...just nothing is being done with it
+        //if ((sampleCounter % 250) == 1) { Serial.print(F("Free RAM = ")); Serial.println(freeRam()); }; //print memory status
+        break;
+      case OUTPUT_BINARY:
+        ADSManager.writeChannelDataAsBinary(MAX_N_CHANNELS,sampleCounter);  //print all channels, whether active or not
+        break;
+      case OUTPUT_BINARY_WITH_AUX:
+        ADSManager.writeChannelDataAsBinary(MAX_N_CHANNELS,sampleCounter,(long int)analogVal);  //print all channels, whether active or not
+        break;
+      case OUTPUT_BINARY_SYNTHETIC:
+        ADSManager.writeChannelDataAsBinary(MAX_N_CHANNELS,sampleCounter,(boolean)true);  //print all channels, whether active or not
+        break; 
+      case OUTPUT_BINARY_4CHAN:
+        ADSManager.writeChannelDataAsBinary(4,sampleCounter);  //print 4 channels, whether active or not
+        break; 
+      case OUTPUT_BINARY_OPENEEG:
+        ADSManager.writeChannelDataAsOpenEEG_P2(sampleCounter);  //this format accepts 6 channels, so that's what it does
+        break; 
+      case OUTPUT_BINARY_OPENEEG_SYNTHETIC:
+        ADSManager.writeChannelDataAsOpenEEG_P2(sampleCounter,true);  //his format accepts 6 channels, so that's what it does
+        break;           
+      default:
+        ADSManager.printChannelDataAsText(MAX_N_CHANNELS,sampleCounter);  //print all channels, whether active or not
+    }
+
     
 //    totalMicrosBusy += (micros()-start_micros); //accumulate
 //    if (sampleCounter==250) totalMicrosBusy = 0;  //start from 250th sample
@@ -322,9 +330,9 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         
       //other commands
       case 'n':
-        toggleRunState(OUTPUT_NOTHING);
+        toggleRunState(OUTPUT_BINARY_WITH_AUX);
         startBecauseOfSerial = is_running;
-        if (is_running) Serial.println(F("Arduino: Starting, but not outputing to PC..."));
+        if (is_running) Serial.println(F("Arduino: Starting binary (including AUX value)..."));
         break;
       case 'b':
         toggleRunState(OUTPUT_BINARY);
