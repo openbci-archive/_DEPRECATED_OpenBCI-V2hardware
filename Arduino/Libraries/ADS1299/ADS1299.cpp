@@ -1,25 +1,29 @@
 //
-//  ADS1299.cpp   ARDUINO LIBRARY FOR COMMUNICATING WITH ADS1299
+//  ADS1299DIAISY.cpp   ARDUINO LIBRARY FOR COMMUNICATING WITH TWO
+//  DAISY-CHAINED ADS1299 BOARDS
 //  
 //  Created by Conor Russomanno, Luke Travis, and Joel Murphy. Summer, 2013
+//
+//  Extended by Chip Audette through April 2014
 //
 
 
 #include "pins_arduino.h"
 #include "ADS1299.h"
 
-void ADS1299::initialize(int _DRDY, int _RST, int _CS, int _FREQ){
-    DRDY = _DRDY;
-    CS = _CS;
+void ADS1299::initialize(int _DRDY, int _RST, int _CS, int _FREQ, boolean _isDaisy){
+	isDaisy = _isDaisy;
+	DRDY = _DRDY;
+	CS = _CS;
 	int FREQ = _FREQ;
 	int RST = _RST;
 	
-		delay(50);				// recommended power up sequence requiers Tpor (~32mS)	
-		pinMode(RST,OUTPUT);
-		pinMode(RST,LOW);
-		delayMicroseconds(4);	// toggle reset pin
-		pinMode(RST,HIGH);
-		delayMicroseconds(20);	// recommended to wait 18 Tclk before using device (~8uS);
+	delay(50);				// recommended power up sequence requiers Tpor (~32mS)	
+	pinMode(RST,OUTPUT);
+	pinMode(RST,LOW);
+	delayMicroseconds(4);	// toggle reset pin
+	pinMode(RST,HIGH);
+	delayMicroseconds(20);	// recommended to wait 18 Tclk before using device (~8uS);
 	
 
     // **** ----- SPI Setup ----- **** //
@@ -222,60 +226,101 @@ void ADS1299::WREGS(byte _address, byte _numRegistersMinusOne) {
 
 void ADS1299::updateChannelData(){
 	byte inByte;
+	int nchan=8;  //assume 8 channel.  If needed, it automatically changes to 16 automatically in a later block.
 	digitalWrite(CS, LOW);				//  open SPI
-	stat = transfer(0x00);				//  read status register (1100 + LOFF_STATP + LOFF_STATN + GPIO[7:4])
-	stat = transfer(0x00);				//  read status register (1100 + LOFF_STATP + LOFF_STATN + GPIO[7:4])
-	stat = transfer(0x00);				//  read status register (1100 + LOFF_STATP + LOFF_STATN + GPIO[7:4])
+	
+	// READ CHANNEL DATA FROM FIRST ADS IN DAISY LINE
+	for(int i=0; i<3; i++){			//  read 3 byte status register from ADS 1 (1100+LOFF_STATP+LOFF_STATN+GPIO[7:4])
+		inByte = transfer(0x00);
+		stat_1 = (stat_1<<8) | inByte;				
+	}
+	
 	for(int i = 0; i<8; i++){
-		for(int j=0; j<3; j++){		//  read 24 bits of channel data in 8 3 byte chunks
+		for(int j=0; j<3; j++){		//  read 24 bits of channel data from 1st ADS in 8 3 byte chunks
 			inByte = transfer(0x00);
 			channelData[i] = (channelData[i]<<8) | inByte;
 		}
 	}
+	
+	if (isDaisy) {
+		nchan = 16;
+		// READ CHANNEL DATA FROM SECOND ADS IN DAISY LINE
+		for(int i=0; i<3; i++){			//  read 3 byte status register from ADS 2 (1100+LOFF_STATP+LOFF_STATN+GPIO[7:4])
+			inByte = transfer(0x00);
+			stat_2 = (stat_1<<8) | inByte;				
+		}
+		
+		for(int i = 8; i<16; i++){
+			for(int j=0; j<3; j++){		//  read 24 bits of channel data from 2nd ADS in 8 3 byte chunks
+				inByte = transfer(0x00);
+				channelData[i] = (channelData[i]<<8) | inByte;
+			}
+		}
+	}
+	
 	digitalWrite(CS, HIGH);				//  close SPI
 	
-	for(int i=0; i<8; i++){			// convert 3 byte 2's compliment to 4 byte 2's compliment	
+	//reformat the numbers
+	for(int i=0; i<nchan; i++){			// convert 3 byte 2's compliment to 4 byte 2's compliment	
 		if(bitRead(channelData[i],23) == 1){	
 			channelData[i] |= 0xFF000000;
 		}else{
 			channelData[i] &= 0x00FFFFFF;
 		}
 	}
-//	if(verbose){
-//		Serial.print(stat); Serial.print(", ");
-//		for(int i=0; i<8; i++){
-//			Serial.print(channelData[i]);
-//			if(i<7){Serial.print(", ");}
-//		}
-//		Serial.println();
-//	}
 }
+
 	
-
-
-
-void ADS1299::RDATA() {					//  use in Stop Read Continuous mode when DRDY goes low
-	byte inByte;						//  to read in one sample of the channels
-    digitalWrite(CS, LOW);				//  open SPI
-    transfer(_RDATA);					//  send the RDATA command
-	stat = transfer(0x00);				//  read status register (1100 + LOFF_STATP + LOFF_STATN + GPIO[7:4])
+//read data
+void ADS1299::RDATA() {				//  use in Stop Read Continuous mode when DRDY goes low
+	byte inByte;
+	stat_1 = 0;							//  clear the status registers
+	stat_2 = 0;	
+	int nchan = 8;	//assume 8 channel.  If needed, it automatically changes to 16 automatically in a later block.
+	digitalWrite(CS, LOW);				//  open SPI
+	transfer(_RDATA);
+	
+	// READ CHANNEL DATA FROM FIRST ADS IN DAISY LINE
+	for(int i=0; i<3; i++){			//  read 3 byte status register (1100+LOFF_STATP+LOFF_STATN+GPIO[7:4])
+		inByte = transfer(0x00);
+		stat_1 = (stat_1<<8) | inByte;				
+	}
+	
 	for(int i = 0; i<8; i++){
-		for(int j=0; j<3; j++){		//  read in the status register and new channel data
+		for(int j=0; j<3; j++){		//  read 24 bits of channel data from 1st ADS in 8 3 byte chunks
 			inByte = transfer(0x00);
 			channelData[i] = (channelData[i]<<8) | inByte;
 		}
 	}
-	digitalWrite(CS, HIGH);				//  close SPI
 	
-	for(int i=0; i<8; i++){
-		if(bitRead(channelData[i],23) == 1){	// convert 3 byte 2's compliment to 4 byte 2's compliment
+	if (isDaisy) {
+		nchan = 16;
+		
+		// READ CHANNEL DATA FROM SECOND ADS IN DAISY LINE
+		for(int i=0; i<3; i++){			//  read 3 byte status register (1100+LOFF_STATP+LOFF_STATN+GPIO[7:4])
+			inByte = transfer(0x00);
+			stat_2 = (stat_1<<8) | inByte;				
+		}
+		
+		for(int i = 8; i<16; i++){
+			for(int j=0; j<3; j++){		//  read 24 bits of channel data from 2nd ADS in 8 3 byte chunks
+				inByte = transfer(0x00);
+				channelData[i] = (channelData[i]<<8) | inByte;
+			}
+		}
+	}
+	
+	for(int i=0; i<nchan; i++){			// convert 3 byte 2's compliment to 4 byte 2's compliment	
+		if(bitRead(channelData[i],23) == 1){	
 			channelData[i] |= 0xFF000000;
 		}else{
 			channelData[i] &= 0x00FFFFFF;
 		}
 	}
+	
     
 }
+
 
 
 // String-Byte converters for RREG and WREG

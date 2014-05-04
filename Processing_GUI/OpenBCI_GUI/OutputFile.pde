@@ -42,23 +42,28 @@ class OutputFile_rawtxt {
     output.println("%");
     output.println("%Sample Rate = " + fs_Hz + " Hz");
     output.println("%First Column = SampleIndex");
-    output.println("%Other Columns = EEG data in microvolts");
+    output.println("%Other Columns = EEG data in microvolts with optional columns at end being unscaled Aux data");
     output.flush();
   }
 
   
   public void writeRawData_dataPacket(DataPacket_ADS1299 data,float scale_to_uV) {
-    int nchan = data.values.length;
+    writeRawData_dataPacket(data,scale_to_uV,data.values.length);
+  }
+  public void writeRawData_dataPacket(DataPacket_ADS1299 data,float scale_to_uV, int nValsUsingScaleFactor) {
+    int nVal = data.values.length;
     rowsWritten = 0;
    
     if (output != null) {
       output.print(Integer.toString(data.sampleIndex));
-      for (int Ichan = 0; Ichan < nchan; Ichan++) {
+      for (int Ival = 0; Ival < nVal; Ival++) {
         output.print(", ");
-        if (abs(scale_to_uV-1.0) < 1e-6) {
-          output.print(Integer.toString(data.values[Ichan]));
+        if ((Ival >= nValsUsingScaleFactor) || (abs(scale_to_uV-1.0) < 1e-6)) {
+          //do not scale the data
+          output.print(Integer.toString(data.values[Ival]));
         } else {
-          output.print(String.format("%.2f",scale_to_uV * float(data.values[Ichan])));
+          //apply the scale factor
+          output.print(String.format("%.2f",scale_to_uV * float(data.values[Ival])));
         }
       }
       output.println();

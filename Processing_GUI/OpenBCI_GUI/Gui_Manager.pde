@@ -578,7 +578,9 @@ class Gui_Manager {
         for (int Ichan = 0; Ichan < chanButtons.length; Ichan++) {
           impedanceButtonsP[Ichan].draw(); //P-channel buttons
           impedanceButtonsN[Ichan].draw(); //N-channel buttons
-          impValuesMontage[Ichan].draw();  //impedance values on montage plot   
+        }
+        for (int Ichan = 0; Ichan < impValuesMontage.length; Ichan++) {
+          impValuesMontage[Ichan].draw();  //impedance values on montage plot
         }
         biasButton.draw();
         break;

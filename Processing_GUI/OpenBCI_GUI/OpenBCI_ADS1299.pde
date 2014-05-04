@@ -9,7 +9,7 @@
 // for normal operation.
 //
 // Created: Chip Audette, Oct 2013
-// Modified: through March 2014
+// Modified: through April 2014
 //
 // Note: this class does not care whether you are using V1 or V2 of the OpenBCI
 // board because the Arduino itself handles the differences between the two.  The
@@ -23,6 +23,7 @@ import java.io.OutputStream; //for logging raw bytes to an output file
 final String command_stop = "s";
 final String command_startText = "x";
 final String command_startBinary = "b";
+final String command_startBinary_wAux = "n";
 final String command_startBinary_4chan = "v";
 final String command_activateFilters = "F";
 final String command_deactivateFilters = "g";
@@ -39,6 +40,7 @@ class OpenBCI_ADS1299 {
  
   //final static int DATAMODE_TXT = 0;
   final static int DATAMODE_BIN = 1;
+  final static int DATAMODE_BIN_WAUX = 2;
   //final static int DATAMODE_BIN_4CHAN = 4;
   
   final static int STATE_NOCOM = 0;
@@ -58,22 +60,34 @@ class OpenBCI_ADS1299 {
   
   Serial serial_openBCI = null;
   int state = STATE_NOCOM;
-  int dataMode = prefered_datamode;
+  int dataMode = -1;
   int prevState_millis = 0;
   //byte[] serialBuff;
   //int curBuffIndex = 0;
   DataPacket_ADS1299 dataPacket;
   boolean isNewDataPacketAvailable = false;
-  int num_channels;
   OutputStream output; //for debugging  WEA 2014-01-26
   int prevSampleIndex = 0;
   int serialErrorCounter = 0;
   
   //constructor
-  OpenBCI_ADS1299(PApplet applet, String comPort, int baud, int nchan) {
-    num_channels = nchan;
-    //serialBuff = new byte[LEN_SERIAL_BUFF_CHAR];  //allocate the serial buffer
-    dataPacket = new DataPacket_ADS1299(num_channels);
+  OpenBCI_ADS1299(PApplet applet, String comPort, int baud, int nValuesPerPacket) {
+    
+    //choose data mode
+    //println("OpenBCI_ADS1299: prefered_datamode = " + prefered_datamode + ", nValuesPerPacket%8 = " + (nValuesPerPacket % 8));
+    if (prefered_datamode == DATAMODE_BIN) {
+      if ((nValuesPerPacket % 8) != 0) {
+        //must be requesting the aux data, so change the referred data mode
+        prefered_datamode = DATAMODE_BIN_WAUX;
+        println("OpenBCI_ADS1299: nValuesPerPacket = " + nValuesPerPacket + " so setting prefered_datamode to " + prefered_datamode);
+      }
+    }
+    dataMode = prefered_datamode;
+
+    //allocate space for data packet
+    dataPacket = new DataPacket_ADS1299(nValuesPerPacket);
+
+    //prepare the serial port
     if (serial_openBCI != null) closeSerialPort();
     openSerialPort(applet, comPort, baud);
     
@@ -84,7 +98,7 @@ class OpenBCI_ADS1299 {
   //manage the serial port  
   int openSerialPort(PApplet applet, String comPort, int baud) {
     serial_openBCI = new Serial(applet,comPort,baud); //open the com port
-    serial_openBCI.clear(); // clear anything in the com port's buffer     
+    serial_openBCI.clear(); // clear anything in the com port's buffer    
     changeState(STATE_COMINIT);
     return 0;
   }
@@ -115,17 +129,27 @@ class OpenBCI_ADS1299 {
   
   //start the data transfer using the current mode
   int startDataTransfer() {
+     println("OpenBCI_ADS1299: startDataTransfer: using current dataMode...");
     return startDataTransfer(dataMode);
   }
   
   //start data trasnfer using the given mode
   int startDataTransfer(int mode) {
     dataMode = mode;
+    if (state == STATE_COMINIT) {
+      println("OpenBCI_ADS1299: startDataTransfer: cannot start transfer...waiting for comms...");
+      return -1;
+    }
     stopDataTransfer();
+    println("OpenBCI_ADS1299: startDataTransfer: received command for mode = " + mode);
     switch (mode) {
       case DATAMODE_BIN:
         serial_openBCI.write(command_startBinary + "\n");
-        println("OpenBCI_ADS1299: starting binary transfer");
+        println("OpenBCI_ADS1299: startDataTransfer: starting binary transfer");
+        break;
+      case DATAMODE_BIN_WAUX:
+        serial_openBCI.write(command_startBinary_wAux + "\n");
+        println("OpenBCI_ADS1299: startDataTransfer: starting binary transfer (with Aux)");
         break;
     }
     return 0;
@@ -166,14 +190,15 @@ class OpenBCI_ADS1299 {
   so this protocol parser expects the lower bytes first.
 
   Start Indicator: 0xA0
-  Packet_length  : 1 byte  (length = 4 bytes per active channel + 4 bytes framenumber)
-  Framenumber    : 4 bytes (currently not used - will be a sequential counter ?)
+  Packet_length  : 1 byte  (length = 4 bytes framenumber + 4 bytes per active channel + (optional) 4 bytes for 1 Aux value)
+  Framenumber    : 4 bytes (Sequential counter pf packets)
   Channel 1 data  : 4 bytes 
   ...
   Channel N data  : 4 bytes
+  [Optional] Aux Value : 4 bytes
   End Indcator:    0xC0
   ********************************************************************* */
-  int channelsInPacket = 0;
+  int nDataValuesInPacket = 0;
   int localByteCounter=0;
   int localChannelCounter=0;
   int PACKET_readstate = 0;
@@ -184,15 +209,17 @@ class OpenBCI_ADS1299 {
     switch (PACKET_readstate) {
       case 0:  
            if (actbyte == byte(0xA0)) {          // look for start indicator
-            //println("OpenBCI_ADS1299: found 0xA0");
+            //println("OpenBCI_ADS1299: interpretBinaryStream: found 0xA0");
             PACKET_readstate++;
            } 
            break;
       case 1:  
-           channelsInPacket = ((int)actbyte) / 4 - 1;   // get number of channels
-           if (channelsInPacket != num_channels) {
+           nDataValuesInPacket = ((int)actbyte) / 4 - 1;   // get number of channels
+           //println("OpenBCI_ADS1299: interpretBinaryStream: nDataValuesInPacket = " + nDataValuesInPacket);
+           //if (nDataValuesInPacket != num_channels) { //old check, too restrictive
+           if ((nDataValuesInPacket < 0) || (nDataValuesInPacket > dataPacket.values.length)) {
             serialErrorCounter++;
-            println("OpenBCI_ADS1299: given number of channels (" + channelsInPacket + ") is not acceptable.  Ignoring packet. (" + serialErrorCounter + ")");
+            println("OpenBCI_ADS1299: interpretBinaryStream: given number of data values (" + nDataValuesInPacket + ") is not acceptable.  Ignoring packet. (" + serialErrorCounter + ")");
             PACKET_readstate=0;
            } else { 
             localByteCounter=0; //prepare for next usage of localByteCounter
@@ -200,14 +227,14 @@ class OpenBCI_ADS1299 {
            }
            break;
       case 2: 
-          //don't know if this branch is correct.  Untested as of 2014-02-02
+          //check the packet counter
           localByteBuffer[localByteCounter] = actbyte;
           localByteCounter++;
           if (localByteCounter==4) {
             dataPacket.sampleIndex = interpretAsInt32(localByteBuffer); //added WEA
             if ((dataPacket.sampleIndex-prevSampleIndex) != 1) {
               serialErrorCounter++;
-              println("OpenBCI_ADS1299: apparent sampleIndex jump from Serial data: " + prevSampleIndex + " to  " + dataPacket.sampleIndex + ".  Keeping packet. (" + serialErrorCounter + ")");
+              println("OpenBCI_ADS1299: interpretBinaryStream: apparent sampleIndex jump from Serial data: " + prevSampleIndex + " to  " + dataPacket.sampleIndex + ".  Keeping packet. (" + serialErrorCounter + ")");
             }
             prevSampleIndex = dataPacket.sampleIndex;
             localByteCounter=0;//prepare for next usage of localByteCounter
@@ -220,10 +247,10 @@ class OpenBCI_ADS1299 {
           localByteCounter++;
           if (localByteCounter==4) {
             dataPacket.values[localChannelCounter] = interpretAsInt32(localByteBuffer);
-            //println("OpenBCI_ADS1299: received chan  = " + localChannelCounter);
             localChannelCounter++;
-            if (localChannelCounter==channelsInPacket) {  
+            if (localChannelCounter==nDataValuesInPacket) {  
               // all channels arrived !
+              //println("OpenBCI_ADS1299: interpretBinaryStream: localChannelCounter = " + localChannelCounter);
               PACKET_readstate++;
               //isNewDataPacketAvailable = true;  //tell the rest of the code that the data packet is complete
             } else { 
@@ -237,12 +264,13 @@ class OpenBCI_ADS1299 {
           isNewDataPacketAvailable = true; //original place for this.  but why not put it in the previous case block
         } else {
           serialErrorCounter++;
-          println("OpenBCI_ADS1299: expecteding end-of-packet byte is missing.  Discarding packet. (" + serialErrorCounter + ")");
+          println("OpenBCI_ADS1299: interpretBinaryStream: expecteding end-of-packet byte is missing.  Discarding packet. (" + serialErrorCounter + ")");
         }
         PACKET_readstate=0;  // either way, look for next packet
         break;
       default: 
-          println("OpenBCI_ADS1299: Unknown byte: " + actbyte + " ...continuing.");
+          //println("OpenBCI_ADS1299: Unknown byte: " + actbyte + " .  Continuing...");
+          println("OpenBCI_ADS1299: Unknown byte.  Continuing...");
           PACKET_readstate=0;  // look for next packet
     }
   } // end of interpretBinaryStream

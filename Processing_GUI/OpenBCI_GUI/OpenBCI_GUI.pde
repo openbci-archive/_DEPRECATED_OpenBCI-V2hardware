@@ -19,14 +19,15 @@ import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's
 import processing.core.PApplet;
 
 //choose where to get the EEG data
-final int DATASOURCE_NORMAL =  0;
-final int DATASOURCE_SYNTHETIC = 1;
-final int DATASOURCE_PLAYBACKFILE = 2;
-final int eegDataSource = DATASOURCE_PLAYBACKFILE;
+final int DATASOURCE_NORMAL =  0;        //Receive LIVE data from OpenBCI
+final int DATASOURCE_NORMAL_W_AUX =  1;  //Receive LIVE data from OpenBCI plus the Aux data recorded by the Arduino  
+final int DATASOURCE_SYNTHETIC = 2;    //Generate synthetic signals (steady noise)
+final int DATASOURCE_PLAYBACKFILE = 3; //Playback previously recorded data...see "playbackData_fname" down below
+final int eegDataSource = DATASOURCE_NORMAL;
 
 //Serial communications constants
 OpenBCI_ADS1299 openBCI;
-String openBCI_portName = "COM21";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the Arduino
@@ -57,6 +58,7 @@ float dataBuffY_filtY_uV[][];
 float data_std_uV[];
 float data_elec_imp_ohm[];
 int nchan = OpenBCI_Nchannels;
+int n_aux_ifEnabled = 1;  //if DATASOURCE_NORMAL_W_AUX then this is how many aux channels there will be
 int prev_time_millis = 0;
 final int nPointsPerUpdate = 50; //update screen after this many data points.  
 float yLittleBuff[] = new float[nPointsPerUpdate];
@@ -229,7 +231,7 @@ void setup() {
   is_railed = new DataStatus[nchan];
   for (int i=0; i<nchan;i++) is_railed[i] = new DataStatus(threshold_railed,threshold_railed_warn);
   for (int i=0; i<nDataBackBuff;i++) { 
-    dataPacketBuff[i] = new DataPacket_ADS1299(nchan);
+    dataPacketBuff[i] = new DataPacket_ADS1299(nchan+n_aux_ifEnabled);
   }
 
   //initialize the data
@@ -257,14 +259,16 @@ void setup() {
 
   //prepare the source of the input data
   switch (eegDataSource) {
-    case DATASOURCE_NORMAL:
+    case DATASOURCE_NORMAL: case DATASOURCE_NORMAL_W_AUX:
       //list all the serial ports available...useful for debugging
       println(Serial.list());
       //openBCI_portName = Serial.list()[0];
       
       // Open the serial port to the Arduino that has the OpenBCI
-      println("Opening Serial " + openBCI_portName);
-      openBCI = new OpenBCI_ADS1299(this, openBCI_portName, openBCI_baud, nchan); //this also starts the data transfer after XX seconds
+      println("OpenBCI_GUI: Opening Serial " + openBCI_portName);
+      int nDataValuesPerPacket = nchan;
+      if (eegDataSource == DATASOURCE_NORMAL_W_AUX) nDataValuesPerPacket += n_aux_ifEnabled;
+      openBCI = new OpenBCI_ADS1299(this, openBCI_portName, openBCI_baud,nDataValuesPerPacket); //this also starts the data transfer after XX seconds
       break;
     case DATASOURCE_SYNTHETIC:
       //do nothing
@@ -327,7 +331,7 @@ void draw() {
     
     //update the title of the figure;
     switch (eegDataSource) {
-      case DATASOURCE_NORMAL:
+      case DATASOURCE_NORMAL: case DATASOURCE_NORMAL_W_AUX:
         frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
         break;
       case DATASOURCE_SYNTHETIC:
@@ -346,7 +350,7 @@ void draw() {
 
 int getDataIfAvailable(int pointCounter) {
   
-  if (eegDataSource == DATASOURCE_NORMAL) {
+  if ( (eegDataSource == DATASOURCE_NORMAL) || (eegDataSource == DATASOURCE_NORMAL_W_AUX) ) {
     //get data from serial port as it streams in
 
       //first, get the new data (if any is available)
@@ -468,12 +472,11 @@ void serialEvent(Serial port) {
       openBCI.copyDataPacketTo(dataPacketBuff[curDataPacketInd]);  //resets isNewDataPacketAvailable to false
       
       //write this chunk of data to file
-      fileoutput.writeRawData_dataPacket(dataPacketBuff[curDataPacketInd],scale_fac_uVolts_per_count);
+      fileoutput.writeRawData_dataPacket(dataPacketBuff[curDataPacketInd],scale_fac_uVolts_per_count,nchan);
     }
   } 
   else {
     inByte = port.read();
-    print(char(inByte));
   }
 }
 
@@ -860,7 +863,7 @@ void stopRunning() {
     isRunning = false;
 }
 void startRunning() {
-    if (eegDataSource == DATASOURCE_NORMAL) openNewLogFile();  //open a new log file
+    if ((eegDataSource == DATASOURCE_NORMAL) || (eegDataSource == DATASOURCE_NORMAL_W_AUX)) openNewLogFile();  //open a new log file
     if (openBCI != null) openBCI.startDataTransfer(); //use whatever was the previous data transfer mode (TXT vs BINARY)
     isRunning = true;
 }
@@ -995,7 +998,7 @@ void toggleChannelImpedanceState(Button but, int Ichan, int code_P_N_Both) {
 void setChannelImpedanceState(int Ichan,boolean newstate,int code_P_N_Both) {
   if ((Ichan >= 0) && (Ichan < gui.impedanceButtonsP.length)) {
     //change the state of the OpenBCI channel itself
-    openBCI.changeImpedanceState(Ichan,newstate,code_P_N_Both);
+    if (openBCI != null) openBCI.changeImpedanceState(Ichan,newstate,code_P_N_Both);
     
     //now update the button state
     if ((code_P_N_Both == 0) || (code_P_N_Both == 2)) {

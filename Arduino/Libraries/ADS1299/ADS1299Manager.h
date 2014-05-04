@@ -14,7 +14,7 @@
 //Pick which version of OpenBCI you have
 #define OPENBCI_V1 (1)    //Sept 2013
 #define OPENBCI_V2 (2)    //Oct 24, 2013
-#define OPENBCI_NCHAN (8)  // number of EEG channels
+#define OPENBCI_NCHAN_PER_BOARD (8)  // number of EEG channels
 
 /*   Arduino Uno - Pin Assignments
   SCK = 13
@@ -74,7 +74,7 @@
 class ADS1299Manager : public ADS1299 {
   public:
     void initialize(void);                                     //initialize the ADS1299 controller.  Call once.  Assumes OpenBCI_V2
-    void initialize(int version);                              //initialize the ADS1299 controller.  Call once.  Set which version of OpenBCI you're using.
+    void initialize(int version,boolean isDaisy);              //initialize the ADS1299 controller.  Call once.  Set which version of OpenBCI you're using.
     void setVersionOpenBCI(int version);			//Set which version of OpenBCI you're using.
     void reset(void);                                          //reset all the ADS1299's settings.  Call however you'd like
     boolean isChannelActive(int N_oneRef);
@@ -89,6 +89,9 @@ class ADS1299Manager : public ADS1299 {
     void printChannelDataAsText(int N, long int sampleNumber);
     void writeChannelDataAsBinary(int N, long int sampleNumber);
     void writeChannelDataAsBinary(int N, long int sampleNumber, boolean useSyntheticData);
+    void writeChannelDataAsBinary(int N, long int sampleNumber, long int auxValue);
+    void writeChannelDataAsBinary(int N, long int sampleNumber, long int auxValue, boolean useSyntheticData);
+    void writeChannelDataAsBinary(int N, long int sampleNumber, boolean sendAuxValue,long int auxValue, boolean useSyntheticData);
     void writeChannelDataAsOpenEEG_P2(long int sampleNumber);
     void writeChannelDataAsOpenEEG_P2(long int sampleNumber, boolean useSyntheticData);
     void printAllRegisters(void);
@@ -101,10 +104,11 @@ class ADS1299Manager : public ADS1299 {
     
   private:
     boolean use_neg_inputs;
-    boolean use_SRB2[OPENBCI_NCHAN];
+    boolean use_SRB2[OPENBCI_NCHAN_PER_BOARD];
     boolean use_channels_for_bias;
     boolean use_SRB1(void);
     long int makeSyntheticSample(long sampleNumber,int chan);
+    int n_chan_all_boards;
 };
 
 #endif

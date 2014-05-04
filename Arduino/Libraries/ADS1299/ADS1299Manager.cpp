@@ -8,18 +8,22 @@ typedef long int32;
 
 
 void ADS1299Manager::initialize(void) {
-    initialize(OPENBCI_V2);
+	boolean isDaisy = false;
+    initialize(OPENBCI_V2,isDaisy);
 }
 
 //Initilize the ADS1299 controller...call this once
-void ADS1299Manager::initialize(const int version) 
+void ADS1299Manager::initialize(const int version,boolean isDaisy) 
 {
-  ADS1299::initialize(PIN_DRDY,PIN_RST,PIN_CS,SCK_MHZ); // (DRDY pin, RST pin, CS pin, SCK frequency in MHz);
+  ADS1299::initialize(PIN_DRDY,PIN_RST,PIN_CS,SCK_MHZ,isDaisy); // (DRDY pin, RST pin, CS pin, SCK frequency in MHz);
   delay(100);
     
   verbose = false;      // when verbose is true, there will be Serial feedback 
   setVersionOpenBCI(version);
   reset();
+  
+  n_chan_all_boards = OPENBCI_NCHAN_PER_BOARD;
+  if (isDaisy) n_chan_all_boards = 2*OPENBCI_NCHAN_PER_BOARD;
   
   //set default state for internal test signal
   //ADS1299::WREG(CONFIG2,0b11010000);delay(1);   //set internal test signal, default amplitude, default speed, datasheet PDF Page 41
@@ -41,7 +45,7 @@ void ADS1299Manager::setVersionOpenBCI(const int version)
   	  use_neg_inputs = false;
   	  
   	  //set SRB2
-  	  for (int i=0; i < OPENBCI_NCHAN; i++) {
+  	  for (int i=0; i < OPENBCI_NCHAN_PER_BOARD; i++) {
   	  	  use_SRB2[i] = false;
   	  }
   } else {
@@ -49,7 +53,7 @@ void ADS1299Manager::setVersionOpenBCI(const int version)
   	  use_neg_inputs = true;
   	  
   	  //set SRB
-  	  for (int i=0; i < OPENBCI_NCHAN; i++) {
+  	  for (int i=0; i < OPENBCI_NCHAN_PER_BOARD; i++) {
   	  	  use_SRB2[i] = true;
   	  }
   	  
@@ -76,7 +80,7 @@ void ADS1299Manager::reset(void)
   delay(100);
     
   // turn off all channels
-  for (int chan=1; chan <= OPENBCI_NCHAN; chan++) {
+  for (int chan=1; chan <= OPENBCI_NCHAN_PER_BOARD; chan++) {
     deactivateChannel(chan);  //turn off the channel
     changeChannelLeadOffDetection(chan,OFF,BOTHCHAN); //turn off any impedance monitoring
   }
@@ -94,13 +98,13 @@ void ADS1299Manager::deactivateChannel(int N)
   byte reg, config;
 	
   //check the inputs
-  if ((N < 1) || (N > OPENBCI_NCHAN)) return;
+  if ((N < 1) || (N > OPENBCI_NCHAN_PER_BOARD)) return;
   
   //proceed...first, disable any data collection
   ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
 
   //shut down the channel
-  int N_zeroRef = constrain(N-1,0,OPENBCI_NCHAN-1);  //subtracts 1 so that we're counting from 0, not 1
+  int N_zeroRef = constrain(N-1,0,OPENBCI_NCHAN_PER_BOARD-1);  //subtracts 1 so that we're counting from 0, not 1
   reg = CH1SET+(byte)N_zeroRef;
   config = ADS1299::RREG(reg); delay(1);
   bitSet(config,7);  //left-most bit (bit 7) = 1, so this shuts down the channel
@@ -121,14 +125,14 @@ void ADS1299Manager::activateChannel(int N,byte gainCode,byte inputCode)
   byte reg, config;
 	
    //check the inputs
-  if ((N < 1) || (N > OPENBCI_NCHAN)) return;
+  if ((N < 1) || (N > OPENBCI_NCHAN_PER_BOARD)) return;
   
   //proceed...first, disable any data collection
   ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
 
   //active the channel using the given gain.  Set MUX for normal operation
   //see ADS1299 datasheet, PDF p44
-  N = constrain(N-1,0,OPENBCI_NCHAN-1);  //shift down by one
+  N = constrain(N-1,0,OPENBCI_NCHAN_PER_BOARD-1);  //shift down by one
   byte configByte = 0b00000000;  //left-most zero (bit 7) is to activate the channel
   gainCode = gainCode & 0b01110000;  //bitwise AND to get just the bits we want and set the rest to zero
   configByte = configByte | gainCode; //bitwise OR to set just the gain bits high or low and leave the rest alone
@@ -153,7 +157,7 @@ void ADS1299Manager::activateChannel(int N,byte gainCode,byte inputCode)
 
 //note that N here one-referenced (ie [1...N]), not [0...N-1]
 boolean ADS1299Manager::isChannelActive(int N_oneRef) {
-	 int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN-1);  //subtracts 1 so that we're counting from 0, not 1
+	 int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN_PER_BOARD-1);  //subtracts 1 so that we're counting from 0, not 1
 	 
 	 //get whether channel is active or not
 	 byte reg = CH1SET+(byte)N_zeroRef;
@@ -166,14 +170,14 @@ void ADS1299Manager::setAutoBiasGeneration(boolean state) {
 	use_channels_for_bias = state;
 	
 	//step through the channels are recompute the bias state
-	for (int Ichan=1; Ichan<OPENBCI_NCHAN;Ichan++) {
+	for (int Ichan=1; Ichan<OPENBCI_NCHAN_PER_BOARD;Ichan++) {
 		alterBiasBasedOnChannelState(Ichan);
 	}
 }
 
 //note that N here one-referenced (ie [1...N]), not [0...N-1]
 void ADS1299Manager::alterBiasBasedOnChannelState(int N_oneRef) {
-	 int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN-1);  //subtracts 1 so that we're counting from 0, not 1
+	 int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN_PER_BOARD-1);  //subtracts 1 so that we're counting from 0, not 1
 	
 	 boolean activateBias = false;
 	 if ((use_channels_for_bias==true) && (isChannelActive(N_oneRef))) {
@@ -186,7 +190,7 @@ void ADS1299Manager::alterBiasBasedOnChannelState(int N_oneRef) {
 	
 
 void ADS1299Manager::deactivateBiasForChannel(int N_oneRef) {
-	int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN-1); //subtracts 1 so that we're counting from 0, not 1
+	int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN_PER_BOARD-1); //subtracts 1 so that we're counting from 0, not 1
  	
 	//deactivate this channel's bias...both positive and negative
 	//see ADS1299 datasheet, PDF p44.
@@ -203,7 +207,7 @@ void ADS1299Manager::deactivateBiasForChannel(int N_oneRef) {
 	}
 }
 void ADS1299Manager::activateBiasForChannel(int N_oneRef) {
-	int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN-1); //subtracts 1 so that we're counting from 0, not 1
+	int N_zeroRef = constrain(N_oneRef-1,0,OPENBCI_NCHAN_PER_BOARD-1); //subtracts 1 so that we're counting from 0, not 1
  	
 	//see ADS1299 datasheet, PDF p44.
 	//per Chip's experiments, if using the P inputs, just include the P inputs
@@ -228,8 +232,8 @@ void ADS1299Manager::changeChannelLeadOffDetection(int N, int code_OFF_ON, int c
   byte reg, config;
 	
   //check the inputs
-  if ((N < 1) || (N > OPENBCI_NCHAN)) return;
-  N = constrain(N-1,0,OPENBCI_NCHAN-1);  //shift down by one
+  if ((N < 1) || (N > OPENBCI_NCHAN_PER_BOARD)) return;
+  N = constrain(N-1,0,OPENBCI_NCHAN_PER_BOARD-1);  //shift down by one
   
   //proceed...first, disable any data collection
   ADS1299::SDATAC(); delay(1);      // exit Read Data Continuous mode to communicate with ADS
@@ -334,7 +338,7 @@ void ADS1299Manager::stop(void)
 void ADS1299Manager::printChannelDataAsText(int N, long int sampleNumber)
 {
 	//check the inputs
-	if ((N < 1) || (N > OPENBCI_NCHAN)) return;
+	if ((N < 1) || (N > n_chan_all_boards)) return;
 	
 	//print the sample number, if not disabled
 	if (sampleNumber > 0) {
@@ -360,29 +364,37 @@ void ADS1299Manager::printChannelDataAsText(int N, long int sampleNumber)
 int32 val;
 byte *val_ptr = (byte *)(&val);
 void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber){
-	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,false);
+	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,false,0,false);
 }
-void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean useSyntheticData)
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean useSyntheticData){
+	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,false,0,useSyntheticData);
+}
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,long int auxValue){
+	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,true,auxValue,false);
+}
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,long int auxValue, boolean useSyntheticData){
+	ADS1299Manager::writeChannelDataAsBinary(N,sampleNumber,true,auxValue,useSyntheticData);
+}
+void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean sendAuxValue, 
+	long int auxValue, boolean useSyntheticData)
 {
 	//check the inputs
-	if ((N < 1) || (N > OPENBCI_NCHAN)) return;
+	if ((N < 1) || (N > n_chan_all_boards)) return;
 	
-	// Write header
+	// Write start byte
 	Serial.write( (byte) PCKT_START);
+	
+	//write the length of the payload
 	//byte byte_val = (1+8)*4;
-	Serial.write((1+N)*4);  //length of data payload, bytes
-	
-	
-		
-	//print the sample number, if not disabled
-	val = sampleNumber;
-	//val = 1L;	
-	//ptr = (uint8_t *)(&val);  //pretend that it is a string buffer so that Serial.write works easier
-	//if (sampleNumber >= 0) {
-		Serial.write(val_ptr,4); //4 bytes long
-	//}
+	byte payloadBytes = (byte)((1+N)*4);    //length of data payload, bytes
+	if (sendAuxValue) payloadBytes+= (byte)4;  //add four more bytes for the aux value
+	Serial.write(payloadBytes);  //write the payload length
 
-	//print each channel
+	//write the sample number, if not disabled
+	val = sampleNumber;
+	Serial.write(val_ptr,4); //4 bytes long
+	
+	//write each channel
 	for (int chan = 0; chan < N; chan++ )
 	{
 		//get this channel's data
@@ -393,6 +405,12 @@ void ADS1299Manager::writeChannelDataAsBinary(int N, long sampleNumber,boolean u
 			//get the real EEG data for this channel
 			val = channelData[chan];
 		}
+		Serial.write(val_ptr,4); //4 bytes long
+	}
+	
+	// Write the AUX value
+	if (sendAuxValue) {
+		val = auxValue;
 		Serial.write(val_ptr,4); //4 bytes long
 	}
 	
@@ -495,7 +513,7 @@ void ADS1299Manager::printAllRegisters(void)
 
 //only use SRB1 if all use_SRB2 are set to false
 boolean ADS1299Manager::use_SRB1(void) {
-	for (int Ichan=0; Ichan < OPENBCI_NCHAN; Ichan++) {
+	for (int Ichan=0; Ichan < OPENBCI_NCHAN_PER_BOARD; Ichan++) {
 		if (use_SRB2[Ichan]) {
 			return false;
 		}
