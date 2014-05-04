@@ -23,18 +23,18 @@ final int DATASOURCE_NORMAL =  0;        //Receive LIVE data from OpenBCI
 final int DATASOURCE_NORMAL_W_AUX =  1;  //Receive LIVE data from OpenBCI plus the Aux data recorded by the Arduino  
 final int DATASOURCE_SYNTHETIC = 2;    //Generate synthetic signals (steady noise)
 final int DATASOURCE_PLAYBACKFILE = 3; //Playback previously recorded data...see "playbackData_fname" down below
-final int eegDataSource = DATASOURCE_NORMAL_W_AUX;
+final int eegDataSource = DATASOURCE_NORMAL;
 
 //Serial communications constants
 OpenBCI_ADS1299 openBCI;
-String openBCI_portName = "COM28";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
-//int openBCI_baud = 115200; //baud rate from the Arduino
-//int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
+int openBCI_baud = 115200; //baud rate from the Arduino
+int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //use this for when daisy-chaining two OpenBCI boards
-int openBCI_baud = 2*115200; //baud rate from the Arduino
-int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
+//int openBCI_baud = 2*115200; //baud rate from the Arduino
+//int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
 
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
