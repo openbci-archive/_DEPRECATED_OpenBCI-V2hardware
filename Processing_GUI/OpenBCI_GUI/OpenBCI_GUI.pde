@@ -141,18 +141,18 @@ void defineFilters(FilterConstants[] filtCoeff_bp,FilterConstants[] filtCoeff_no
         short_txt = "7-13 Hz";
         break;      
       case 2:
-        //butter(2,[15 30]/(250/2));
-        b = new double[]{  2.785976611713614e-002, 0.0f, -5.571953223427228e-002  , 0.0f,    2.785976611713614e-002};
-        a = new double[]{ 1.0f,-2.987359543641179e+000, 3.738077415566927e+000, -2.277230414783372e+000,   5.869195080611911e-001};
-        filt_txt = "Bandpass 15-30Hz";
-        short_txt = "15-30 Hz";  
+        //[b,a]=butter(2,[15 50]/(250/2)); %matlab command
+        b = new double[]{ 1.173510367246093e-001,  0.0f, -2.347020734492186e-001,  0.0f, 1.173510367246093e-001};
+        a = new double[]{ 1.0f, -2.137430180172061e+000, 2.038578008108517e+000,-1.070144399200925e+000, 2.946365275879138e-001};
+        filt_txt = "Bandpass 15-50Hz";
+        short_txt = "15-50 Hz";  
         break;    
       case 3:
-        //butter(2,[5 30]/(250/2));
-        b = new double[]{   6.745527388907288e-002, 0.0f, -1.349105477781458e-001   , 0.0f,  6.745527388907288e-002};
-        a = new double[]{ 1.0f,  -2.990204825208070e+000,3.456335732017884e+000, -1.872893729381472e+000,  4.128015980961884e-001};
-        filt_txt = "Bandpass 5-30Hz";
-        short_txt = "5-30 Hz";
+        //[b,a]=butter(2,[5 50]/(250/2)); %matlab command
+        b = new double[]{  1.750876436721012e-001,  0.0f, -3.501752873442023e-001,  0.0f, 1.750876436721012e-001};       
+        a = new double[]{ 1.0f,  -2.299055356038497e+000,   1.967497759984450e+000,  -8.748055564494800e-001,   2.196539839136946e-001};
+        filt_txt = "Bandpass 5-50Hz";
+        short_txt = "5-50 Hz";
         break;      
       default:
         //no filtering
@@ -436,7 +436,7 @@ void processNewData() {
     
     //prepare the new FFT data
     float[] fooData_raw = dataBuffY_uV[Ichan];  //use the raw data for the FFT
-    fooData_raw = Arrays.copyOfRange(fooData_raw, fooData_raw.length-Nfft, fooData_raw.length);   //just grab the most recent block of data
+    fooData_raw = Arrays.copyOfRange(fooData_raw, fooData_raw.length-Nfft, fooData_raw.length);   //trim to grab just the most recent block of data
     float meanData = mean(fooData_raw);  //compute the mean
     for (int I=0; I < fooData_raw.length; I++) fooData_raw[I] -= meanData; //remove the mean (for a better looking FFT
     
