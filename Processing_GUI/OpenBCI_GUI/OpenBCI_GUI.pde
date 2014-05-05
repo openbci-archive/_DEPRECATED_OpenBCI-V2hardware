@@ -2,7 +2,7 @@
 //
 // GUI for controlling the ADS1299-based OpenBCI Shield
 //
-// Created: Chip Audette, Oct 2013 - Apr 2014
+// Created: Chip Audette, Oct 2013 - May 2014
 //
 // Requires gwoptics graphing library for processing.  Built on V0.5.0
 // http://www.gwoptics.org/processing/gwoptics_p5lib/
@@ -40,7 +40,7 @@ int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
 final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
 int currentTableRowIndex = 0;
-Table playbackData_table;
+Table_CSV playbackData_table;
 int nextPlayback_millis = -100; //any negative number
 
 //properties of the openBCI board
@@ -276,7 +276,14 @@ void setup() {
     case DATASOURCE_PLAYBACKFILE:
       //open and load the data file
       println("OpenBCI_GUI: loading playback data from " + playbackData_fname);
-      playbackData_table = loadTable(playbackData_fname, "header,csv");
+      //playbackData_table = loadTable(playbackData_fname, "header,csv");
+      try {
+        playbackData_table = new Table_CSV(playbackData_fname);
+      } catch (Exception e) {
+        println("setup: could not open file for playback: " + playbackData_fname);
+        println("   : quitting...");
+        exit();
+      }
       println("OpenBCI_GUI: loading complete.  " + playbackData_table.getRowCount() + " rows of data, which is " + round(float(playbackData_table.getRowCount())/fs_Hz) + " seconds of EEG data");
       
       //removing first column of data from data file...the first column is a time index and not eeg data
