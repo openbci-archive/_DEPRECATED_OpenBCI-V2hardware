@@ -431,10 +431,16 @@ void processNewData() {
     filterIIR(filtCoeff_notch[currentFilt_ind].b, filtCoeff_notch[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //notch
     filterIIR(filtCoeff_bp[currentFilt_ind].b, filtCoeff_bp[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //bandpass
 
-    //update the FFT stuff
+    //copy the previous FFT data
     for (int I=0; I < fftBuff[Ichan].specSize(); I++) prevFFTdata[I] = fftBuff[Ichan].getBand(I); //copy the old spectrum values
-    float[] fooData_raw = dataBuffY_uV[Ichan];  //use the raw data
+    
+    //prepare the new FFT data
+    float[] fooData_raw = dataBuffY_uV[Ichan];  //use the raw data for the FFT
     fooData_raw = Arrays.copyOfRange(fooData_raw, fooData_raw.length-Nfft, fooData_raw.length);   //just grab the most recent block of data
+    float meanData = mean(fooData_raw);  //compute the mean
+    for (int I=0; I < fooData_raw.length; I++) fooData_raw[I] -= meanData; //remove the mean (for a better looking FFT
+    
+    //compute the FFT
     fftBuff[Ichan].forward(fooData_raw); //compute FFT on this channel of data
     
     //average the FFT with previous FFT data...log average
@@ -931,7 +937,7 @@ int getPlaybackDataFromTable(Table datatable, int currentTableRowIndex, float sc
         //use zeros for the missing channels
         val_uV = 0.0f;
       }
-      
+
       //put into data structure
       curDataPacket.values[Ichan] = (int) (0.5f+ val_uV / scale_fac_uVolts_per_count); //convert to counts, the 0.5 is to ensure rounding
     }
