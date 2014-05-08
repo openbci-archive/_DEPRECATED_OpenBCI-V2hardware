@@ -14,7 +14,9 @@ import java.io.*;
 //enum IOState {READING, WRITING, CLOSED};
 
 String [] myInputFileContents ;
-String myFilePath;
+File inputFile;
+String inputFile_str;
+//String myFilePath;
 
 float eeg_scale_fac_uV = 500.0f;
 float aux_scale_fac = 1.0f;
@@ -28,17 +30,17 @@ void setup() {
   minim = new Minim(this);
 
   // select input file
-  selectInput("Select a file : ", "fileSelected");
-  while (myFilePath == null) {//wait
+  selectInput("Select an OpenBCI TXT file: ", "fileSelected");
+  while (inputFile_str == null) {//wait
   }
 
   // load the data
-  println("setup: loading playback data from " + myFilePath);
+  println("setup: loading playback data from " + inputFile_str);
   try {
-    data = new Table_CSV(myFilePath);
+    data = new Table_CSV(inputFile.getAbsolutePath());
   } 
   catch (Exception e) {
-    println("setup: could not open file for playback: " + myFilePath);
+    println("setup: could not open file for playback: " + inputFile_str);
     println("   : quitting...");
     exit();
   }
@@ -54,11 +56,11 @@ void setup() {
   float[] running_ave = new float[ncol];
   for (int Irow=0; Irow < nrow; Irow++) {
     for (int Icol=0; Icol < ncol; Icol++) {
-      running_ave[Icol]=(1.0f-learn_fac)*running_ave[Icol]+learn_fac*data.getFloat(Irow,Icol);
-      data.setFloat(Irow,Icol,data.getFloat(Irow,Icol) - running_ave[Icol]);
+      running_ave[Icol]=(1.0f-learn_fac)*running_ave[Icol]+learn_fac*data.getFloat(Irow, Icol);
+      data.setFloat(Irow, Icol, data.getFloat(Irow, Icol) - running_ave[Icol]);
     }
   }
-  
+
   // write the data
   writeWAV(data);
 }
@@ -75,10 +77,19 @@ void fileSelected(File selection) {
     println("no selection so far...");
   } 
   else {
+    inputFile = selection;
+    inputFile_str = selection.getAbsolutePath();
 
-    myFilePath         = selection.getAbsolutePath();
+    //    println("User selected " + inputFile_str);
+
+    //    println("getName: "+ selection.getName());
+    //    println("getParent: "+ selection.getParent());
+    //    println("getPath: "+ selection.getPath());
+    //    println("toString: "+ selection.toString());
+
+    //myFilePath         = selection.getAbsolutePath();
     //myInputFileContents = loadStrings(myFilePath) ;// this moves here...
-    println("User selected " + myFilePath);
+    //println("User selected " + myFilePath);
   }
 }
 
@@ -88,7 +99,7 @@ void writeWAV(Table data) {
   int ncol = data.getColumnCount();
   int nrow = data.getRowCount();
   float fsample;
-  
+
   int nwrite = 10000;
   int[] samples = new int[nwrite];
 
@@ -101,35 +112,55 @@ void writeWAV(Table data) {
     //long numFrames = (long)(duration * sampleRate);
     long numFrames = nrow;
 
-    // Create a wav file with the name specified as the first argument
-    WavFile wavFile = WavFile.newWavFile(new File(sketchPath("") + "out.wav"), 1, numFrames, 16, sampleRate);
-    
-    wavFile.display();
-  
-  
-    //send it the samples
-    println("writing " + nrow + " samples?  samples = " + samples);
-    long counter=0;
-    while (counter < numFrames) {
-        nwrite = min(nwrite,(int)(numFrames - counter));
-        
+    // Create a directory for the WAVs
+    File output_pname = new File(inputFile.getParent() + "\\WAVs\\");
+    println("creating dir: " + output_pname.toString());
+    if (!output_pname.exists()) {
+      if (!output_pname.mkdir()) {
+        println("Error: could not create " + output_pname.toString());
+        output_pname = new File (inputFile.getPath());
+      }
+    }
+
+    //loop over each data channel and write
+    for (int Ichan=0; Ichan<ncol;Ichan++) {
+      String output_fname = inputFile.getName();
+      output_fname = output_fname.substring(0, output_fname.length()-4) + "_chan";
+      if (Ichan < 10) output_fname += "0";
+      output_fname += (Ichan+1); //so that filename starts at "Chan01" instead of "Chan00"
+      output_fname += ".wav";
+      println("output_fname = " + output_fname);
+      //WavFile wavFile = WavFile.newWavFile(new File(sketchPath("") + "out.wav"), 1, numFrames, 16, sampleRate);
+      WavFile wavFile = WavFile.newWavFile(new File(output_pname.toString() + "\\" + output_fname), 1, numFrames, 16, sampleRate);
+
+      //wavFile.display();
+
+
+      //send it the samples
+      //if (Ichan==0) println("writing " + nrow + " samples = " + samples);
+      long counter=0;
+      while (counter < numFrames) {
+        nwrite = min(nwrite, (int)(numFrames - counter));
+
         //copy data out of table and into sample buffer
-        int Icol=0;  //count from zero
+        //int Icol=0;  //count from zero
         for (int Isamp=0; Isamp<nwrite; Isamp++) {
-          fsample=data.getFloat(((int)counter+Isamp),Icol)/eeg_scale_fac_uV;
+          fsample=data.getFloat(((int)counter+Isamp), Ichan)/eeg_scale_fac_uV;
           fsample=max(min(fsample, 1.0), -1.0);  //limit the signal
           samples[Isamp] = ((int)(32768.0f*fsample));
         }
-        println("counter = " + counter + ", nwrite = " + nwrite);
+        //println("counter = " + counter + ", nwrite = " + nwrite);
         counter += nwrite;
-        wavFile.writeFrames(samples,nwrite);
-    }
+        wavFile.writeFrames(samples, nwrite);
+      }
 
-    // Close the wavFile
-    wavFile.display();
-    wavFile.close();
-    println("closing file...");
+      // Close the wavFile
+      //wavFile.display();
+      wavFile.close();
+      //println("closing file...");
+    }
   }
+
   catch (Exception e)
   {
     println("Exception...");
