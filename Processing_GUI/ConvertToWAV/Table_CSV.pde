@@ -1,4 +1,17 @@
 
+/*
+
+Name: Table_CSV
+Created: Chip Audette, April-May 2014
+Purpose: Extend the read functionality of Processing's built-in "Table" class.
+    Specifically, have Table ignore commented lines (ie, with "%") when
+    reading the table.
+Origin: Most of this code is taken directly from Table.java and then modified
+    to have it ignore lines that start with '%'
+License: MIT License   http://opensource.org/licenses/MIT
+
+*/
+
 class Table_CSV extends Table {
   Table_CSV(String fname) throws IOException {
     //println("Table_CSV: fname: " + fname);

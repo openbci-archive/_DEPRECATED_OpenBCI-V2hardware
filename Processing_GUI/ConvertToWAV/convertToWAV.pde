@@ -1,35 +1,22 @@
+/*
+Name: convertToWAV
+Created: Chip Audette, April-May 2014
+Purpose: Read in OpenBCI log files and export them as WAV files
+License: MIT License   http://opensource.org/licenses/MIT
+*/
 
 
-import ddf.minim.spi.*;
-import ddf.minim.signals.*;
-import ddf.minim.*;
-import ddf.minim.analysis.*;
-import ddf.minim.ugens.*;
-import ddf.minim.effects.*;
 
 
-//for writing to WAV
-import javax.sound.sampled.*;
-import java.io.*;
+float eeg_scale_fac_uV = 500.0f;  //choose this to be what you'd like. It needs to be big enough so that the output values are small enough not to get clipped when written to the WAV.
+float aux_scale_fac = 1.0f;  //this is applied instead of the scale factor above to all columns in excess of either 8 or 16 
 
-//define a new type
-//enum IOState {READING, WRITING, CLOSED};
-
+float fs_Hz = 250.0f;  //assumed sample rate for the EEG data being read in from the file
 String [] myInputFileContents ;
 File inputFile;
 String inputFile_str;
-//String myFilePath;
-
-float eeg_scale_fac_uV = 500.0f;
-float aux_scale_fac = 1.0f;
-
 Table_CSV data; 
-float fs_Hz = 250.0f;  //assumed sample rate
-Minim minim;
 void setup() {
-
-  // always start Minim before you do anything with it
-  minim = new Minim(this);
 
   // select input file
   selectInput("Select an OpenBCI TXT file: ", "fileSelected");
