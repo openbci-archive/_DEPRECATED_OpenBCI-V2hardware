@@ -29,7 +29,7 @@ void setup() {
     data = new Table_CSV(inputFile.getAbsolutePath());
   } 
   catch (Exception e) {
-    println("setup: could not open file for playback: " + inputFile_str);
+    println("setup: could not open file for reading: " + inputFile_str);
     println("   : quitting...");
     exit();
   }
@@ -64,21 +64,9 @@ void draw() {
 void fileSelected(File selection) {
   if (selection == null) {
     println("no selection so far...");
-  } 
-  else {
+  } else {
     inputFile = selection;
     inputFile_str = selection.getAbsolutePath();
-
-    //    println("User selected " + inputFile_str);
-
-    //    println("getName: "+ selection.getName());
-    //    println("getParent: "+ selection.getParent());
-    //    println("getPath: "+ selection.getPath());
-    //    println("toString: "+ selection.toString());
-
-    //myFilePath         = selection.getAbsolutePath();
-    //myInputFileContents = loadStrings(myFilePath) ;// this moves here...
-    //println("User selected " + myFilePath);
   }
 }
 
