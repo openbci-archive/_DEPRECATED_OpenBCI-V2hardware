@@ -5,9 +5,6 @@ Purpose: Read in OpenBCI log files and export them as WAV files
 License: MIT License   http://opensource.org/licenses/MIT
 */
 
-
-
-
 float eeg_scale_fac_uV = 500.0f;  //choose this to be what you'd like. It needs to be big enough so that the output values are small enough not to get clipped when written to the WAV.
 float aux_scale_fac = 1.0f;  //this is applied instead of the scale factor above to all columns in excess of either 8 or 16 
 
@@ -15,7 +12,9 @@ float fs_Hz = 250.0f;  //assumed sample rate for the EEG data being read in from
 String [] myInputFileContents ;
 File inputFile;
 String inputFile_str;
+String outputPname_str;
 Table_CSV data; 
+PFont f;
 void setup() {
 
   // select input file
@@ -55,9 +54,9 @@ void setup() {
 }
 
 void draw() {
-  //
   delay(1000);
-  println("Finished.  Quitting...");
+  println("The WAV files were written to: " + outputPname_str);
+  println("Finished.");
   exit();
 }
 
@@ -90,7 +89,8 @@ void writeWAV(Table data) {
     long numFrames = nrow;
 
     // Create a directory for the WAVs
-    File output_pname = new File(inputFile.getParent() + "\\WAVs\\");
+    outputPname_str= inputFile.getParent() + "\\WAVs\\";
+    File output_pname = new File(outputPname_str);
     println("creating dir: " + output_pname.toString());
     if (!output_pname.exists()) {
       if (!output_pname.mkdir()) {
