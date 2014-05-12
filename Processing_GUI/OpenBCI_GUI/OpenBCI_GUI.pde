@@ -211,8 +211,8 @@ void initializeFFTObjects(FFT[] fftBuff, float[][] dataBuffY_uV, int N, float fs
 
 //set window size
 int win_x = 1200;  //window width
-//int win_y = 768; //window height
-int win_y = 450;   //window height
+int win_y = 768; //window height
+//int win_y = 450;   //window height...for OpenBCI_GUI_Simpler
 void setup() {
 
   size(win_x, win_y, P2D);
@@ -430,6 +430,7 @@ void processNewData() {
   prevMillis=millis();
   float foo_val;
   float prevFFTdata[] = new float[fftBuff[0].specSize()];
+  double foo;
 
   for (int Ichan=0;Ichan < nchan; Ichan++) {
     //append data to larger buffer
@@ -462,20 +463,19 @@ void processNewData() {
     //compute the FFT
     fftBuff[Ichan].forward(fooData_raw); //compute FFT on this channel of data
     
-    //convert fft data to uV_per_sqrtHz
-    //final float mean_winpow_sqr = 0.3966;  //account for power lost when windowing...mean(hamming(N).^2) = 0.3966
-    final float mean_winpow = 1.0f/sqrt(2.0f);  //account for power lost when windowing...mean(hamming(N).^2) = 0.3966
-    final float scale_raw_to_rtHz = pow((float)fftBuff[0].specSize(),1)*fs_Hz*mean_winpow; //normalize the amplitude by the number of bins to get the correct scaling to uV/sqrt(Hz)???
-    double foo;
-    for (int I=0; I < fftBuff[Ichan].specSize(); I++) {  //loop over each FFT bin
-      foo = sqrt(pow(fftBuff[Ichan].getBand(I),2)/scale_raw_to_rtHz);
-      fftBuff[Ichan].setBand(I,(float)foo);
-      //if ((Ichan==0) & (I > 5) & (I < 15)) println("processFreqDomain: uV/rtHz = " + I + " " + foo);
-    }
+//    //convert fft data to uV_per_sqrtHz
+//    //final float mean_winpow_sqr = 0.3966;  //account for power lost when windowing...mean(hamming(N).^2) = 0.3966
+//    final float mean_winpow = 1.0f/sqrt(2.0f);  //account for power lost when windowing...mean(hamming(N).^2) = 0.3966
+//    final float scale_raw_to_rtHz = pow((float)fftBuff[0].specSize(),1)*fs_Hz*mean_winpow; //normalize the amplitude by the number of bins to get the correct scaling to uV/sqrt(Hz)???
+//    double foo;
+//    for (int I=0; I < fftBuff[Ichan].specSize(); I++) {  //loop over each FFT bin
+//      foo = sqrt(pow(fftBuff[Ichan].getBand(I),2)/scale_raw_to_rtHz);
+//      fftBuff[Ichan].setBand(I,(float)foo);
+//      //if ((Ichan==0) & (I > 5) & (I < 15)) println("processFreqDomain: uV/rtHz = " + I + " " + foo);
+//    }
     
     //average the FFT with previous FFT data...log average
     double min_val = 0.01d;
-    double foo;
     for (int I=0; I < fftBuff[Ichan].specSize(); I++) {   //loop over each fft bin
       if (prevFFTdata[I] < min_val) prevFFTdata[I] = (float)min_val; //make sure we're not too small for the log calls
       foo = fftBuff[Ichan].getBand(I); if (foo < min_val) foo = min_val; //make sure this value isn't too small
