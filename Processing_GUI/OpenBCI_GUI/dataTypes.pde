@@ -66,6 +66,8 @@ public class FilterConstants {
     b = new double[b_given.length];a = new double[b_given.length];
     for (int i=0; i<b.length;i++) { b[i] = b_given[i];}
     for (int i=0; i<a.length;i++) { a[i] = a_given[i];}
+    name = name_given;
+    short_name = short_name_given;
   }
 }
 

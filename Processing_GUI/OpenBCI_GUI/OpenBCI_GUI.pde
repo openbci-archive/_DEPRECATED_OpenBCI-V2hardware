@@ -69,7 +69,7 @@ final int threshold_railed_warn = int(pow(2,23)*0.75);
 
 //filter constants
 float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate];
-float filtState[] = new float[nchan];
+//float filtState[] = new float[nchan];
 
 //allocate space for filters
 final int N_FILT_CONFIGS = 5;
@@ -118,6 +118,7 @@ void defineFilters(FilterConstants[] filtCoeff_bp,FilterConstants[] filtCoeff_no
   String filt_txt, filt_txt2;
   String short_txt, short_txt2; 
     
+  //loop over all of the pre-defined filter types
   for (int Ifilt=0;Ifilt<n_filt;Ifilt++) {
     
     //define common notch filter
@@ -167,7 +168,7 @@ void defineFilters(FilterConstants[] filtCoeff_bp,FilterConstants[] filtCoeff_no
     }  //end switch block  
 
     //create the bandpass filter    
-    filtCoeff_bp[Ifilt] =  new FilterConstants(b,a,filt_txt,short_txt);    
+    filtCoeff_bp[Ifilt] =  new FilterConstants(b,a,filt_txt,short_txt);  
   } //end loop over filters
   
 } //end defineFilters method 
