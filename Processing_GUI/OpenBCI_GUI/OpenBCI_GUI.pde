@@ -66,10 +66,7 @@ float yLittleBuff[] = new float[nPointsPerUpdate];
 DataStatus is_railed[];
 final int threshold_railed = int(pow(2,23)-1000);
 final int threshold_railed_warn = int(pow(2,23)*0.75);
-
-//filter constants
-float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate];
-//float filtState[] = new float[nchan];
+float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate]; //small buffer used to send data to the filters
 
 //allocate space for filters
 final int N_FILT_CONFIGS = 5;
@@ -213,7 +210,9 @@ void initializeFFTObjects(FFT[] fftBuff, float[][] dataBuffY_uV, int N, float fs
 }
 
 //set window size
-int win_x = 1200;  int win_y = 768;  //desktop PC
+int win_x = 1200;  //window width
+//int win_y = 768; //window height
+int win_y = 450;   //window height
 void setup() {
 
   size(win_x, win_y, P2D);
@@ -222,7 +221,6 @@ void setup() {
   //prepareExitHandler();
   
   println("Starting setup...");
-  //open window
   
   //prepare data variables
   dataBuffX = new float[(int)(dataBuff_len_sec * fs_Hz)];
@@ -325,6 +323,18 @@ void draw() {
       //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
       gui.update(data_std_uV,data_elec_imp_ohm);
       
+      ///add raw data to spectrogram...if the correct channel...
+      //...look for the first channel that is active (meaning button is not active) or, if it
+      //     hasn't yet sent any data, send the last channel even if the channel is off
+//      if (sendToSpectrogram & (!(gui.chanButtons[Ichan].isActive()) | (Ichan == (nchan-1)))) { //send data to spectrogram
+//        sendToSpectrogram = false;  //prevent us from sending more data after this time through
+//        for (int Idata=0;Idata < nPointsPerUpdate;Idata++) {
+//          gui.spectrogram.addDataPoint(yLittleBuff_uV[Ichan][Idata]);
+//          gui.tellGUIWhichChannelForSpectrogram(Ichan);
+//          //gui.spectrogram.addDataPoint(100.0f+(float)Idata);
+//        }
+//      }
+        
       redrawScreenNow=true;
     } 
     else {
@@ -452,16 +462,37 @@ void processNewData() {
     //compute the FFT
     fftBuff[Ichan].forward(fooData_raw); //compute FFT on this channel of data
     
+    //convert fft data to uV_per_sqrtHz
+    //final float mean_winpow_sqr = 0.3966;  //account for power lost when windowing...mean(hamming(N).^2) = 0.3966
+    final float mean_winpow = 1.0f/sqrt(2.0f);  //account for power lost when windowing...mean(hamming(N).^2) = 0.3966
+    final float scale_raw_to_rtHz = pow((float)fftBuff[0].specSize(),1)*fs_Hz*mean_winpow; //normalize the amplitude by the number of bins to get the correct scaling to uV/sqrt(Hz)???
+    double foo;
+    for (int I=0; I < fftBuff[Ichan].specSize(); I++) {  //loop over each FFT bin
+      foo = sqrt(pow(fftBuff[Ichan].getBand(I),2)/scale_raw_to_rtHz);
+      fftBuff[Ichan].setBand(I,(float)foo);
+      //if ((Ichan==0) & (I > 5) & (I < 15)) println("processFreqDomain: uV/rtHz = " + I + " " + foo);
+    }
+    
     //average the FFT with previous FFT data...log average
     double min_val = 0.01d;
     double foo;
     for (int I=0; I < fftBuff[Ichan].specSize(); I++) {   //loop over each fft bin
       if (prevFFTdata[I] < min_val) prevFFTdata[I] = (float)min_val; //make sure we're not too small for the log calls
       foo = fftBuff[Ichan].getBand(I); if (foo < min_val) foo = min_val; //make sure this value isn't too small
-      foo =   (1.0d-smoothFac[smoothFac_ind]) * java.lang.Math.log(java.lang.Math.pow(foo,2));
-      foo += smoothFac[smoothFac_ind] * java.lang.Math.log(java.lang.Math.pow((double)prevFFTdata[I],2)); 
-      foo_val = (float)java.lang.Math.sqrt(java.lang.Math.exp(foo)); //average in dB space
-      fftBuff[Ichan].setBand(I,foo_val);
+      
+       if (true) {
+        //smooth in dB power space
+        foo =   (1.0d-smoothFac[smoothFac_ind]) * java.lang.Math.log(java.lang.Math.pow(foo,2));
+        foo += smoothFac[smoothFac_ind] * java.lang.Math.log(java.lang.Math.pow((double)prevFFTdata[I],2)); 
+        foo = java.lang.Math.sqrt(java.lang.Math.exp(foo)); //average in dB space
+      } else { 
+        //smooth (average) in linear power space
+        foo =   (1.0d-smoothFac[smoothFac_ind]) * java.lang.Math.pow(foo,2);
+        foo+= smoothFac[smoothFac_ind] * java.lang.Math.pow((double)prevFFTdata[I],2); 
+        // take sqrt to be back into uV_rtHz
+        foo = java.lang.Math.sqrt(foo);
+      }
+      fftBuff[Ichan].setBand(I,(float)foo); //put the smoothed data back into the fftBuff data holder for use by everyone else
     }
 
     //compute the stddev of the signal...for the head plot
