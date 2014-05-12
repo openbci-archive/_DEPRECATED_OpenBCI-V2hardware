@@ -14,6 +14,7 @@
 
 import processing.serial.*;
 import ddf.minim.analysis.*; //for FFT
+import ddf.minim.ugens.*;  // To make sound.  Following minim example "frequencyModulation"
 import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
 import processing.core.PApplet;
@@ -23,7 +24,7 @@ final int DATASOURCE_NORMAL =  0;        //Receive LIVE data from OpenBCI
 final int DATASOURCE_NORMAL_W_AUX =  1;  //Receive LIVE data from OpenBCI plus the Aux data recorded by the Arduino  
 final int DATASOURCE_SYNTHETIC = 2;    //Generate synthetic signals (steady noise)
 final int DATASOURCE_PLAYBACKFILE = 3; //Playback previously recorded data...see "playbackData_fname" down below
-final int eegDataSource = DATASOURCE_NORMAL_W_AUX;
+final int eegDataSource = DATASOURCE_PLAYBACKFILE;
 
 //Serial communications constants
 OpenBCI_ADS1299 openBCI;

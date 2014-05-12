@@ -68,6 +68,7 @@ class ScatterTrace extends Blank2DTrace {
   public void setYScaleFac(float yscale) {
     plotYScale = yscale;
   }
+
   public void set_plotXlim(float val_low,float val_high) {
     if (val_high < val_low) {
       float foo = val_low;
@@ -81,6 +82,7 @@ class ScatterTrace extends Blank2DTrace {
     is_railed = is_rail;
   }
 
+  //here is the fucntion that gets called with every call to the GUI's own draw() fucntion
   public void TraceDraw(Blank2DTrace.PlotRenderer pr) {
     float x_val;
     
@@ -90,8 +92,8 @@ class ScatterTrace extends Blank2DTrace {
       //pr.canvas.strokeWeight(1);  //set the new line's linewidth
 
       //draw all the individual segments
-      for (int iChan = 0; iChan < dataY.length; iChan++) {
-          switch (iChan % 4) {
+      for (int Ichan = 0; Ichan < dataY.length; Ichan++) {
+          switch (Ichan % 4) {
            case 0:
              pr.canvas.stroke(0, 0, 255);  //set the new line's color;
              break;
@@ -107,15 +109,15 @@ class ScatterTrace extends Blank2DTrace {
          }
         
         float new_x = pr.valToX(dataX[0]);  //first point, convert from data coordinates to pixel coordinates
-        float new_y = pr.valToY(dataY[iChan][0]*plotYScale+plotYOffset[iChan]);  //first point, convert from data coordinates to pixel coordinate
+        float new_y = pr.valToY(dataY[Ichan][0]*plotYScale+plotYOffset[Ichan]);  //first point, convert from data coordinates to pixel coordinate
         float prev_x, prev_y;
-        for (int i=1; i < dataY[iChan].length; i+= decimate_factor) {
+        for (int i=1; i < dataY[Ichan].length; i+= decimate_factor) {
           prev_x = new_x;
           prev_y = new_y;
           x_val = dataX[i];
           if ( (Float.isNaN(plotXlim[0])) || ((x_val >= plotXlim[0]) && (x_val <= plotXlim[1])) ) {
             new_x = pr.valToX(x_val);
-            new_y = pr.valToY(dataY[iChan][i]*plotYScale+plotYOffset[iChan]);
+            new_y = pr.valToY(dataY[Ichan][i]*plotYScale+plotYOffset[Ichan]);
             pr.canvas.line(prev_x, prev_y, new_x, new_y);
             //if (i==1)  println("ScatterTrace: first point: new_x, new_y = " + new_x + ", " + new_y);   
           } else {
@@ -125,10 +127,10 @@ class ScatterTrace extends Blank2DTrace {
      
         //add annotation for is_railed...doesn't work right
 //        if (is_railed != null) {
-//          if (iChan < is_railed.length) {
-//            if (is_railed[iChan]) {
+//          if (Ichan < is_railed.length) {
+//            if (is_railed[Ichan]) {
 //              new_x = pr.valToX(-2.0);  //near time zero
-//              new_y = pr.valToY(0.0+plotYOffset[iChan]);
+//              new_y = pr.valToY(0.0+plotYOffset[Ichan]);
 //              println("ScatterTrace: text: new_x, new_y = " + new_x + ", " + new_y);
 //              fill(50,50,50);
 //              textFont(font);
@@ -154,9 +156,13 @@ class ScatterTrace_FFT extends Blank2DTrace {
   private FFT[] fftData;
   private float plotYOffset[];
   private float[] plotXlim = new float[]{Float.NaN,Float.NaN};
+  private float[] goodBand_Hz = {-1.0f, -1.0f};
+  private float[] badBand_Hz = {-1.0f, -1.0f};
+  private boolean showFFTFilteringData = false;
+  private DetectionData_FreqDomain[] detectionData;
+  private Oscil wave;
 
   public ScatterTrace_FFT() {
-    //plotXlim = new float[]{Float.NaN,Float.NaN};
   }
 
   public ScatterTrace_FFT(FFT foo_fft[]) {
@@ -182,20 +188,56 @@ class ScatterTrace_FFT extends Blank2DTrace {
     plotXlim[0]=val_low;
     plotXlim[1]=val_high;
   }
-//  public void setDecimateFactor(int val) {
-//    decimate_factor = max(1,val);
-//  }
+
+  public void setGoodBand(float band_Hz[]) {
+    for (int i=0; i<2; i++) { goodBand_Hz[i]=band_Hz[i]; };
+  }
+  public void setBadBand(float band_Hz[]) {
+    for (int i=0; i<2; i++) { badBand_Hz[i]=band_Hz[i]; };
+  }
+  public void showFFTFilteringData(boolean show) {
+    showFFTFilteringData = show;
+  }
+  public void setDetectionData_freqDomain(DetectionData_FreqDomain[] data) {
+    detectionData = data.clone();
+  }
+  public void setAudioOscillator(Oscil wave_given) {
+    wave = wave_given;
+  }
+
   public void TraceDraw(Blank2DTrace.PlotRenderer pr) {
     float x_val,spec_value;
     
+    //save whatever was the previous style
+    pr.canvas.pushStyle();      
+    
+//    //add FFT processing bands
+//    float[] fooBand_Hz;
+//    for (int i=0; i<2; i++) {
+//      if (i==0) {
+//        fooBand_Hz = goodBand_Hz;
+//        pr.canvas.stroke(100,255,100);
+//      } else {
+//        fooBand_Hz = badBand_Hz;
+//        pr.canvas.stroke(255,100,100);
+//      }
+//      pr.canvas.strokeWeight(13);
+//      float x1 = pr.valToX(fooBand_Hz[0]);
+//      float x2 = pr.valToX(fooBand_Hz[1]);
+//      if (!showFFTFilteringData) {
+//        x1 = -1.0f; x2=-1.0f; //draw offscreen when not active
+//      }
+//      float y1 = pr.valToY(0.13f);
+//      float y2 = pr.valToY(0.13f);
+//      pr.canvas.line(x1,y1,x2,y2);
+//    }
+    
     if (fftData != null) {      
       pr.canvas.pushStyle();      //save whatever was the previous style
-      //pr.canvas.stroke(255, 0, 0);  //set the new line's color
-      //pr.canvas.strokeWeight(1);  //set the new line's linewidth
       
       //draw all the individual segments
-      for (int iChan=0; iChan < fftData.length; iChan++){
-         switch (iChan % 4) {
+      for (int Ichan=0; Ichan < fftData.length; Ichan++){
+         switch (Ichan % 4) {
            case 0:
              pr.canvas.stroke(0, 0, 255);  //set the new line's color;
              break;
@@ -210,25 +252,104 @@ class ScatterTrace_FFT extends Blank2DTrace {
              break;
          }
         
-        float new_x = pr.valToX(fftData[iChan].indexToFreq(0));  //first point, convert from data coordinates to pixel coordinates
-        float new_y = pr.valToY(fftData[iChan].getBand(0)+plotYOffset[iChan]);  //first point, convert from data coordinates to pixel coordinate
+        float new_x = pr.valToX(fftData[Ichan].indexToFreq(0));  //first point, convert from data coordinates to pixel coordinates
+        float new_y = pr.valToY(fftData[Ichan].getBand(0)+plotYOffset[Ichan]);  //first point, convert from data coordinates to pixel coordinate
         float prev_x, prev_y;
-        for (int i=1; i < fftData[iChan].specSize(); i++) {
+        for (int i=1; i < fftData[Ichan].specSize(); i++) {
           prev_x = new_x;
           prev_y = new_y;
-          x_val = fftData[iChan].indexToFreq(i);
+          x_val = fftData[Ichan].indexToFreq(i);
           if ( (Float.isNaN(plotXlim[0])) || ((x_val >= plotXlim[0]) && (x_val <= plotXlim[1])) ) {
             new_x = pr.valToX(x_val);
-            spec_value = fftData[iChan].getBand(i)/fftData[iChan].specSize();
-            new_y = pr.valToY(spec_value+plotYOffset[iChan]);
+            spec_value = fftData[Ichan].getBand(i)/fftData[Ichan].specSize();
+            new_y = pr.valToY(spec_value+plotYOffset[Ichan]);
             pr.canvas.line(prev_x, prev_y, new_x, new_y);
           } else {
             //do nothing
-          }
-        }       
-      }
+          } // end if Float.isNan
+        }   //end of loop over spec size
+        
+//        //add detection-related graphics
+//        if (showFFTFilteringData) {
+//          //add ellipse showing peak
+//          float new_x2 = pr.valToX(detectionData[Ichan].inband_freq_Hz);
+//          float new_y2 = pr.valToY(detectionData[Ichan].inband_uV);
+//          int diam = 8;
+//          pr.canvas.strokeWeight(1);  //set the new line's linewidth
+//          if (detectionData[Ichan].isDetected) { //if there is a detection, make more prominent
+//            diam = 8;
+//            pr.canvas.strokeWeight(4);  //set the new line's linewidth 
+//          }
+//          ellipseMode(CENTER);
+//          pr.canvas.ellipse(new_x2,new_y2,diam,diam);
+//          
+//          //add horizontal lines indicating the detction threshold and guard level (use a dashed line)
+//          for (int Iband=0;Iband<2;Iband++) {
+//            float x1, x2,y;
+//            if (Iband==1) {
+//              x1 = pr.valToX(badBand_Hz[0]);
+//              x2 = pr.valToX(badBand_Hz[1]);
+//              y = pr.valToY(detectionData[Ichan].guard_uV);
+//            } else {
+//              x1 = pr.valToX(goodBand_Hz[0]);
+//              x2 = pr.valToX(goodBand_Hz[1]);   
+//              y = pr.valToY(detectionData[Ichan].thresh_uV);
+//            }         
+//
+//            pr.canvas.strokeWeight(1.5);
+//            float dx = 8; //how big is the dash+space
+//            float nudge = 2;
+//            float foo_x=min(x1+dx,x2); //start here
+//            while (foo_x < x2) {
+//              pr.canvas.line(foo_x-dx+nudge,y,foo_x-(5*dx)/8+nudge,y);
+//              foo_x += dx;
+//            }
+//          }
+//        }     
+
+      } // end loop over channels
+
+//      //update the audio
+//      if (showFFTFilteringData & (wave != null)) {
+//        //find if any channels have detected, and which is the strongest SNR
+//        float maxExcessSNR = -100.0f;
+//        for (int Ichan=0; Ichan < detectionData.length; Ichan++) {  
+//          if (detectionData[Ichan].isDetected) {
+//            //how much above the threshold are we
+//            maxExcessSNR = max(maxExcessSNR,(detectionData[Ichan].inband_uV)/(detectionData[Ichan].thresh_uV));
+//          }
+//        }
+//        float audioFreq_Hz = calcDesiredAudioFrequency(maxExcessSNR);
+//        if (audioFreq_Hz > 0) {
+//          wave.amplitude.setLastValue(0.8);  //turn on 
+//          wave.frequency.setLastValue(audioFreq_Hz);  //set the desired frequency
+//          println("ScatterTrace: excessSNR = " + maxExcessSNR  + ", freq = " + audioFreq_Hz + " Hz");
+//        } else {
+//          //turn off
+//          wave.amplitude.setLastValue(0.0);
+//        }
+//      } else {
+//        //ensure that the audio is off
+//        wave.amplitude.setLastValue(0);  
+//      }    
+
+
       pr.canvas.popStyle(); //restore whatever was the previous style
     }
+  }
+
+  float calcDesiredAudioFrequency(float excessSNR) {
+    //set some constants
+    final float excessSNRRange[] = { 1.0f, 3.0f };  //not dB, just linear units
+    final float freqRange_Hz[] =  {200.0f, 600.0f };
+    
+    //compute the desired snr
+    float outputFreq_Hz = -1.0f;
+    if (excessSNR >= excessSNRRange[0]) {
+      excessSNR = constrain(excessSNR,excessSNRRange[0],excessSNRRange[1]);
+      outputFreq_Hz = map(excessSNR,excessSNRRange[0],excessSNRRange[1],freqRange_Hz[0],freqRange_Hz[1]);
+    }
+    return outputFreq_Hz;
   }
 };
 
