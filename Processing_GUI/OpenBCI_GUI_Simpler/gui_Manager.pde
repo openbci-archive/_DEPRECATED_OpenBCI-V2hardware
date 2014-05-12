@@ -34,54 +34,54 @@ class PlotFontInfo {
     int textOverlay_size = 12;
 };
 
-
-class TextOverlay {
-  int x,y;
-  String string;
-  int fontSize;
-  PFont font;
-  int[] rgb;
-  int alignX,alignY;
-  
-  TextOverlay() {
-    this(" ",10);
-  };
-  TextOverlay(String s, int fsize) {
-    string = new String(s); 
-    x=0;
-    y=0;
-    setColor(0,0,0); //black
-    fontSize=fsize;
-    font = createFont("Sans Serif",fontSize);
-    alignX = LEFT;
-    alignY = TOP;
-  }
-
-  public void setColor(int r, int g, int b) {
-    rgb = new int[3];
-    rgb[0]=r;
-    rgb[1]=g;
-    rgb[2]=b;
-  }
-  
-  public void draw() {
-    textFont(font);
-    fill(rgb[0],rgb[1],rgb[2]);
-    textSize(fontSize);
-    textAlign(alignX,alignY);
-    textLeading(fontSize+3);  // Set line spacing
-    text(string,x,y);
-
-  }
-};
+//
+//class TextOverlay {
+//  int x,y;
+//  String string;
+//  int fontSize;
+//  PFont font;
+//  int[] rgb;
+//  int alignX,alignY;
+//  
+//  TextOverlay() {
+//    this(" ",10);
+//  };
+//  TextOverlay(String s, int fsize) {
+//    string = new String(s); 
+//    x=0;
+//    y=0;
+//    setColor(0,0,0); //black
+//    fontSize=fsize;
+//    font = createFont("Sans Serif",fontSize);
+//    alignX = LEFT;
+//    alignY = TOP;
+//  }
+//
+//  public void setColor(int r, int g, int b) {
+//    rgb = new int[3];
+//    rgb[0]=r;
+//    rgb[1]=g;
+//    rgb[2]=b;
+//  }
+//  
+//  public void draw() {
+//    textFont(font);
+//    fill(rgb[0],rgb[1],rgb[2]);
+//    textSize(fontSize);
+//    textAlign(alignX,alignY);
+//    textLeading(fontSize+3);  // Set line spacing
+//    text(string,x,y);
+//
+//  }
+//};
 
 
 class gui_Manager {
   ScatterTrace sTrace;
   ScatterTrace_FFT fftTrace;
   Graph2D gMontage, gFFT, gSpectrogram;
-  TextOverlay titleMontage,titleFFT,titleSpectrogram;
-  TextOverlay textOverlayMontage;
+  TextBox titleMontage,titleFFT,titleSpectrogram;
+  TextBox textOverlayMontage;
   GridBackground gbMontage, gbFFT;
   Button stopButton;
   Button detectButton;
@@ -113,10 +113,10 @@ class gui_Manager {
     //float up_down_split = 0.55f;   //notional dividing line between top and bottom plots, measured from top
     float gutter_between_buttons = 0.005f; //space between buttons
     fontInfo = new PlotFontInfo();   //define what fonts to use
-    titleMontage = new TextOverlay("Time-Domain Plot (Filtered Data)",fontInfo.title_size); //title for the time-domain plot
-    titleFFT = new TextOverlay("Frequency-Domain Plot (Data as Received)",fontInfo.title_size); //title for the freq-domain plot
-    titleSpectrogram = new TextOverlay(makeSpectrogramTitle(),fontInfo.title_size); //title for the freq-domain plot
-    textOverlayMontage = new TextOverlay(montageFilterText,fontInfo.textOverlay_size);
+    titleMontage = new TextBox("Time-Domain Plot (Filtered Data)",fontInfo.title_size); //title for the time-domain plot
+    titleFFT = new TextBox("Frequency-Domain Plot (Data as Received)",fontInfo.title_size); //title for the freq-domain plot
+    titleSpectrogram = new TextBox(makeSpectrogramTitle(),fontInfo.title_size); //title for the freq-domain plot
+    textOverlayMontage = new TextBox(montageFilterText,fontInfo.textOverlay_size);
   
     //setup the montage plot...the right side 
     vertScale_uV = yScale_uV;
@@ -188,7 +188,7 @@ class gui_Manager {
        
   } 
     
-  public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, PlotFontInfo fontInfo,TextOverlay title) {
+  public void setupMontagePlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, PlotFontInfo fontInfo,TextBox title) {
   
     g.setAxisColour(220, 220, 220);
     g.setFontColour(255, 255, 255);
@@ -241,7 +241,7 @@ class gui_Manager {
     title.alignY = BOTTOM;
   }
   
-  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,PlotFontInfo fontInfo, TextOverlay title) {
+  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,PlotFontInfo fontInfo, TextBox title) {
   
     g.setAxisColour(220, 220, 220);
     g.setFontColour(255, 255, 255);
@@ -290,7 +290,7 @@ class gui_Manager {
     title.alignY = BOTTOM;
   }
   
-  public void setupSpectrogram(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, PlotFontInfo fontInfo, TextOverlay title) {
+  public void setupSpectrogram(Graph2D g, int win_x, int win_y, float[] axis_relPos,float displayTime_sec, PlotFontInfo fontInfo, TextBox title) {
     //start by setting up as if it were the montage plot
     //setupMontagePlot(g, win_x, win_y, axis_relPos,displayTime_sec,fontInfo,title);
     

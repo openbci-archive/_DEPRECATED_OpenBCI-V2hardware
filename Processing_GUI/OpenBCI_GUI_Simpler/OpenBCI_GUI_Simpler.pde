@@ -4,7 +4,7 @@
 // GUI for controlling the ADS1299-based OpenBCI Shield
 // This is the simpler-looking version of our GUI.
 //
-// Created: Chip Audette, Oct 2013 - Feb 2014
+// Created: Chip Audette, Oct 2013 - May 2014
 //
 // Requires gwoptics graphing library for processing.  Built on V0.5.0
 // http://www.gwoptics.org/processing/gwoptics_p5lib/
@@ -21,54 +21,71 @@ import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's
 import ddf.minim.*;  // To make sound.  Following minim example "frequencyModulation"
 import ddf.minim.ugens.*;  // To make sound.  Following minim example "frequencyModulation"
 
-boolean useSyntheticData = false; //flip this to false when using OpenBCI, flip to true to develop this GUI without the OpenBCI board
+//choose where to get the EEG data
+final int DATASOURCE_NORMAL =  0;        //Receive LIVE data from OpenBCI
+final int DATASOURCE_NORMAL_W_AUX =  1;  //Receive LIVE data from OpenBCI plus the Aux data recorded by the Arduino  
+final int DATASOURCE_SYNTHETIC = 2;    //Generate synthetic signals (steady noise)
+final int DATASOURCE_PLAYBACKFILE = 3; //Playback previously recorded data...see "playbackData_fname" down below
+final int eegDataSource = DATASOURCE_PLAYBACKFILE;
 
 //Serial communications constants
-openBCI_ADS1299 openBCI;
-String openBCI_portName = "COM21";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+OpenBCI_ADS1299 openBCI;
+String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
-int openBCI_baud = 115200; //baud rate from the Arduino
+int openBCI_baud = 115200; //baud rate from the rArduino
 int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 
-//which channels active and which not?
-int nchan = 2;  //total number of channels to make available to the user
-int nchan_active_at_startup = 1;  //just have one active at startup, though
+//here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
+//final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
+final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
+int currentTableRowIndex = 0;
+Table_CSV playbackData_table;
+int nextPlayback_millis = -100; //any negative number
 
-//data constants
-float fs_Hz = 250.f; //sample rate
+//properties of the openBCI board
+float fs_Hz = 250.0f;  //sample rate used by OpenBCI board
+final float ADS1299_Vref = 4.5f;  //reference voltage for ADC in ADS1299
+final float ADS1299_gain = 24;  //assumed gain setting for ADS1299
+final float scale_fac_uVolts_per_count = ADS1299_Vref / (pow(2,23)-1) / ADS1299_gain  * 1000000.f; //ADS1299 datasheet Table 7, confirmed through experiment
+final float openBCI_impedanceDrive_amps = 6.0e-9;  //6 nA
+boolean isBiasAuto = true;
+
+//other data fields
 float dataBuffX[];
 float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is a new channel so that dataBuffY[3][] is channel 4
 float dataBuffY_filtY_uV[][];
-float scale_fac_uVolts_per_count = (4.5f / 24.0f / pow(2, 24)) * 1000000.f * 2.0f; //factor of 2 added 2013-11-10 to match empirical tests in my office on Friday
+float data_std_uV[];
+float data_elec_imp_ohm[];
+int nchan = OpenBCI_Nchannels;
+int n_aux_ifEnabled = 1;  //if DATASOURCE_NORMAL_W_AUX then this is how many aux channels there will be
 int prev_time_millis = 0;
-final int nPointsPerUpdate = 50;
+final int nPointsPerUpdate = 50; //update screen after this many data points.  
 float yLittleBuff[] = new float[nPointsPerUpdate];
+DataStatus is_railed[];
+final int threshold_railed = int(pow(2,23)-1000);
+final int threshold_railed_warn = int(pow(2,23)*0.75);
+float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate]; //small buffer used to send data to the filters
 
-//filter variables
-float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate];
-float filtState[] = new float[nchan];
-filterConstants[] filtCoeff = new filterConstants[2]; //how many filters?...filters are defined in defineFilters();
-
-//signal detection constants
-boolean showFFTFilteringData = false;
-String signalDetectName = "Alpha";
-float inband_Hz[] = {9.0f, 12.0f};  //look at energy within these frequencies
-float guard_Hz[] = {13.5f, 23.5f};  //and compare to energy within these frequencies
-float fft_det_thresh_dB = 10.0;      //how much higher does the in-band signal have to be above the guard band?
-DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nchan]; //holds data describing any detections performed in the frequency domain
+//allocate space for filters
+final int N_FILT_CONFIGS = 5;
+FilterConstants[] filtCoeff_bp = new FilterConstants[N_FILT_CONFIGS];
+FilterConstants[] filtCoeff_notch = new FilterConstants[N_FILT_CONFIGS];
+int currentFilt_ind = 0;
 
 //fft constants
-int Nfft = 256*2; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
-float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
-//int Nfft = 256; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
-//float fft_smooth_fac = 0.5f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
+int Nfft = 256; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
+//float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
+float[] smoothFac = new float[]{0.75, 0.9, 0.95, 0.98, 0.0, 0.5};
+final int N_SMOOTHEFAC = 6;
+int smoothFac_ind = 0;
+
 
 //plotting constants
-gui_Manager gui;
-float vertScale_uV = 500.0f;  //here's the Y-axis limits on the time-domain plot
-float displayTime_sec = 6.0f;   //here's the X-axis limit on the time-domain plot
+Gui_Manager gui;
+float default_vertScale_uV = 200.0f;
+float displayTime_sec = 5f;
 float dataBuff_len_sec = displayTime_sec+3f; //needs to be wider than actual display so that filter startup is hidden
 
 //program constants
@@ -84,14 +101,95 @@ String output_fname;
 
 //openBCI data packet
 final int nDataBackBuff = 3*(int)fs_Hz;
-dataPacket_ADS1299 dataPacketBuff[] = new dataPacket_ADS1299[nDataBackBuff]; //allocate a big array, but doesn't call constructor.  Still need to call the constructor!
+DataPacket_ADS1299 dataPacketBuff[] = new DataPacket_ADS1299[nDataBackBuff]; //allocate the array, but doesn't call constructor.  Still need to call the constructor!
 int curDataPacketInd = -1;
 int lastReadDataPacketInd = -1;
+
+///////////// Specific to OpenBCI_GUI_Simpler
+
+//which channels active and which not?
+int nchan = 2;  //total number of channels to make available to the user
+int nchan_active_at_startup = 1;  //just have one active at startup, though
+
+//signal detection constants
+boolean showFFTFilteringData = false;
+String signalDetectName = "Alpha";
+float inband_Hz[] = {9.0f, 12.0f};  //look at energy within these frequencies
+float guard_Hz[] = {13.5f, 23.5f};  //and compare to energy within these frequencies
+float fft_det_thresh_dB = 10.0;      //how much higher does the in-band signal have to be above the guard band?
+DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nchan]; //holds data describing any detections performed in the frequency domain
 
 //constants for sound generation for alpha detection
 Minim minim;
 AudioOutput audioOut;  //was just "out" in the Minim example
 Oscil wave;
+
+
+/////////////////////////////////////////////////////////////////////// functions
+
+//define filters...assumes fs = 250 Hz !!!!!
+void defineFilters(FilterConstants[] filtCoeff_bp,FilterConstants[] filtCoeff_notch) {
+  int n_filt = filtCoeff_bp.length;
+  double[] b, a, b2, a2;
+  String filt_txt, filt_txt2;
+  String short_txt, short_txt2; 
+    
+  //loop over all of the pre-defined filter types
+  for (int Ifilt=0;Ifilt<n_filt;Ifilt++) {
+    
+    //define common notch filter
+    b2 = new double[]{ 9.650809863447347e-001, -2.424683201757643e-001, 1.945391494128786e+000, -2.424683201757643e-001, 9.650809863447347e-001};
+    a2 = new double[]{    1.000000000000000e+000,   -2.467782611297853e-001,    1.944171784691352e+000,   -2.381583792217435e-001,    9.313816821269039e-001}; 
+    filtCoeff_notch[Ifilt] =  new FilterConstants(b2,a2,"Notch 60Hz","60Hz");
+    
+    //define bandpass filter
+    switch (Ifilt) {
+      case 0:
+        //butter(2,[1 50]/(250/2));  %bandpass filter
+        b = new double[]{ 2.001387256580675e-001, 0.0f, -4.002774513161350e-001, 0.0f, 2.001387256580675e-001 };
+        a = new double[]{ 1.0f, -2.355934631131582e+000, 1.941257088655214e+000, -7.847063755334187e-001, 1.999076052968340e-001 };
+        filt_txt = "Bandpass 1-50Hz";
+        short_txt = "1-50 Hz";
+        break;
+      case 1:
+        //butter(2,[7 13]/(250/2));
+        b = new double[]{  5.129268366104263e-003, 0.0f,  -1.025853673220853e-002, 0.0f, 5.129268366104263e-003 };
+        a = new double[]{ 1.0f,  -3.678895469764040e+000,  5.179700413522124e+000, -3.305801890016702e+000,8.079495914209149e-001 };
+        filt_txt = "Bandpass 7-13Hz";
+        short_txt = "7-13 Hz";
+        break;      
+      case 2:
+        //[b,a]=butter(2,[15 50]/(250/2)); %matlab command
+        b = new double[]{ 1.173510367246093e-001,  0.0f, -2.347020734492186e-001,  0.0f, 1.173510367246093e-001};
+        a = new double[]{ 1.0f, -2.137430180172061e+000, 2.038578008108517e+000,-1.070144399200925e+000, 2.946365275879138e-001};
+        filt_txt = "Bandpass 15-50Hz";
+        short_txt = "15-50 Hz";  
+        break;    
+      case 3:
+        //[b,a]=butter(2,[5 50]/(250/2)); %matlab command
+        b = new double[]{  1.750876436721012e-001,  0.0f, -3.501752873442023e-001,  0.0f, 1.750876436721012e-001};       
+        a = new double[]{ 1.0f,  -2.299055356038497e+000,   1.967497759984450e+000,  -8.748055564494800e-001,   2.196539839136946e-001};
+        filt_txt = "Bandpass 5-50Hz";
+        short_txt = "5-50 Hz";
+        break;      
+      default:
+        //no filtering
+        b = new double[] {1.0};
+        a = new double[] {1.0};
+        filt_txt = "No BP Filter";
+        short_txt = "No Filter";
+        b2 = new double[] {1.0};
+        a2 = new double[] {1.0};
+        filtCoeff_notch[Ifilt] =  new FilterConstants(b2,a2,"No Notch","No Notch");
+    }  //end switch block  
+
+    //create the bandpass filter    
+    filtCoeff_bp[Ifilt] =  new FilterConstants(b,a,filt_txt,short_txt);  
+  } //end loop over filters
+  
+} //end defineFilters method 
+ 
+
 
 void appendAndShift(float[] data, float[] newData) {
   int nshift = newData.length;
@@ -131,98 +229,116 @@ void initializeFFTObjects(FFT[] fftBuff, float[][] dataBuffY_uV) {
   }
 }
 
-
-void defineFilters(filterConstants[] filtCoeff) {
-  //define notch filter
-  double[] b = new double[]{ 9.650809863447347e-001, -2.424683201757643e-001, 1.945391494128786e+000, -2.424683201757643e-001, 9.650809863447347e-001};
-  double[] a = new double[]{ 1.000000000000000e+000,   -2.467782611297853e-001,    1.944171784691352e+000,   -2.381583792217435e-001,    9.313816821269039e-001}; 
-  filtCoeff[0] =  new filterConstants(b,a,"Notch 60Hz");
-  
-  //define bandpass filter
-  double[] b2 = new double[]{ 2.001387256580675e-001, 0.0f, -4.002774513161350e-001, 0.0f, 2.001387256580675e-001 };
-  double[] a2 = new double[]{ 1.0f, -2.355934631131582e+000, 1.941257088655214e+000, -7.847063755334187e-001, 1.999076052968340e-001 };
-  filtCoeff[1] =  new filterConstants(b2,a2,"Bandpass 1-50Hz"); //Matlab....butter(2,[1 50]/(250/2));  %bandpass filter
-}
-
+//set window size
+int win_x = 1200;  //window width
+//int win_y = 768; //window height
+int win_y = 450;   //window height
 void setup() {
 
-  println("Starting setup...");
-
   //open window
-  int win_x = 1200; //window height
-  int win_y = 450;  //window width
   size(win_x, win_y, P2D);
   //if (frame != null) frame.setResizable(true);  //make window resizable
+  //attach exit handler
+  //prepareExitHandler();
+
+  println("Starting setup...");
 
   //prepare data variables
   dataBuffX = new float[(int)(dataBuff_len_sec * fs_Hz)];
   dataBuffY_uV = new float[nchan][dataBuffX.length];
   dataBuffY_filtY_uV = new float[nchan][dataBuffX.length];
+  data_std_uV = new float[nchan];
+  data_elec_imp_ohm = new float[nchan];
+  is_railed = new DataStatus[nchan];
+  for (int i=0; i<nchan;i++) is_railed[i] = new DataStatus(threshold_railed,threshold_railed_warn);
   for (int i=0; i<nDataBackBuff;i++) { 
-    dataPacketBuff[i] = new dataPacket_ADS1299(OpenBCI_Nchannels); //tell it how many data fields will be coming from the Arduino
+    dataPacketBuff[i] = new DataPacket_ADS1299(nchan+n_aux_ifEnabled);
   }
 
   //initialize the data
   prepareData(dataBuffX, dataBuffY_uV, fs_Hz);
 
   //initialize the FFT objects
-  for (int Ichan=0; Ichan < fftBuff.length; Ichan++) { 
+  for (int Ichan=0; Ichan < nchan; Ichan++) { 
     fftBuff[Ichan] = new FFT(Nfft, fs_Hz);
   };  //make the FFT objects
-  initializeFFTObjects(fftBuff, dataBuffY_uV);
+  initializeFFTObjects(fftBuff, dataBuffY_uV, Nfft, fs_Hz);
 
-  //define the filters and signal processing stuff
-  defineFilters(filtCoeff);
+  //prepare the filters...must be anytime before the GUI
+  defineFilters(filtCoeff_bp,filtCoeff_notch);
+  
+  //prepare some signal processing stuff
   for (int Ichan=0; Ichan < nchan; Ichan++) { detData_freqDomain[Ichan] = new DetectionData_FreqDomain(); }
 
   //initilize the GUI
-  String filterText = ""; for (int i=0; i<filtCoeff.length; i++) { if (i>0) {filterText+= '\n';} filterText += filtCoeff[i].name; };
-  gui = new gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV,fs_Hz,filterText,signalDetectName);
- 
+//  String filterText = ""; for (int i=0; i<filtCoeff.length; i++) { if (i>0) {filterText+= '\n';} filterText += filtCoeff[i].name; };
+//  gui = new gui_Manager(this, win_x, win_y, nchan, displayTime_sec,vertScale_uV,fs_Hz,filterText,signalDetectName);
+  String filterDescription = filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name; 
+  gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,default_vertScale_uV,filterDescription, smoothFac[smoothFac_ind],signalDetectName);
+  
   //associate the data to the GUI traces
-  gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff);
+  gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
+  
+  //limit how much data is plotted...hopefully to speed things up a little
+  gui.setDoNotPlotOutsideXlim(true);
+  gui.setDecimateFactor(2);
   
   //show the FFT-based signal detection
   gui.setGoodFFTBand(inband_Hz); gui.setBadFFTBand(guard_Hz);
   gui.showFFTFilteringData(showFFTFilteringData);
 
-  // Open the serial port to the Arduino that has the OpenBCI
-  if (useSyntheticData == false) {
-    if (true) {
-      println(Serial.list());  //print out all the serial ports on your system
-      //openBCI_portName = Serial.list()[0]; //choose the serial port that you want
-    }
-    println("Opening Serial " + openBCI_portName);
-    //open the serial link, this also starts the data transfer after XX seconds
-    openBCI = new openBCI_ADS1299(this, openBCI_portName, openBCI_baud, OpenBCI_Nchannels); //this likely restarts the arduino
-  
-    //wait for the Arduino and OpenBCI board to start
-    int foo_millis=millis();
-    int openBCI_serial_timeout_msec = 6000;
-    println("Waiting for OpenBCI...");
-    while (((millis()-foo_millis) < openBCI_serial_timeout_msec) && 
-      (openBCI.updateState() != STATE_NORMAL) && 
-      (openBCI_byteCount < 200) ) {};  //wait for Arduino to startup and send some data
-    //note, this could exit in both a good state (Arduino is going) or a bad state (nothing from Arduino
+  //prepare the source of the input data
+  switch (eegDataSource) {
+    case DATASOURCE_NORMAL: case DATASOURCE_NORMAL_W_AUX:
+      //list all the serial ports available...useful for debugging
+      println(Serial.list());
+      //openBCI_portName = Serial.list()[0];
+      
+      // Open the serial port to the Arduino that has the OpenBCI
+      println("OpenBCI_GUI: Opening Serial " + openBCI_portName);
+      int nDataValuesPerPacket = nchan;
+      if (eegDataSource == DATASOURCE_NORMAL_W_AUX) nDataValuesPerPacket += n_aux_ifEnabled;
+      openBCI = new OpenBCI_ADS1299(this, openBCI_portName, openBCI_baud,nDataValuesPerPacket); //this also starts the data transfer after XX seconds
+      break;
+    case DATASOURCE_SYNTHETIC:
+      //do nothing
+      break;
+    case DATASOURCE_PLAYBACKFILE:
+      //open and load the data file
+      println("OpenBCI_GUI: loading playback data from " + playbackData_fname);
+      //playbackData_table = loadTable(playbackData_fname, "header,csv");
+      try {
+        playbackData_table = new Table_CSV(playbackData_fname);
+      } catch (Exception e) {
+        println("setup: could not open file for playback: " + playbackData_fname);
+        println("   : quitting...");
+        exit();
+      }
+      println("OpenBCI_GUI: loading complete.  " + playbackData_table.getRowCount() + " rows of data, which is " + round(float(playbackData_table.getRowCount())/fs_Hz) + " seconds of EEG data");
+      
+      //removing first column of data from data file...the first column is a time index and not eeg data
+      playbackData_table.removeColumn(0);
+      break;
+    default: 
   }
     
-  //initialize the on/off state of the different channels
+  //initialize the on/off state of the different channels...specific to OpenBCI_GUI_Simpler
   for (int Ichan=0; Ichan<OpenBCI_Nchannels;Ichan++) {
     if (Ichan < nchan_active_at_startup) { activateChannel(Ichan); } else { deactivateChannel(Ichan);  }
   }
   
-  // initialize the minim and audioOut objects
+  // initialize the minim and audioOut objects...specific to OpenBCI_GUI_Simpler
   minim = new Minim( this );
   audioOut   = minim.getLineOut(); 
   wave = new Oscil( 200, 0.0, Waves.TRIANGLE );  // make the Oscil we will hear.  Arguments are frequency, amplitude, and waveform
   wave.patch( audioOut );
   gui.setAudioOscillator(wave);
   
-  //open the data file for writing
-  openNewLogFile();
+  //final config
+  setBiasState(isBiasAuto);
 
   //start
-  isRunning=true;
+  startRunning();
 
   println("setup: Setup complete...");
 }
@@ -232,108 +348,71 @@ int pointCounter = 0;
 int prevBytes = 0; 
 int prevMillis=millis();
 int byteRate_perSec = 0;
-int millis_lastSynthDatapoint=0;
+int drawLoop_counter = 0;
 void draw() {
-  //newData = false;
+  drawLoop_counter++;
   if (isRunning) {
+    //get the data, if it is available
+    pointCounter = getDataIfAvailable(pointCounter);
     
-    //get the new data...use synthetic data (for GUI debugging) or use real data from the Serial stream
-    if (useSyntheticData) {  
-      if ((millis() - millis_lastSynthDatapoint) >= nPointsPerUpdate/fs_Hz*1000) {
-        millis_lastSynthDatapoint = millis();
-                  
-        //in this branch, we'll generate synthetic data
-        lastReadDataPacketInd = 0;
-        for (int i = 0; i < nPointsPerUpdate; i++) {
-          //synthesize data
-          dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
-          synthesizeData(nchan, fs_Hz, scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]); //make one data point per channel
-  
-          //gather the data into the "little buffer"
-          for (int Ichan=0; Ichan < nchan; Ichan++) {
-            //scale the data into engineering units..."microvolts"
-            yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
-          }
-          pointCounter++;
-        }
-      }
-    } else {
-      //in this branch we'll get EEG data from OpenBCI
-      openBCI.updateState();
-
-      //gather any new data into the "little buffer"
-      while ( (curDataPacketInd != lastReadDataPacketInd) && (pointCounter < nPointsPerUpdate)) {
-        //increment the counter that points us to the next data packet that we will copy from.
-        lastReadDataPacketInd = (lastReadDataPacketInd+1) % dataPacketBuff.length;   //We're using it as a circular buffer, hence the mod operation to wrap us around if we try to go off the end
-        
-        //copy just the number of channels that we want into our local buffer in preparation for plotting (and for saving to disk)
-        for (int Ichan=0; Ichan < nchan; Ichan++) {  
-          //scale the data into engineering units..."microvolts"
-          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
-        } 
-      pointCounter++; //increment counter for "little buffer"
-      }
-    }
-
     //has enough data arrived to process it and update the GUI?
     if (pointCounter >= nPointsPerUpdate) {
       pointCounter = 0;  //reset for next time
-      byteRate_perSec = (int)(1000.f * ((float)(openBCI_byteCount - prevBytes)) / ((float)(millis() - prevMillis)));
-      prevBytes = openBCI_byteCount; 
-      prevMillis=millis();
-      float foo_val;
-  
-      //loop over each channel that we want to display and process
-      boolean sendToSpectrogram = true;  //initialize to send the first channel that we can
-      for (int Ichan=0;Ichan < nchan; Ichan++) {
-        
-        //add raw data to spectrogram...if the correct channel...
-        //...look for the first channel that is active (meaning button is not active) or, if it
-       //     hasn't yet sent any data, send the last channel even if the channel is off
-        if (sendToSpectrogram & (!(gui.chanButtons[Ichan].isActive()) | (Ichan == (nchan-1)))) { //send data to spectrogram
-          sendToSpectrogram = false;  //prevent us from sending more data after this time through
-          for (int Idata=0;Idata < nPointsPerUpdate;Idata++) {
-            gui.spectrogram.addDataPoint(yLittleBuff_uV[Ichan][Idata]);
-            gui.tellGUIWhichChannelForSpectrogram(Ichan);
-            //gui.spectrogram.addDataPoint(100.0f+(float)Idata);
-          }
-        }
-        
-        //append data to larger buffer
-        appendAndShift(dataBuffY_uV[Ichan], yLittleBuff_uV[Ichan]);
-  
-
-        //process the time domain data
-        dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();
-        for (int Ifilt=0; Ifilt < filtCoeff.length; Ifilt++) { filterIIR(filtCoeff[Ifilt].b, filtCoeff[Ifilt].a, dataBuffY_filtY_uV[Ichan]); }//apply all of the filters 
-      }
       
-      //process in the time domain (for the frequency-domain plot and any subsequent processing
-      processFreqDomain(dataBuffY_uV,fftBuff,fs_Hz,fft_smooth_fac);  //use rawData, not filtered data
-    
-      //try to detect the desired signals, do it in frequency space
+      //process the data
+      processNewData();
+
+      //try to detect the desired signals, do it in frequency space...for OpenBCI_GUI_Simpler
       detectInFreqDomain(fftBuff,inband_Hz,guard_Hz,detData_freqDomain);
       gui.setDetectionData_freqDomain(detData_freqDomain);
-      
+
       //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
-      gui.update();
+      gui.update(data_std_uV,data_elec_imp_ohm);
+      
+      ///add raw data to spectrogram...if the correct channel...
+      //...look for the first channel that is active (meaning button is not active) or, if it
+      //     hasn't yet sent any data, send the last channel even if the channel is off
+      if (sendToSpectrogram & (!(gui.chanButtons[Ichan].isActive()) | (Ichan == (nchan-1)))) { //send data to spectrogram
+        sendToSpectrogram = false;  //prevent us from sending more data after this time through
+        for (int Idata=0;Idata < nPointsPerUpdate;Idata++) {
+          gui.spectrogram.addDataPoint(yLittleBuff_uV[Ichan][Idata]);
+          gui.tellGUIWhichChannelForSpectrogram(Ichan);
+          //gui.spectrogram.addDataPoint(100.0f+(float)Idata);
+        }
+      }
+        
       redrawScreenNow=true;
     } 
     else {
       //not enough data has arrived yet.  do nothing more
     }
-    
-    //either way, update the title of the figure;
-    frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", Writing to " + output_fname);
   }
-
-  if (redrawScreenNow) {
-    //redraw the screen...not every time, get paced by when data is being plotted
-      redrawScreenNow = false;  //reset for next time
-    background(0);
-    gui.draw();
+    
+  int drawLoopCounter_thresh = 100;
+  if ((redrawScreenNow) || (drawLoop_counter >= drawLoopCounter_thresh)) {
+    //if (drawLoop_counter >= drawLoopCounter_thresh) println("OpenBCI_GUI: redrawing based on loop counter...");
+    drawLoop_counter=0; //reset for next time
+    redrawScreenNow = false;  //reset for next time
+    
+    //update the title of the figure;
+    switch (eegDataSource) {
+      case DATASOURCE_NORMAL: case DATASOURCE_NORMAL_W_AUX:
+        frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
+        break;
+      case DATASOURCE_SYNTHETIC:
+        frame.setTitle(int(frameRate) + " fps, Using Synthetic EEG Data");
+        break;
+      case DATASOURCE_PLAYBACKFILE:
+        frame.setTitle(int(frameRate) + " fps, Playing " + int(float(currentTableRowIndex)/fs_Hz) + " of " + int(float(playbackData_table.getRowCount())/fs_Hz) + " secs, Reading from: " + playbackData_fname);
+        break;
+    } 
+    
+    //redraw the screen...not every time, get paced by when data is being plotted    
+    background(0);  //clear the screen
+    gui.draw(); //draw the GUI
   }
 }
+
 
 //here is the routine that listens to the serial port.
 //if any data is waiting, get it, parse it, and stuff it into our vector of pre-allocated dataPacketBuff
@@ -447,7 +526,7 @@ void mousePressed() {
   
   //check the graphs
   if (gui.isMouseOnFFT(mouseX,mouseY)) {
-    graphDataPoint dataPoint = new graphDataPoint();
+    GraphDataPoint dataPoint = new GraphDataPoint();
     gui.getFFTdataPoint(mouseX,mouseY,dataPoint);
     println("OpenBCI_GUI: FFT data point: " + String.format("%4.2f",dataPoint.x) + " " + dataPoint.x_units + ", " + String.format("%4.2f",dataPoint.y) + " " + dataPoint.y_units);
   }
