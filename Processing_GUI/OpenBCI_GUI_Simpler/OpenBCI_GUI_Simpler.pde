@@ -368,33 +368,21 @@ void draw() {
       processNewData();
 
       //try to detect the desired signals, do it in frequency space...for OpenBCI_GUI_Simpler
-      detectInFreqDomain(fftBuff,inband_Hz,guard_Hz,detData_freqDomain);
-      gui.setDetectionData_freqDomain(detData_freqDomain);
+      //detectInFreqDomain(fftBuff,inband_Hz,guard_Hz,detData_freqDomain);
+      //gui.setDetectionData_freqDomain(detData_freqDomain);
 
       //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
       gui.update(data_std_uV,data_elec_imp_ohm);
-      
-      ///add raw data to spectrogram...if the correct channel...
-      //...look for the first channel that is active (meaning button is not active) or, if it
-      //     hasn't yet sent any data, send the last channel even if the channel is off
-      if (sendToSpectrogram & (!(gui.chanButtons[Ichan].isActive()) | (Ichan == (nchan-1)))) { //send data to spectrogram
-        sendToSpectrogram = false;  //prevent us from sending more data after this time through
-        for (int Idata=0;Idata < nPointsPerUpdate;Idata++) {
-          gui.spectrogram.addDataPoint(yLittleBuff_uV[Ichan][Idata]);
-          gui.tellGUIWhichChannelForSpectrogram(Ichan);
-          //gui.spectrogram.addDataPoint(100.0f+(float)Idata);
-        }
-      }
-        
+     
       redrawScreenNow=true;
-    } 
-    else {
+    } else {
       //not enough data has arrived yet.  do nothing more
     }
   }
     
   int drawLoopCounter_thresh = 100;
   if ((redrawScreenNow) || (drawLoop_counter >= drawLoopCounter_thresh)) {
+    
     //if (drawLoop_counter >= drawLoopCounter_thresh) println("OpenBCI_GUI: redrawing based on loop counter...");
     drawLoop_counter=0; //reset for next time
     redrawScreenNow = false;  //reset for next time
@@ -496,8 +484,20 @@ void processNewData() {
     
   //recompute the montage to make it be a mean-head reference
   if (false) rereferenceTheMontage(dataBuffY_filtY_uV);
-    
-  for (int Ichan=0;Ichan < nchan; Ichan++) {  
+  
+  //loop over each channel for processing  
+  boolean sendToSpectrogram = true;  //initialize to send the first channel that we can
+  for (int Ichan=0;Ichan < nchan; Ichan++) {
+  
+    ///add raw data to spectrogram...if the correct channel...
+    //...look for the first channel that is active (meaning button is not active) or, if it
+    //     hasn't yet sent any data, send the last channel even if the channel is off
+    if (sendToSpectrogram & (!(gui.chanButtons[Ichan].isActive()) | (Ichan == (nchan-1)))) { //send data to spectrogram
+      sendToSpectrogram = false;  //prevent us from sending more data after this time through
+      gui.tellGUIWhichChannelForSpectrogram(Ichan);
+      for (int Idata=0;Idata < nPointsPerUpdate;Idata++) gui.spectrogram.addDataPoint(yLittleBuff_uV[Ichan][Idata]);
+    }
+   
     //filter the data in the time domain
     filterIIR(filtCoeff_notch[currentFilt_ind].b, filtCoeff_notch[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //notch
     filterIIR(filtCoeff_bp[currentFilt_ind].b, filtCoeff_bp[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //bandpass
@@ -895,9 +895,9 @@ void mousePressed() {
       }
       
       //check the detection button
-      if (gui.detectButton.updateIsMouseHere()) toggleDetectionState();      
+      if (gui.detectButton.isMouseHere()) toggleDetectionState();      
       //check spectrogram button
-      if (gui.spectrogramButton.updateIsMouseHere()) toggleSpectrogramState();
+      if (gui.spectrogramButton.isMouseHere()) toggleSpectrogramState();
       
       break;
     case Gui_Manager.GUI_PAGE_IMPEDANCE_CHECK:
@@ -962,7 +962,7 @@ void mouseReleased() {
   gui.intensityFactorButton.setIsActive(false);
   gui.loglinPlotButton.setIsActive(false);
   gui.filtBPButton.setIsActive(false);
-  gui.smoothingButton.setIsActive(false);
+  //gui.smoothingButton.setIsActive(false);
   gui.biasButton.setIsActive(false);
   redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is released
 }

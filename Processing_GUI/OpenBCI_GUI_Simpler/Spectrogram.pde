@@ -61,7 +61,7 @@ class Spectrogram {
   }
   
   public void addDataPoint(float dataPoint) {
-     
+    
     //add point
     localDataBuff[localDataBuffCounter] = dataPoint;
     //println("Spectrogram.addDataPoint(): counter = " + localDataBuffCounter + ", data = " + localDataBuff[localDataBuffCounter]);
