@@ -36,7 +36,7 @@ String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE CO
 
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the rArduino
-int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
+final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //use this for when daisy-chaining two OpenBCI boards
 //int openBCI_baud = 2*115200; //baud rate from the Arduino
 //int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
@@ -113,7 +113,7 @@ int lastReadDataPacketInd = -1;
 ///////////// Specific to OpenBCI_GUI_Simpler
 
 //which channels active and which not?
-int nchan = 2;  //total number of channels to make available to the user
+//int nchan = 2;  //total number of channels to make available to the user
 int nchan_active_at_startup = 1;  //just have one active at startup, though
 
 //signal detection constants
