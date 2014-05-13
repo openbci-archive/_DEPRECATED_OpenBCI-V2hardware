@@ -59,7 +59,7 @@ class Gui_Manager {
   private float default_vertScale_uV=200.0; //this defines the Y-scale on the montage plots...this is the vertical space between traces
   private float[] vertScaleFactor = {1.0f, 2.0f, 5.0f, 50.0f, 0.25f, 0.5f};
   private int vertScaleFactor_ind = 0;
-  float vertScale_uV=200.0;
+  float vertScale_uV=default_vertScale_uV;
   float vertScaleMin_uV_whenLog = 0.1f;
   float montage_yoffsets[];
   
@@ -81,7 +81,7 @@ class Gui_Manager {
      //define some layout parameters
     int axes_x, axes_y;
     float gutter_topbot = 0.05f; //edge around top and bottom of gui, as fraction of window height
-    float gutter_left = 0.07f;  //edge around the left side of the gui, as fraction of window width
+    float gutter_left = 0.08f;  //edge around the left side of the gui, as fraction of window width
     float gutter_right = 0.025f;  //edge around the right side
     float height_UI_tray = 0.17f;  //empty space along bottom for UI elements (ie, the buttons)
     float left_right_split = 0.4f;  //notional dividing line between left and right plots, measured from left
@@ -196,8 +196,9 @@ class Gui_Manager {
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     loglinPlotButton = new Button(x,y,w,h,"Vert Scale\n" + get_vertScaleAsLogText(),fontInfo.buttonLabel_size);
   
-    //x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     //smoothingButton = new Button(x,y,w,h,"Smooth\n" + headPlot1.smooth_fac,fontInfo.buttonLabel_size);
+    smoothingButton = new Button(x,y,w,h,"Smooth\n" + "x",fontInfo.buttonLabel_size);
 
     //set the signal detection button...left of center
     w = stopButton.but_dx;
@@ -238,7 +239,18 @@ class Gui_Manager {
     //println("Gui_Manager: updateVertScale: vertScale_uV = " + vertScale_uV);
     
     //update how the plots are scaled
-    if (montageTrace != null) montageTrace.setYScale_uV(vertScale_uV);  //the Y-axis on the montage plot is fixed...the data is simply scaled prior to plotting
+    //if (montageTrace != null) montageTrace.setYScale_uV(vertScale_uV);  //the Y-axis on the montage plot is fixed...the data is simply scaled prior to plotting
+    if (montageTrace != null) {
+      //montageTrace.setYScale_uV(vertScale_uV);  //the Y-axis on the montage plot is fixed...the data is simply scaled prior to plotting
+      montageTrace.setYScale_uV(1.0f);
+      gMontage.setYAxisMin(-vertScale_uV);
+      gMontage.setYAxisMax(vertScale_uV);
+      if (( (vertScale_uV > 45) & (vertScale_uV < 55) ) || ( (vertScale_uV > 450) & (vertScale_uV < 550)) ) {
+        gMontage.setYAxisTickSpacing(floor(vertScale_uV/5.0f));
+      } else {
+        gMontage.setYAxisTickSpacing(floor(vertScale_uV/4.0f));
+      }
+    }
     if (gFFT != null) gFFT.setYAxisMax(vertScale_uV);
     //headPlot1.setMaxIntensity_uV(vertScale_uV);
     intensityFactorButton.setString("Vert Scale\n" + round(vertScale_uV) + "uV");
@@ -516,7 +528,8 @@ class Gui_Manager {
     //montageTrace  = new ScatterTrace();  //I can't have this here because it dies. It must be in setup()
     gMontage.addTrace(montageTrace);
     montageTrace.setXYData_byRef(dataBuffX, dataBuffY);
-    montageTrace.setYScaleFac(1f / vertScale_uV);
+    //montageTrace.setYScaleFac(1f / vertScale_uV);
+    montageTrace.setYScaleFac(1.0f); //for OpenBCI_GUI_Simpler
     
     //set the y-offsets for each trace in the fft plot.
     //have each trace bumped down by -1.0.

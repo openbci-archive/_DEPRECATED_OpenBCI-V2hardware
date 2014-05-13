@@ -4,7 +4,7 @@
 // The ScatterTrace class is used to draw and manage the traces on each
 // X-Y line plot created using gwoptics graphing library
 //
-// Created: Chip Audette, Oct 2013
+// Created: Chip Audette, May 2014
 //
 // Based on examples in gwoptics graphic library v0.5.0
 // http://www.gwoptics.org/processing/gwoptics_p5lib/

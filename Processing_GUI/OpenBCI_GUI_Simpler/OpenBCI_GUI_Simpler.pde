@@ -62,7 +62,8 @@ float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is
 float dataBuffY_filtY_uV[][];
 float data_std_uV[];
 float data_elec_imp_ohm[];
-int nchan = OpenBCI_Nchannels;
+//int nchan = OpenBCI_Nchannels;
+int nchan = 2;  //for OpenBCI_GUI_Simpler
 int n_aux_ifEnabled = 1;  //if DATASOURCE_NORMAL_W_AUX then this is how many aux channels there will be
 int prev_time_millis = 0;
 final int nPointsPerUpdate = 50; //update screen after this many data points.  
@@ -928,10 +929,10 @@ void mousePressed() {
         gui.filtBPButton.setIsActive(true);
         incrementFilterConfiguration();
       }
-      if (gui.smoothingButton.isMouseHere()) {
-        gui.smoothingButton.setIsActive(true);
-        incrementSmoothing();
-      }
+//      if (gui.smoothingButton.isMouseHere()) {
+//        gui.smoothingButton.setIsActive(true);
+//        incrementSmoothing();
+//      }
 
       break;
     //default:
