@@ -16,10 +16,12 @@
 
 import processing.serial.*;  //for serial communication to Arduino/OpenBCI
 import ddf.minim.analysis.*; //for FFT
-import java.util.*; //for Array.copyOfRange()
-import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
 import ddf.minim.*;  // To make sound.  Following minim example "frequencyModulation"
 import ddf.minim.ugens.*;  // To make sound.  Following minim example "frequencyModulation"
+import java.util.*; //for Array.copyOfRange()
+import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
+import processing.core.PApplet;
+
 
 //choose where to get the EEG data
 final int DATASOURCE_NORMAL =  0;        //Receive LIVE data from OpenBCI
@@ -35,6 +37,9 @@ String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE CO
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the rArduino
 int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
+//use this for when daisy-chaining two OpenBCI boards
+//int openBCI_baud = 2*115200; //baud rate from the Arduino
+//int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
 
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
@@ -208,16 +213,16 @@ void prepareData(float[] dataBuffX, float[][] dataBuffY_uV, float fs_Hz) {
   int xoffset = dataBuffX.length - 1;
   for (int i=0; i < dataBuffX.length; i++) {
     dataBuffX[i] = ((float)(i-xoffset)) / fs_Hz; //x data goes from minus time up to zero
-    for (int Ichan = 0; Ichan < dataBuffY_uV.length; Ichan++) { 
+    for (int Ichan = 0; Ichan < nchan; Ichan++) { 
       dataBuffY_uV[Ichan][i] = 0f;  //make the y data all zeros
     }
   }
 }
 
-void initializeFFTObjects(FFT[] fftBuff, float[][] dataBuffY_uV) {
+void initializeFFTObjects(FFT[] fftBuff, float[][] dataBuffY_uV, int N, float fs_Hz) {
 
   float[] fooData;
-  for (int Ichan=0; Ichan < fftBuff.length; Ichan++) {
+  for (int Ichan=0; Ichan < nchan; Ichan++) {
     //make the FFT objects...Following "SoundSpectrum" example that came with the Minim library
     //fftBuff[Ichan] = new FFT(Nfft, fs_Hz);  //I can't have this here...it must be in setup
     fftBuff[Ichan].window(FFT.HAMMING);
@@ -411,6 +416,145 @@ void draw() {
     background(0);  //clear the screen
     gui.draw(); //draw the GUI
   }
+}
+
+int getDataIfAvailable(int pointCounter) {
+  
+  if ( (eegDataSource == DATASOURCE_NORMAL) || (eegDataSource == DATASOURCE_NORMAL_W_AUX) ) {
+    //get data from serial port as it streams in
+
+      //first, get the new data (if any is available)
+      openBCI.updateState(); //this is trying to listen to the openBCI hardware.  New data is put into dataPacketBuff and increments curDataPacketInd.
+      
+      //next, gather any new data into the "little buffer"
+      while ( (curDataPacketInd != lastReadDataPacketInd) && (pointCounter < nPointsPerUpdate)) {
+        lastReadDataPacketInd = (lastReadDataPacketInd+1) % dataPacketBuff.length;  //increment to read the next packet
+        for (int Ichan=0; Ichan < nchan; Ichan++) {   //loop over each cahnnel
+          //scale the data into engineering units ("microvolts") and save to the "little buffer"
+          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan] * scale_fac_uVolts_per_count;
+        } 
+        pointCounter++; //increment counter for "little buffer"
+      }
+  } else {
+    // make or load data to simulate real time
+        
+    //has enough time passed?
+    int current_millis = millis();
+    if (current_millis >= nextPlayback_millis) {
+      //prepare for next time
+      int increment_millis = int(round(float(nPointsPerUpdate)*1000.f/fs_Hz));
+      if (nextPlayback_millis < 0) nextPlayback_millis = current_millis;
+      nextPlayback_millis += increment_millis;
+
+      // generate or read the data
+      lastReadDataPacketInd = 0;
+      for (int i = 0; i < nPointsPerUpdate; i++) {
+        dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
+        switch (eegDataSource) {
+          case DATASOURCE_SYNTHETIC: //use synthetic data (for GUI debugging)   
+            synthesizeData(nchan, fs_Hz, scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
+            break;
+          case DATASOURCE_PLAYBACKFILE: 
+            currentTableRowIndex=getPlaybackDataFromTable(playbackData_table,currentTableRowIndex,scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
+            break;
+          default:
+            //no action
+        }
+        //gather the data into the "little buffer"
+        for (int Ichan=0; Ichan < nchan; Ichan++) {
+          //scale the data into engineering units..."microvolts"
+          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
+        }
+        pointCounter++;
+      } //close the loop over data points
+      //if (eegDataSource==DATASOURCE_PLAYBACKFILE) println("OpenBCI_GUI: getDataIfAvailable: currentTableRowIndex = " + currentTableRowIndex);
+      //println("OpenBCI_GUI: getDataIfAvailable: pointCounter = " + pointCounter);
+    } // close "has enough time passed"
+  } 
+  return pointCounter;
+}
+
+void processNewData() {
+
+  byteRate_perSec = (int)(1000.f * ((float)(openBCI_byteCount - prevBytes)) / ((float)(millis() - prevMillis)));
+  prevBytes = openBCI_byteCount; 
+  prevMillis=millis();
+  float foo_val;
+  float prevFFTdata[] = new float[fftBuff[0].specSize()];
+  double foo;
+
+  for (int Ichan=0;Ichan < nchan; Ichan++) {
+    //append data to larger buffer
+    appendAndShift(dataBuffY_uV[Ichan], yLittleBuff_uV[Ichan]);
+    
+    //look to see if the signal is railed
+    is_railed[Ichan].update(dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
+
+    //make a copy of the data for further processing
+    dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();
+  } 
+    
+  //recompute the montage to make it be a mean-head reference
+  if (false) rereferenceTheMontage(dataBuffY_filtY_uV);
+    
+  for (int Ichan=0;Ichan < nchan; Ichan++) {  
+    //filter the data in the time domain
+    filterIIR(filtCoeff_notch[currentFilt_ind].b, filtCoeff_notch[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //notch
+    filterIIR(filtCoeff_bp[currentFilt_ind].b, filtCoeff_bp[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //bandpass
+
+    //copy the previous FFT data
+    for (int I=0; I < fftBuff[Ichan].specSize(); I++) prevFFTdata[I] = fftBuff[Ichan].getBand(I); //copy the old spectrum values
+    
+    //prepare the new FFT data
+    float[] fooData_raw = dataBuffY_uV[Ichan];  //use the raw data for the FFT
+    fooData_raw = Arrays.copyOfRange(fooData_raw, fooData_raw.length-Nfft, fooData_raw.length);   //trim to grab just the most recent block of data
+    float meanData = mean(fooData_raw);  //compute the mean
+    for (int I=0; I < fooData_raw.length; I++) fooData_raw[I] -= meanData; //remove the mean (for a better looking FFT
+    
+    //compute the FFT
+    fftBuff[Ichan].forward(fooData_raw); //compute FFT on this channel of data
+    
+//    //convert fft data to uV_per_sqrtHz
+//    //final float mean_winpow_sqr = 0.3966;  //account for power lost when windowing...mean(hamming(N).^2) = 0.3966
+//    final float mean_winpow = 1.0f/sqrt(2.0f);  //account for power lost when windowing...mean(hamming(N).^2) = 0.3966
+//    final float scale_raw_to_rtHz = pow((float)fftBuff[0].specSize(),1)*fs_Hz*mean_winpow; //normalize the amplitude by the number of bins to get the correct scaling to uV/sqrt(Hz)???
+//    double foo;
+//    for (int I=0; I < fftBuff[Ichan].specSize(); I++) {  //loop over each FFT bin
+//      foo = sqrt(pow(fftBuff[Ichan].getBand(I),2)/scale_raw_to_rtHz);
+//      fftBuff[Ichan].setBand(I,(float)foo);
+//      //if ((Ichan==0) & (I > 5) & (I < 15)) println("processFreqDomain: uV/rtHz = " + I + " " + foo);
+//    }
+    
+    //average the FFT with previous FFT data...log average
+    double min_val = 0.01d;
+    for (int I=0; I < fftBuff[Ichan].specSize(); I++) {   //loop over each fft bin
+      if (prevFFTdata[I] < min_val) prevFFTdata[I] = (float)min_val; //make sure we're not too small for the log calls
+      foo = fftBuff[Ichan].getBand(I); if (foo < min_val) foo = min_val; //make sure this value isn't too small
+      
+       if (true) {
+        //smooth in dB power space
+        foo =   (1.0d-smoothFac[smoothFac_ind]) * java.lang.Math.log(java.lang.Math.pow(foo,2));
+        foo += smoothFac[smoothFac_ind] * java.lang.Math.log(java.lang.Math.pow((double)prevFFTdata[I],2)); 
+        foo = java.lang.Math.sqrt(java.lang.Math.exp(foo)); //average in dB space
+      } else { 
+        //smooth (average) in linear power space
+        foo =   (1.0d-smoothFac[smoothFac_ind]) * java.lang.Math.pow(foo,2);
+        foo+= smoothFac[smoothFac_ind] * java.lang.Math.pow((double)prevFFTdata[I],2); 
+        // take sqrt to be back into uV_rtHz
+        foo = java.lang.Math.sqrt(foo);
+      }
+      fftBuff[Ichan].setBand(I,(float)foo); //put the smoothed data back into the fftBuff data holder for use by everyone else
+    }
+
+    //compute the stddev of the signal...for the head plot
+    float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
+    fooData_filt = Arrays.copyOfRange(fooData_filt, fooData_filt.length-Nfft, fooData_filt.length);   //just grab the most recent block of data
+    data_std_uV[Ichan]=std(fooData_filt);
+    
+    //compute the electrode impedance in a very simple way [rms to amplitude, then uVolt to Volt, then Volt/Amp to Ohm]
+    data_elec_imp_ohm[Ichan] = (sqrt(2.0)*data_std_uV[Ichan]*1.0e-6) / openBCI_impedanceDrive_amps;
+  }
+  
 }
 
 
@@ -805,6 +949,10 @@ void mousePressed() {
   //  //toggle the display of the montage values
   //  gui.showMontageValues  = !gui.showMontageValues;
   //
+  }
+  
+  redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is pressed
+}
 
 void mouseReleased() {
   //some buttons light up only when being actively pressed.  Now that we've
@@ -856,8 +1004,7 @@ void stopButtonWasPressed() {
     gui.stopButton.setString(Gui_Manager.stopButton_pressToStart_txt);
   }
 }
-  }
-}
+
 
 final float sine_freq_Hz = 10.0f;
 float sine_phase_rad = 0.0;
@@ -882,6 +1029,7 @@ void synthesizeData(int nchan, float fs_Hz, float scale_fac_uVolts_per_count, Da
     curDataPacket.values[Ichan] = (int) (0.5f+ val_uV / scale_fac_uVolts_per_count); //convert to counts, the 0.5 is to ensure rounding
   }
 }
+
 
 int getPlaybackDataFromTable(Table datatable, int currentTableRowIndex, float scale_fac_uVolts_per_count, DataPacket_ADS1299 curDataPacket) {
   float val_uV = 0.0f;
@@ -945,7 +1093,7 @@ boolean isChannelActive(int Ichan) {
   return return_val;
 }
 
-//activateChannel: Ichan is [0 nchan-1]
+//activateChannel: Ichan is [0 nchan-1] (aka zero referenced)
 void activateChannel(int Ichan) {
   println("OpenBCI_GUI: activating channel " + (Ichan+1));
   if (openBCI != null) openBCI.changeChannelState(Ichan, true); //activate
@@ -1146,3 +1294,30 @@ void incrementSmoothing() {
   gui.smoothingButton.but_txt = "Smooth\n" + smoothFac[smoothFac_ind];
 }
   
+
+// here's a function to catch whenever the window is being closed, so that
+// it stops OpenBCI
+// from: http://forum.processing.org/one/topic/run-code-on-exit.html
+//
+// must add "prepareExitHandler();" in setup() for Processing sketches 
+//private void prepareExitHandler () {
+//  Runtime.getRuntime().addShutdownHook(
+//    new Thread(new Runnable() {
+//        public void run () {
+//          //System.out.println("SHUTDOWN HOOK");
+//          println("OpenBCI_GUI: executing shutdown code...");
+//          try {
+//            stopRunning();
+//            if (openBCI != null) {
+//              openBCI.closeSerialPort();
+//            }
+//            stop();
+//          } catch (Exception ex) {
+//            ex.printStackTrace(); // not much else to do at this point
+//          }
+//        }
+//      }
+//    )
+//  );
+//}  
+

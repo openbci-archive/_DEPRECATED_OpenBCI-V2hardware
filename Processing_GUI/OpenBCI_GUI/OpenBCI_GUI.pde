@@ -12,12 +12,14 @@
 ///////////////////////////////////////////////
 
 
-import processing.serial.*;
+import processing.serial.*;  //for serial communication to Arduino/OpenBCI
 import ddf.minim.analysis.*; //for FFT
+import ddf.minim.*;  // To make sound.  Following minim example "frequencyModulation"
 import ddf.minim.ugens.*;  // To make sound.  Following minim example "frequencyModulation"
 import java.util.*; //for Array.copyOfRange()
 import java.lang.Math; //for exp, log, sqrt...they seem better than Processing's built-in
 import processing.core.PApplet;
+
 
 //choose where to get the EEG data
 final int DATASOURCE_NORMAL =  0;        //Receive LIVE data from OpenBCI
@@ -32,10 +34,10 @@ String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE CO
 
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the rArduino
-int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
+final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //use this for when daisy-chaining two OpenBCI boards
 //int openBCI_baud = 2*115200; //baud rate from the Arduino
-//int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
+//final int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
 
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
@@ -105,6 +107,26 @@ final int nDataBackBuff = 3*(int)fs_Hz;
 DataPacket_ADS1299 dataPacketBuff[] = new DataPacket_ADS1299[nDataBackBuff]; //allocate the array, but doesn't call constructor.  Still need to call the constructor!
 int curDataPacketInd = -1;
 int lastReadDataPacketInd = -1;
+
+///////////// Specific to OpenBCI_GUI_Simpler
+
+//which channels active and which not?
+//int nchan = 2;  //total number of channels to make available to the user
+int nchan_active_at_startup = 1;  //just have one active at startup, though
+
+//signal detection constants
+boolean showFFTFilteringData = false;
+String signalDetectName = "Alpha";
+float inband_Hz[] = {9.0f, 12.0f};  //look at energy within these frequencies
+float guard_Hz[] = {13.5f, 23.5f};  //and compare to energy within these frequencies
+float fft_det_thresh_dB = 10.0;      //how much higher does the in-band signal have to be above the guard band?
+DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nchan]; //holds data describing any detections performed in the frequency domain
+
+//constants for sound generation for alpha detection
+Minim minim;
+AudioOutput audioOut;  //was just "out" in the Minim example
+Oscil wave;
+
 
 /////////////////////////////////////////////////////////////////////// functions
 
@@ -215,6 +237,7 @@ int win_y = 768; //window height
 //int win_y = 450;   //window height...for OpenBCI_GUI_Simpler
 void setup() {
 
+  //open window
   size(win_x, win_y, P2D);
   //if (frame != null) frame.setResizable(true);  //make window resizable
   //attach exit handler
@@ -246,6 +269,9 @@ void setup() {
   //prepare the filters...must be anytime before the GUI
   defineFilters(filtCoeff_bp,filtCoeff_notch);
 
+  //prepare some signal processing stuff
+  for (int Ichan=0; Ichan < nchan; Ichan++) { detData_freqDomain[Ichan] = new DetectionData_FreqDomain(); }
+
   //initilize the GUI
   String filterDescription = filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name; 
   gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,default_vertScale_uV,filterDescription, smoothFac[smoothFac_ind]);
@@ -256,6 +282,9 @@ void setup() {
   //limit how much data is plotted...hopefully to speed things up a little
   gui.setDoNotPlotOutsideXlim(true);
   gui.setDecimateFactor(2);
+  //show the FFT-based signal detection
+  //gui.setGoodFFTBand(inband_Hz); gui.setBadFFTBand(guard_Hz);
+  //gui.showFFTFilteringData(showFFTFilteringData);
 
   //prepare the source of the input data
   switch (eegDataSource) {
@@ -292,6 +321,19 @@ void setup() {
     default: 
   }
 
+
+  //initialize the on/off state of the different channels...specific to OpenBCI_GUI_Simpler
+  //for (int Ichan=0; Ichan<OpenBCI_Nchannels;Ichan++) {
+  //  if (Ichan < nchan_active_at_startup) { activateChannel(Ichan); } else { deactivateChannel(Ichan);  }
+  //}
+  
+  // initialize the minim and audioOut objects...specific to OpenBCI_GUI_Simpler
+  //minim = new Minim( this );
+  //audioOut   = minim.getLineOut(); 
+  //wave = new Oscil( 200, 0.0, Waves.TRIANGLE );  // make the Oscil we will hear.  Arguments are frequency, amplitude, and waveform
+  //wave.patch( audioOut );
+  //gui.setAudioOscillator(wave);
+  
   //final config
   setBiasState(isBiasAuto);
 
@@ -320,6 +362,9 @@ void draw() {
       //process the data
       processNewData();
 
+      //try to detect the desired signals, do it in frequency space...for OpenBCI_GUI_Simpler
+      //detectInFreqDomain(fftBuff,inband_Hz,guard_Hz,detData_freqDomain);
+      //gui.setDetectionData_freqDomain(detData_freqDomain);
       //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
       gui.update(data_std_uV,data_elec_imp_ohm);
       
@@ -841,6 +886,12 @@ void mousePressed() {
           toggleChannelState(Ibut);
         }
       }
+
+      //check the detection button
+      //if (gui.detectButton.updateIsMouseHere()) toggleDetectionState();      
+      //check spectrogram button
+      //if (gui.spectrogramButton.updateIsMouseHere()) toggleSpectrogramState();
+      
       break;
     case Gui_Manager.GUI_PAGE_IMPEDANCE_CHECK:
       //check the impedance buttons
@@ -955,6 +1006,7 @@ void stopButtonWasPressed() {
   }
 }
 
+
 final float sine_freq_Hz = 10.0f;
 float sine_phase_rad = 0.0;
 void synthesizeData(int nchan, float fs_Hz, float scale_fac_uVolts_per_count, DataPacket_ADS1299 curDataPacket) {
@@ -1046,13 +1098,25 @@ boolean isChannelActive(int Ichan) {
 void activateChannel(int Ichan) {
   println("OpenBCI_GUI: activating channel " + (Ichan+1));
   if (openBCI != null) openBCI.changeChannelState(Ichan, true); //activate
-  gui.chanButtons[Ichan].setIsActive(false); //an active channel is a light-colored NOT-ACTIVE button
+  if (Ichan < gui.chanButtons.length) gui.chanButtons[Ichan].setIsActive(false); //an active channel is a light-colored NOT-ACTIVE button
 }  
 void deactivateChannel(int Ichan) {
   println("OpenBCI_GUI: deactivating channel " + (Ichan+1));
   if (openBCI != null) openBCI.changeChannelState(Ichan, false); //de-activate
-  gui.chanButtons[Ichan].setIsActive(true); //a deactivated channel is a dark-colored ACTIVE button
+  if (Ichan < gui.chanButtons.length) gui.chanButtons[Ichan].setIsActive(true); //a deactivated channel is a dark-colored ACTIVE button
 }
+
+//void toggleDetectionState() {
+//  gui.detectButton.setIsActive(!gui.detectButton.isActive());
+//  showFFTFilteringData = gui.detectButton.isActive();
+//  gui.showFFTFilteringData(showFFTFilteringData);
+//}
+//
+//void toggleSpectrogramState() {
+//  gui.spectrogramButton.setIsActive(!gui.spectrogramButton.isActive());
+//  gui.setShowSpectrogram(gui.spectrogramButton.isActive());
+//}
+
 
 void toggleChannelImpedanceState(Button but, int Ichan, int code_P_N_Both) {
   boolean newstate = false;
@@ -1113,6 +1177,7 @@ void openNewLogFile() {
 void closeLogFile() {
   if (fileoutput != null) fileoutput.closeFile();
 }
+
 
 void incrementFilterConfiguration() {
   //increment the index
