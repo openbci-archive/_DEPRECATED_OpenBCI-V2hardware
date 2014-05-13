@@ -925,6 +925,12 @@ void mousePressed() {
         gui.smoothingButton.setIsActive(true);
         incrementSmoothing();
       }
+      
+      if (gui.maxDisplayFreqButton.isMouseHere()) {
+        gui.maxDisplayFreqButton.setIsActive(true);
+        gui.incrementMaxDisplayFreq();
+      }
+      
 //      //check the detection button
 //      if (gui.detectButton.updateIsMouseHere()) {
 //       gui.detectButton.setIsActive(true);
@@ -965,6 +971,7 @@ void mouseReleased() {
   gui.loglinPlotButton.setIsActive(false);
   gui.filtBPButton.setIsActive(false);
   gui.smoothingButton.setIsActive(false);
+  gui.maxDisplayFreqButton.setIsActive(false);
   gui.biasButton.setIsActive(false);
   redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is released
 }

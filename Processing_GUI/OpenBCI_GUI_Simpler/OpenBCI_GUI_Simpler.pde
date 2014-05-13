@@ -490,15 +490,6 @@ void processNewData() {
   boolean sendToSpectrogram = true;  //initialize to send the first channel that we can
   for (int Ichan=0;Ichan < nchan; Ichan++) {
   
-    ///add raw data to spectrogram...if the correct channel...
-    //...look for the first channel that is active (meaning button is not active) or, if it
-    //     hasn't yet sent any data, send the last channel even if the channel is off
-    if (sendToSpectrogram & (!(gui.chanButtons[Ichan].isActive()) | (Ichan == (nchan-1)))) { //send data to spectrogram
-      sendToSpectrogram = false;  //prevent us from sending more data after this time through
-      gui.tellGUIWhichChannelForSpectrogram(Ichan);
-      for (int Idata=0;Idata < nPointsPerUpdate;Idata++) gui.spectrogram.addDataPoint(yLittleBuff_uV[Ichan][Idata]);
-    }
-   
     //filter the data in the time domain
     filterIIR(filtCoeff_notch[currentFilt_ind].b, filtCoeff_notch[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //notch
     filterIIR(filtCoeff_bp[currentFilt_ind].b, filtCoeff_bp[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //bandpass
@@ -546,6 +537,16 @@ void processNewData() {
       }
       fftBuff[Ichan].setBand(I,(float)foo); //put the smoothed data back into the fftBuff data holder for use by everyone else
     }
+
+    ///add raw data to spectrogram...if the correct channel...
+    //...look for the first channel that is active (meaning button is not active) or, if it
+    //     hasn't yet sent any data, send the last channel even if the channel is off
+    if (sendToSpectrogram & (isChannelActive(Ichan) | (Ichan == (nchan-1)))) { //send data to spectrogram
+      sendToSpectrogram = false;  //prevent us from sending more data after this time through
+      gui.tellGUIWhichChannelForSpectrogram(Ichan);
+      for (int Idata=0;Idata < nPointsPerUpdate;Idata++) gui.spectrogram.addDataPoint(yLittleBuff_uV[Ichan][Idata] - meanData);
+    }
+   
 
     //compute the stddev of the signal...for the head plot
     float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
@@ -933,6 +934,10 @@ void mousePressed() {
 //        gui.smoothingButton.setIsActive(true);
 //        incrementSmoothing();
 //      }
+      if (gui.maxDisplayFreqButton.isMouseHere()) {
+        gui.maxDisplayFreqButton.setIsActive(true);
+        gui.incrementMaxDisplayFreq();
+      }
 
       break;
     //default:
@@ -963,7 +968,8 @@ void mouseReleased() {
   gui.intensityFactorButton.setIsActive(false);
   gui.loglinPlotButton.setIsActive(false);
   gui.filtBPButton.setIsActive(false);
-  //gui.smoothingButton.setIsActive(false);
+  gui.smoothingButton.setIsActive(false);
+  gui.maxDisplayFreqButton.setIsActive(false);
   gui.biasButton.setIsActive(false);
   redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is released
 }

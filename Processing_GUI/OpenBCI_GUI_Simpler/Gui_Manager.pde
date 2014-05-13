@@ -45,6 +45,7 @@ class Gui_Manager {
   Button filtBPButton;
   Button fftNButton;
   Button smoothingButton;
+  Button maxDisplayFreqButton;
   TextBox titleMontage, titleFFT,titleSpectrogram;
   TextBox[] chanValuesMontage;
   TextBox[] impValuesMontage;
@@ -62,6 +63,8 @@ class Gui_Manager {
   float vertScale_uV=default_vertScale_uV;
   float vertScaleMin_uV_whenLog = 0.1f;
   float montage_yoffsets[];
+  private float[] maxDisplayFreq_Hz = {20.0f, 40.0f, 60.0f, 120.0f};
+  private int maxDisplayFreq_ind = 2;
   
   public final static int GUI_PAGE_CHANNEL_ONOFF = 0;
   public final static int GUI_PAGE_IMPEDANCE_CHECK = 1;
@@ -129,6 +132,7 @@ class Gui_Manager {
     spectrogram = new Spectrogram(Nspec,fs_Hz,Nstep,displayTime_sec);
     spectrogram.clim[0] = java.lang.Math.log(gFFT.getYAxis().getMinValue());   //set the minium value for the color scale on the spectrogram
     spectrogram.clim[1] = java.lang.Math.log(gFFT.getYAxis().getMaxValue()/10.0); //set the maximum value for the color scale on the spectrogram
+    updateMaxDisplayFreq();
     
     //setup stop button
     int w = 120;    //button width
@@ -177,12 +181,11 @@ class Gui_Manager {
       impedanceButtonsN[Ibut] = new Button(x,y+h-h1,w1,h1,"Imp N" + (Ibut+1),fontInfo.buttonLabel_size);
     }
     h1 = h;
-    x = calcButtonXLocation(8, win_x, w1, xoffset, gutter_between_buttons);
+    x = calcButtonXLocation(nchan, win_x, w1, xoffset, gutter_between_buttons);
     biasButton = new Button(x,y,w1,h1,"Bias\n" + "Auto",fontInfo.buttonLabel_size);
 
-    //setup the headPlot buttons
-    int Ibut=0;    w = w_orig;    h = h;
-    
+    //setup the buttons to control the processing and frequency displays
+    int Ibut=0;    w = w_orig;    h = h;    
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     filtBPButton = new Button(x,y,w,h,"BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name,fontInfo.buttonLabel_size);
   
@@ -199,6 +202,10 @@ class Gui_Manager {
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     //smoothingButton = new Button(x,y,w,h,"Smooth\n" + headPlot1.smooth_fac,fontInfo.buttonLabel_size);
     smoothingButton = new Button(x,y,w,h,"Smooth\n" + "x",fontInfo.buttonLabel_size);
+
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    maxDisplayFreqButton = new Button(x,y,w,h,"Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz",fontInfo.buttonLabel_size);
+
 
     //set the signal detection button...left of center
     w = stopButton.but_dx;
@@ -263,8 +270,8 @@ class Gui_Manager {
         gFFT.setYAxisTickSpacing(pow(10.0,floor(log10(vertScale_uV/4))));
       }
     }
-    
   }
+    
   public String get_vertScaleAsLogText() {
     if (vertScaleAsLog) {
       return "Log";
@@ -302,6 +309,38 @@ class Gui_Manager {
   public void setSmoothFac(float fac) {
     //headPlot1.smooth_fac = fac;
   }
+  
+  public void setMaxDisplayFreq_ind(int ind) {
+    maxDisplayFreq_ind = max(0,ind);
+    if (ind >= maxDisplayFreq_Hz.length) maxDisplayFreq_ind = 0;
+    updateMaxDisplayFreq();
+  }
+  public void incrementMaxDisplayFreq() {
+    setMaxDisplayFreq_ind(maxDisplayFreq_ind+1);  //wrap-around is handled inside the function
+  }
+  public void updateMaxDisplayFreq() {
+    //set the frequency limit of the display
+    float foo_Hz = maxDisplayFreq_Hz[maxDisplayFreq_ind];
+    gFFT.setXAxisMax(foo_Hz);
+    if (fftTrace != null) fftTrace.set_plotXlim(0.0f,foo_Hz);
+    gSpectrogram.setYAxisMax(foo_Hz);
+    
+    //set the ticks
+    if (foo_Hz < 38.0f) {
+      foo_Hz = 5.0f;
+    } else if (foo_Hz < 78.0f) {
+      foo_Hz = 10.0f;
+    } else if (foo_Hz < 168.0f) {
+      foo_Hz = 20.0f;
+    } else {
+      foo_Hz = (float)floor(foo_Hz / 50.0) * 50.0f;
+    }
+    gFFT.setXAxisTickSpacing(foo_Hz);
+    gSpectrogram.setYAxisTickSpacing(foo_Hz);
+    
+    if (maxDisplayFreqButton != null) maxDisplayFreqButton.setString("Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz");
+  }
+      
   
   public void setDoNotPlotOutsideXlim(boolean state) {
     if (state) {
@@ -451,7 +490,7 @@ class Gui_Manager {
   
     //setup the x axis
     g.setXAxisMin(0f);
-    g.setXAxisMax(65);
+    g.setXAxisMax(maxDisplayFreq_Hz[maxDisplayFreq_ind]);
     g.setXAxisTickSpacing(10f);
     g.setXAxisMinorTicks(2);
     g.setXAxisLabelAccuracy(0);
@@ -500,8 +539,8 @@ class Gui_Manager {
  
     //setup the y axis...frequency
     g.setYAxisMin(0.0f-0.5f);
-    g.setYAxisMax(40.0f+0.5f);
-    g.setYAxisTickSpacing(10f);
+    g.setYAxisMax(maxDisplayFreq_Hz[maxDisplayFreq_ind]);
+    g.setYAxisTickSpacing(10.0f);
     g.setYAxisMinorTicks(2);
     g.setYAxisLabelAccuracy(0);
     g.setYAxisLabel("Frequency (Hz)");
@@ -518,8 +557,6 @@ class Gui_Manager {
     titleSpectrogram.textColor = color(255,255,255);
     titleSpectrogram.setFontSize(16);
     titleSpectrogram.alignH = CENTER;
-    
-    
   }
   
   public void initializeMontageTraces(float[] dataBuffX, float [][] dataBuffY) {
@@ -712,8 +749,8 @@ class Gui_Manager {
       }
     } else {
       //show the spectrogram
-      gSpectrogram.draw();
-      titleSpectrogram.draw();
+      gSpectrogram.draw();  //draw the spectrogram axes
+      titleSpectrogram.draw(); //draw the spectrogram title
 
       //draw the spectrogram image
       PVector pos = gSpectrogram.position;
@@ -753,6 +790,7 @@ class Gui_Manager {
         filtBPButton.draw();
         //fftNButton.draw();
         smoothingButton.draw();
+        maxDisplayFreqButton.draw();
         break;
       default:  //assume GUI_PAGE_CHANNEL_ONOFF:
         //show channel buttons
