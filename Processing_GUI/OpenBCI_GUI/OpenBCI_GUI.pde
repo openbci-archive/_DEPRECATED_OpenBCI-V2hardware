@@ -506,6 +506,10 @@ void processNewData() {
   
 }
 
+
+//here is the routine that listens to the serial port.
+//if any data is waiting, get it, parse it, and stuff it into our vector of 
+//pre-allocated dataPacketBuff
 void serialEvent(Serial port) {
   //check to see which serial port it is
   if (port == openBCI.serial_openBCI) {
@@ -870,6 +874,17 @@ void mousePressed() {
         gui.smoothingButton.setIsActive(true);
         incrementSmoothing();
       }
+//      //check the detection button
+//      if (gui.detectButton.updateIsMouseHere()) {
+//       gui.detectButton.setIsActive(true);
+//       toggleDetectionState();
+//      }      
+//      //check spectrogram button
+//      if (gui.spectrogramButton.updateIsMouseHere()) {
+//        gui.spectrogramButton.setIsActive(true);
+//        toggleSpectrogramState();
+//      }
+
       break;
     //default:
   }
@@ -905,6 +920,7 @@ void mouseReleased() {
 
 void stopRunning() {
     if (openBCI != null) openBCI.stopDataTransfer();
+    //if (wave != null) wave.amplitude.setLastValue(0); //turn off audio
     closeLogFile();
     isRunning = false;
 }
@@ -939,6 +955,8 @@ void stopButtonWasPressed() {
   }
 }
 
+final float sine_freq_Hz = 10.0f;
+float sine_phase_rad = 0.0;
 void synthesizeData(int nchan, float fs_Hz, float scale_fac_uVolts_per_count, DataPacket_ADS1299 curDataPacket) {
   float val_uV;
   for (int Ichan=0; Ichan < nchan; Ichan++) {
@@ -946,6 +964,13 @@ void synthesizeData(int nchan, float fs_Hz, float scale_fac_uVolts_per_count, Da
       val_uV = randomGaussian()*sqrt(fs_Hz/2.0f); // ensures that it has amplitude of one unit per sqrt(Hz) of signal bandwidth
       //val_uV = random(1)*sqrt(fs_Hz/2.0f); // ensures that it has amplitude of one unit per sqrt(Hz) of signal bandwidth
       if (Ichan==0) val_uV*= 10f;  //scale one channel higher
+      
+      if (Ichan==1) {
+        //add sine wave at 10 Hz at 10 uVrms
+        sine_phase_rad += 2.0f*PI * sine_freq_Hz / fs_Hz;
+        if (sine_phase_rad > 2.0f*PI) sine_phase_rad -= 2.0f*PI;
+        val_uV += 10.0f * sqrt(2.0)*sin(sine_phase_rad);
+      }
     } 
     else {
       val_uV = 0.0f;
