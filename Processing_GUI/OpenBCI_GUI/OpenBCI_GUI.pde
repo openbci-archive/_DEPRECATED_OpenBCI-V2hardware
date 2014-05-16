@@ -493,6 +493,7 @@ void processNewData() {
   
   //loop over all of the channels again
   for (int Ichan=0;Ichan < nchan; Ichan++) {  
+
     //filter the data in the time domain
     filterIIR(filtCoeff_notch[currentFilt_ind].b, filtCoeff_notch[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //notch
     filterIIR(filtCoeff_bp[currentFilt_ind].b, filtCoeff_bp[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //bandpass
