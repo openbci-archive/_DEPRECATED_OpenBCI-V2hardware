@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////
 //
 // Created: Chip Audette, Oct 2013
-// Modified: through Jan 2014
+// Modified: through May 2014
 //
 // No warranty.  Use at your own risk.  Use for whatever you'd like.
 // 
@@ -61,7 +61,7 @@ class Spectrogram {
   }
   
   public void addDataPoint(float dataPoint) {
-     
+    
     //add point
     localDataBuff[localDataBuffCounter] = dataPoint;
     //println("Spectrogram.addDataPoint(): counter = " + localDataBuffCounter + ", data = " + localDataBuff[localDataBuffCounter]);

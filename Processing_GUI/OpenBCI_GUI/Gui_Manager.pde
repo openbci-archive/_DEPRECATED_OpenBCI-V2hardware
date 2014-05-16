@@ -42,6 +42,7 @@ class Gui_Manager {
   Button filtBPButton;
   Button fftNButton;
   Button smoothingButton;
+    Button maxDisplayFreqButton;
   TextBox titleMontage, titleFFT;
   TextBox[] chanValuesMontage;
   TextBox[] impValuesMontage;
@@ -56,6 +57,8 @@ class Gui_Manager {
   float vertScale_uV=200.0;
   float vertScaleMin_uV_whenLog = 0.1f;
   float montage_yoffsets[];
+  private float[] maxDisplayFreq_Hz = {20.0f, 40.0f, 60.0f, 120.0f};
+  private int maxDisplayFreq_ind = 2;
   
   public final static int GUI_PAGE_CHANNEL_ONOFF = 0;
   public final static int GUI_PAGE_IMPEDANCE_CHECK = 1;
@@ -106,6 +109,7 @@ class Gui_Manager {
     axes_y = int(float(win_y)*axisFFT_relPos[3]);  //height of the axis in pixels
     gFFT = new Graph2D(parent, axes_x, axes_y, false);  //last argument is whether the axes cross at zero
     setupFFTPlot(gFFT, win_x, win_y, axisFFT_relPos,fontInfo);
+    updateMaxDisplayFreq();
     
     //setup the head plot...top on the left side
     float[] axisHead_relPos = axisFFT_relPos.clone();
@@ -186,6 +190,10 @@ class Gui_Manager {
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     smoothingButton = new Button(x,y,w,h,"Smooth\n" + headPlot1.smooth_fac,fontInfo.buttonLabel_size);
     
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    maxDisplayFreqButton = new Button(x,y,w,h,"Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz",fontInfo.buttonLabel_size);
+
+    
     //set the initial display page for the GUI
     setGUIpage(GUI_PAGE_CHANNEL_ONOFF);  
   } 
@@ -263,6 +271,38 @@ class Gui_Manager {
   public void setSmoothFac(float fac) {
     headPlot1.smooth_fac = fac;
   }
+  
+  public void setMaxDisplayFreq_ind(int ind) {
+    maxDisplayFreq_ind = max(0,ind);
+    if (ind >= maxDisplayFreq_Hz.length) maxDisplayFreq_ind = 0;
+    updateMaxDisplayFreq();
+  }
+  public void incrementMaxDisplayFreq() {
+    setMaxDisplayFreq_ind(maxDisplayFreq_ind+1);  //wrap-around is handled inside the function
+  }
+  public void updateMaxDisplayFreq() {
+    //set the frequency limit of the display
+    float foo_Hz = maxDisplayFreq_Hz[maxDisplayFreq_ind];
+    gFFT.setXAxisMax(foo_Hz);
+    if (fftTrace != null) fftTrace.set_plotXlim(0.0f,foo_Hz);
+    //gSpectrogram.setYAxisMax(foo_Hz);
+    
+    //set the ticks
+    if (foo_Hz < 38.0f) {
+      foo_Hz = 5.0f;
+    } else if (foo_Hz < 78.0f) {
+      foo_Hz = 10.0f;
+    } else if (foo_Hz < 168.0f) {
+      foo_Hz = 20.0f;
+    } else {
+      foo_Hz = (float)floor(foo_Hz / 50.0) * 50.0f;
+    }
+    gFFT.setXAxisTickSpacing(foo_Hz);
+    //gSpectrogram.setYAxisTickSpacing(foo_Hz);
+    
+    if (maxDisplayFreqButton != null) maxDisplayFreqButton.setString("Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz");
+  }  
+  
   
   public void setDoNotPlotOutsideXlim(boolean state) {
     if (state) {
@@ -590,6 +630,7 @@ class Gui_Manager {
         filtBPButton.draw();
         //fftNButton.draw();
         smoothingButton.draw();
+        maxDisplayFreqButton.draw();
         break;
       default:  //assume GUI_PAGE_CHANNEL_ONOFF:
         //show channel buttons
