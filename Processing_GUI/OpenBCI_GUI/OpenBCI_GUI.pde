@@ -60,7 +60,8 @@ float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is
 float dataBuffY_filtY_uV[][];
 float data_std_uV[];
 float data_elec_imp_ohm[];
-int nchan = OpenBCI_Nchannels;
+int nchan = OpenBCI_Nchannels; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer
+int nchan_active_at_startup = nchan;  //how many channels to be LIVE at startup
 int n_aux_ifEnabled = 1;  //if DATASOURCE_NORMAL_W_AUX then this is how many aux channels there will be
 int prev_time_millis = 0;
 final int nPointsPerUpdate = 50; //update screen after this many data points.  
@@ -109,10 +110,6 @@ int curDataPacketInd = -1;
 int lastReadDataPacketInd = -1;
 
 ///////////// Specific to OpenBCI_GUI_Simpler
-
-//which channels active and which not?
-//int nchan = 2;  //total number of channels to make available to the user
-int nchan_active_at_startup = 1;  //just have one active at startup, though
 
 //signal detection constants
 boolean showFFTFilteringData = false;
@@ -321,11 +318,11 @@ void setup() {
     default: 
   }
 
-
-  //initialize the on/off state of the different channels...specific to OpenBCI_GUI_Simpler
-  //for (int Ichan=0; Ichan<OpenBCI_Nchannels;Ichan++) {
-  //  if (Ichan < nchan_active_at_startup) { activateChannel(Ichan); } else { deactivateChannel(Ichan);  }
-  //}
+  //initialize the on/off state of the different channels...only if the user has specified fewer channels
+  //than is on the OpenBCI board
+  for (int Ichan=0; Ichan<OpenBCI_Nchannels;Ichan++) {
+    if (Ichan < nchan_active_at_startup) { activateChannel(Ichan); } else { deactivateChannel(Ichan);  }
+  }
   
   // initialize the minim and audioOut objects...specific to OpenBCI_GUI_Simpler
   //minim = new Minim( this );
