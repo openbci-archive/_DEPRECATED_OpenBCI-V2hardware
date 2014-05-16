@@ -60,7 +60,7 @@ float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is
 float dataBuffY_filtY_uV[][];
 float data_std_uV[];
 float data_elec_imp_ohm[];
-int nchan = OpenBCI_Nchannels; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer
+int nchan = OpenBCI_Nchannels; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
 int nchan_active_at_startup = nchan;  //how many channels to be LIVE at startup
 int n_aux_ifEnabled = 1;  //if DATASOURCE_NORMAL_W_AUX then this is how many aux channels there will be
 int prev_time_millis = 0;
@@ -320,9 +320,10 @@ void setup() {
 
   //initialize the on/off state of the different channels...only if the user has specified fewer channels
   //than is on the OpenBCI board
-  for (int Ichan=0; Ichan<OpenBCI_Nchannels;Ichan++) {
-    if (Ichan < nchan_active_at_startup) { activateChannel(Ichan); } else { deactivateChannel(Ichan);  }
-  }
+  //for (int Ichan=0; Ichan<OpenBCI_Nchannels;Ichan++) {  //what will happen here for the 16-channel board???
+  //  if (Ichan < nchan_active_at_startup) { activateChannel(Ichan); } else { deactivateChannel(Ichan);  }
+  //}
+  for (int Ichan=nchan_active_at_startup; Ichan<OpenBCI_Nchannels;Ichan++) deactivateChannel(Ichan);  //deactivate unused channels
   
   // initialize the minim and audioOut objects...specific to OpenBCI_GUI_Simpler
   //minim = new Minim( this );
@@ -474,29 +475,32 @@ void processNewData() {
   float prevFFTdata[] = new float[fftBuff[0].specSize()];
   double foo;
 
+  //loop over each channel
   for (int Ichan=0;Ichan < nchan; Ichan++) {
-    //append data to larger buffer
-    appendAndShift(dataBuffY_uV[Ichan], yLittleBuff_uV[Ichan]);
-    
-    //look to see if the signal is railed
+    //look to see if the latest data is railed so that we can notify the user on the GUI
     is_railed[Ichan].update(dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
 
-    //make a copy of the data for further processing
+    //append the new data to the larger data buffer...because we want the plotting routines
+    //to show more than just the most recent chunk of data.  This will be our "raw" data.
+    appendAndShift(dataBuffY_uV[Ichan], yLittleBuff_uV[Ichan]);
+    
+    //make a copy of the data that we'll apply processing to.  This will be our "processed" data
     dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();
   } 
     
-  //recompute the montage to make it be a mean-head reference
+  //if you want to, re-reference the montage to make it be a mean-head reference
   if (false) rereferenceTheMontage(dataBuffY_filtY_uV);
-    
+  
+  //loop over all of the channels again
   for (int Ichan=0;Ichan < nchan; Ichan++) {  
     //filter the data in the time domain
     filterIIR(filtCoeff_notch[currentFilt_ind].b, filtCoeff_notch[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //notch
     filterIIR(filtCoeff_bp[currentFilt_ind].b, filtCoeff_bp[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //bandpass
 
-    //copy the previous FFT data
+    //copy the previous FFT data...enables us to apply some smoothing to the FFT data
     for (int I=0; I < fftBuff[Ichan].specSize(); I++) prevFFTdata[I] = fftBuff[Ichan].getBand(I); //copy the old spectrum values
     
-    //prepare the new FFT data
+    //prepare the data for the new FFT
     float[] fooData_raw = dataBuffY_uV[Ichan];  //use the raw data for the FFT
     fooData_raw = Arrays.copyOfRange(fooData_raw, fooData_raw.length-Nfft, fooData_raw.length);   //trim to grab just the most recent block of data
     float meanData = mean(fooData_raw);  //compute the mean
@@ -516,7 +520,7 @@ void processNewData() {
 //      //if ((Ichan==0) & (I > 5) & (I < 15)) println("processFreqDomain: uV/rtHz = " + I + " " + foo);
 //    }
     
-    //average the FFT with previous FFT data...log average
+    //average the FFT with previous FFT data so that it makes it smoother in time
     double min_val = 0.01d;
     for (int I=0; I < fftBuff[Ichan].specSize(); I++) {   //loop over each fft bin
       if (prevFFTdata[I] < min_val) prevFFTdata[I] = (float)min_val; //make sure we're not too small for the log calls
@@ -535,16 +539,25 @@ void processNewData() {
         foo = java.lang.Math.sqrt(foo);
       }
       fftBuff[Ichan].setBand(I,(float)foo); //put the smoothed data back into the fftBuff data holder for use by everyone else
-    }
+    } //end loop over FFT bins
 
-    //compute the stddev of the signal...for the head plot
+    //compute the standard deviation of the filtered signal...this is for the head plot
     float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
     fooData_filt = Arrays.copyOfRange(fooData_filt, fooData_filt.length-Nfft, fooData_filt.length);   //just grab the most recent block of data
-    data_std_uV[Ichan]=std(fooData_filt);
+    data_std_uV[Ichan]=std(fooData_filt); //compute the standard deviation for the whole array "fooData_filt"
     
     //compute the electrode impedance in a very simple way [rms to amplitude, then uVolt to Volt, then Volt/Amp to Ohm]
     data_elec_imp_ohm[Ichan] = (sqrt(2.0)*data_std_uV[Ichan]*1.0e-6) / openBCI_impedanceDrive_amps;
-  }
+    
+    //add your own processing steps here!
+    // ...yLittleBuff_uV[Ichan] is the most recent raw data since the last call to this processing routine
+    // ...dataBuffY_filtY_uV[Ichan] is the full set of filtered data as shown in the time-domain plot in the GUI
+    // ...fftBuff[Ichan] is the FFT data structure holding the frequency spectrum as shown in the freq-domain plot in the GUI
+    //
+    //look at the example above for computing the standard deviation
+    
+    
+  } //end loop over channels
   
 }
 
