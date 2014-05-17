@@ -133,12 +133,15 @@ class Gui_Manager {
     spectrogram.clim[0] = java.lang.Math.log(gFFT.getYAxis().getMinValue());   //set the minium value for the color scale on the spectrogram
     spectrogram.clim[1] = java.lang.Math.log(gFFT.getYAxis().getMaxValue()/10.0); //set the maximum value for the color scale on the spectrogram
     updateMaxDisplayFreq();
-    
+        
+    //setup the buttons
+    int w,h,x,y;
+           
     //setup stop button
-    int w = 120;    //button width
-    int h = 35;     //button height, was 25
-    int x = win_x - int(gutter_right*float(win_x)) - w;
-    int y = win_y - int(0.5*gutter_topbot*float(win_y)) - h;
+    w = 120;    //button width
+    h = 35;     //button height, was 25
+    x = win_x - int(gutter_right*float(win_x)) - w;
+    y = win_y - int(0.5*gutter_topbot*float(win_y)) - h;
     //int y = win_y - h;
     stopButton = new Button(x,y,w,h,stopButton_pressToStop_txt,fontInfo.buttonLabel_size);
     
@@ -186,6 +189,7 @@ class Gui_Manager {
 
     //setup the buttons to control the processing and frequency displays
     int Ibut=0;    w = w_orig;    h = h;    
+    
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     filtBPButton = new Button(x,y,w,h,"BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name,fontInfo.buttonLabel_size);
   
@@ -595,6 +599,7 @@ class Gui_Manager {
     montageTrace = new ScatterTrace();
     montage_yoffsets = new float[nchan];
     initializeMontageTraces(dataBuffX,dataBuffY);
+    montageTrace.set_isRailed(is_railed);
   
     //initialize the FFT traces
     fftTrace = new ScatterTrace_FFT(fftBuff); //can't put this here...must be in setup()
@@ -605,6 +610,7 @@ class Gui_Manager {
     //headPlot1.setIntensityData_byRef(dataBuffY_std,is_railed);
   }
    
+
   public void setGoodFFTBand(float[] band) {
     fftTrace.setGoodBand(band);
   }
@@ -621,9 +627,12 @@ class Gui_Manager {
     fftTrace.setAudioOscillator(wave);
   }
   
+
   public void setShowSpectrogram(boolean show) {
     showSpectrogram = show;
   } 
+
+
   public void tellGUIWhichChannelForSpectrogram(int Ichan) { // Ichan starts at zero
     if (Ichan != whichChannelForSpectrogram) {
       whichChannelForSpectrogram = Ichan;

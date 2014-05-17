@@ -271,7 +271,7 @@ void setup() {
 
   //initilize the GUI
   String filterDescription = filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name; 
-  gui = new Gui_Manager(this, win_x, win_y, nchan, displayTime_sec,default_vertScale_uV,filterDescription, smoothFac[smoothFac_ind]);
+  gui = new Gui_Manager(this, win_x, win_y, nchan,displayTime_sec,default_vertScale_uV,filterDescription, smoothFac[smoothFac_ind]);
   
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
