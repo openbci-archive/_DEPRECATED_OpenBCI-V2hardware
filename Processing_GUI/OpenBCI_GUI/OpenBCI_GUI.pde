@@ -58,7 +58,7 @@ boolean isBiasAuto = true;
 float dataBuffX[];
 float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is a new channel so that dataBuffY[3][] is channel 4
 float dataBuffY_filtY_uV[][];
-float data_std_uV[];
+//float data_std_uV[];
 float data_elec_imp_ohm[];
 int nchan = OpenBCI_Nchannels; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
 int nchan_active_at_startup = nchan;  //how many channels to be LIVE at startup
@@ -71,11 +71,9 @@ final int threshold_railed = int(pow(2,23)-1000);
 final int threshold_railed_warn = int(pow(2,23)*0.75);
 float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate]; //small buffer used to send data to the filters
 
-//allocate space for filters
-final int N_FILT_CONFIGS = 5;
-FilterConstants[] filtCoeff_bp = new FilterConstants[N_FILT_CONFIGS];
-FilterConstants[] filtCoeff_notch = new FilterConstants[N_FILT_CONFIGS];
-int currentFilt_ind = 0;
+//create objects that'll do the EEG signal processing
+EEG_Processing eegProcessing;
+EEG_Processing_User eegProcessing_user;
 
 //fft constants
 int Nfft = 256; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
@@ -126,70 +124,6 @@ Oscil wave;
 
 
 /////////////////////////////////////////////////////////////////////// functions
-
-//define filters...assumes fs = 250 Hz !!!!!
-void defineFilters(FilterConstants[] filtCoeff_bp,FilterConstants[] filtCoeff_notch) {
-  int n_filt = filtCoeff_bp.length;
-  double[] b, a, b2, a2;
-  String filt_txt, filt_txt2;
-  String short_txt, short_txt2; 
-    
-  //loop over all of the pre-defined filter types
-  for (int Ifilt=0;Ifilt<n_filt;Ifilt++) {
-    
-    //define common notch filter
-    b2 = new double[]{ 9.650809863447347e-001, -2.424683201757643e-001, 1.945391494128786e+000, -2.424683201757643e-001, 9.650809863447347e-001};
-    a2 = new double[]{    1.000000000000000e+000,   -2.467782611297853e-001,    1.944171784691352e+000,   -2.381583792217435e-001,    9.313816821269039e-001}; 
-    filtCoeff_notch[Ifilt] =  new FilterConstants(b2,a2,"Notch 60Hz","60Hz");
-    
-    //define bandpass filter
-    switch (Ifilt) {
-      case 0:
-        //butter(2,[1 50]/(250/2));  %bandpass filter
-        b = new double[]{ 2.001387256580675e-001, 0.0f, -4.002774513161350e-001, 0.0f, 2.001387256580675e-001 };
-        a = new double[]{ 1.0f, -2.355934631131582e+000, 1.941257088655214e+000, -7.847063755334187e-001, 1.999076052968340e-001 };
-        filt_txt = "Bandpass 1-50Hz";
-        short_txt = "1-50 Hz";
-        break;
-      case 1:
-        //butter(2,[7 13]/(250/2));
-        b = new double[]{  5.129268366104263e-003, 0.0f,  -1.025853673220853e-002, 0.0f, 5.129268366104263e-003 };
-        a = new double[]{ 1.0f,  -3.678895469764040e+000,  5.179700413522124e+000, -3.305801890016702e+000,8.079495914209149e-001 };
-        filt_txt = "Bandpass 7-13Hz";
-        short_txt = "7-13 Hz";
-        break;      
-      case 2:
-        //[b,a]=butter(2,[15 50]/(250/2)); %matlab command
-        b = new double[]{ 1.173510367246093e-001,  0.0f, -2.347020734492186e-001,  0.0f, 1.173510367246093e-001};
-        a = new double[]{ 1.0f, -2.137430180172061e+000, 2.038578008108517e+000,-1.070144399200925e+000, 2.946365275879138e-001};
-        filt_txt = "Bandpass 15-50Hz";
-        short_txt = "15-50 Hz";  
-        break;    
-      case 3:
-        //[b,a]=butter(2,[5 50]/(250/2)); %matlab command
-        b = new double[]{  1.750876436721012e-001,  0.0f, -3.501752873442023e-001,  0.0f, 1.750876436721012e-001};       
-        a = new double[]{ 1.0f,  -2.299055356038497e+000,   1.967497759984450e+000,  -8.748055564494800e-001,   2.196539839136946e-001};
-        filt_txt = "Bandpass 5-50Hz";
-        short_txt = "5-50 Hz";
-        break;      
-      default:
-        //no filtering
-        b = new double[] {1.0};
-        a = new double[] {1.0};
-        filt_txt = "No BP Filter";
-        short_txt = "No Filter";
-        b2 = new double[] {1.0};
-        a2 = new double[] {1.0};
-        filtCoeff_notch[Ifilt] =  new FilterConstants(b2,a2,"No Notch","No Notch");
-    }  //end switch block  
-
-    //create the bandpass filter    
-    filtCoeff_bp[Ifilt] =  new FilterConstants(b,a,filt_txt,short_txt);  
-  } //end loop over filters
-  
-} //end defineFilters method 
- 
-
 
 void appendAndShift(float[] data, float[] newData) {
   int nshift = newData.length;
@@ -246,13 +180,15 @@ void setup() {
   dataBuffX = new float[(int)(dataBuff_len_sec * fs_Hz)];
   dataBuffY_uV = new float[nchan][dataBuffX.length];
   dataBuffY_filtY_uV = new float[nchan][dataBuffX.length];
-  data_std_uV = new float[nchan];
+  //data_std_uV = new float[nchan];
   data_elec_imp_ohm = new float[nchan];
   is_railed = new DataStatus[nchan];
   for (int i=0; i<nchan;i++) is_railed[i] = new DataStatus(threshold_railed,threshold_railed_warn);
   for (int i=0; i<nDataBackBuff;i++) { 
     dataPacketBuff[i] = new DataPacket_ADS1299(nchan+n_aux_ifEnabled);
   }
+  eegProcessing = new EEG_Processing(nchan,fs_Hz);
+  eegProcessing_user = new EEG_Processing_User(nchan,fs_Hz);
 
   //initialize the data
   prepareData(dataBuffX, dataBuffY_uV, fs_Hz);
@@ -263,18 +199,18 @@ void setup() {
   };  //make the FFT objects
   initializeFFTObjects(fftBuff, dataBuffY_uV, Nfft, fs_Hz);
 
-  //prepare the filters...must be anytime before the GUI
-  defineFilters(filtCoeff_bp,filtCoeff_notch);
+//  //prepare the filters...must be anytime before the GUI
+//  defineFilters(filtCoeff_bp,filtCoeff_notch);
 
   //prepare some signal processing stuff
   for (int Ichan=0; Ichan < nchan; Ichan++) { detData_freqDomain[Ichan] = new DetectionData_FreqDomain(); }
 
   //initilize the GUI
-  String filterDescription = filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name; 
+  String filterDescription = eegProcessing.getFilterDescription();
   gui = new Gui_Manager(this, win_x, win_y, nchan,displayTime_sec,default_vertScale_uV,filterDescription, smoothFac[smoothFac_ind]);
   
   //associate the data to the GUI traces
-  gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, data_std_uV, is_railed);
+  gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, eegProcessing.data_std_uV, is_railed);
 
   //limit how much data is plotted...hopefully to speed things up a little
   gui.setDoNotPlotOutsideXlim(true);
@@ -364,7 +300,7 @@ void draw() {
       //detectInFreqDomain(fftBuff,inband_Hz,guard_Hz,detData_freqDomain);
       //gui.setDetectionData_freqDomain(detData_freqDomain);
       //tell the GUI that it has received new data via dumping new data into arrays that the GUI has pointers to
-      gui.update(data_std_uV,data_elec_imp_ohm);
+      gui.update(eegProcessing.data_std_uV,data_elec_imp_ohm);
       
       ///add raw data to spectrogram...if the correct channel...
       //...look for the first channel that is active (meaning button is not active) or, if it
@@ -475,28 +411,21 @@ void processNewData() {
   float prevFFTdata[] = new float[fftBuff[0].specSize()];
   double foo;
 
-  //loop over each channel
+  //update the data buffers
   for (int Ichan=0;Ichan < nchan; Ichan++) {
-    //look to see if the latest data is railed so that we can notify the user on the GUI
-    is_railed[Ichan].update(dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
-
     //append the new data to the larger data buffer...because we want the plotting routines
     //to show more than just the most recent chunk of data.  This will be our "raw" data.
     appendAndShift(dataBuffY_uV[Ichan], yLittleBuff_uV[Ichan]);
     
-    //make a copy of the data that we'll apply processing to.  This will be our "processed" data
+    //make a copy of the data that we'll apply processing to.  This will be what is displayed on the full montage
     dataBuffY_filtY_uV[Ichan] = dataBuffY_uV[Ichan].clone();
-  } 
+  }
     
   //if you want to, re-reference the montage to make it be a mean-head reference
   if (false) rereferenceTheMontage(dataBuffY_filtY_uV);
   
-  //loop over all of the channels again
+  //update the FFT (frequency spectrum)
   for (int Ichan=0;Ichan < nchan; Ichan++) {  
-
-    //filter the data in the time domain
-    filterIIR(filtCoeff_notch[currentFilt_ind].b, filtCoeff_notch[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //notch
-    filterIIR(filtCoeff_bp[currentFilt_ind].b, filtCoeff_bp[currentFilt_ind].a, dataBuffY_filtY_uV[Ichan]); //bandpass
 
     //copy the previous FFT data...enables us to apply some smoothing to the FFT data
     for (int I=0; I < fftBuff[Ichan].specSize(); I++) prevFFTdata[I] = fftBuff[Ichan].getBand(I); //copy the old spectrum values
@@ -541,25 +470,27 @@ void processNewData() {
       }
       fftBuff[Ichan].setBand(I,(float)foo); //put the smoothed data back into the fftBuff data holder for use by everyone else
     } //end loop over FFT bins
-
-    //compute the standard deviation of the filtered signal...this is for the head plot
-    float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
-    fooData_filt = Arrays.copyOfRange(fooData_filt, fooData_filt.length-Nfft, fooData_filt.length);   //just grab the most recent block of data
-    data_std_uV[Ichan]=std(fooData_filt); //compute the standard deviation for the whole array "fooData_filt"
-    
-    //compute the electrode impedance in a very simple way [rms to amplitude, then uVolt to Volt, then Volt/Amp to Ohm]
-    data_elec_imp_ohm[Ichan] = (sqrt(2.0)*data_std_uV[Ichan]*1.0e-6) / openBCI_impedanceDrive_amps;
-    
-    //add your own processing steps here!
-    // ...yLittleBuff_uV[Ichan] is the most recent raw data since the last call to this processing routine
-    // ...dataBuffY_filtY_uV[Ichan] is the full set of filtered data as shown in the time-domain plot in the GUI
-    // ...fftBuff[Ichan] is the FFT data structure holding the frequency spectrum as shown in the freq-domain plot in the GUI
-    //
-    //look at the example above for computing the standard deviation
-    
-    
-  } //end loop over channels
+  } //end the loop over channels.
   
+  //apply additional processing for the time-domain montage plot (ie, filtering)
+  eegProcessing.process(yLittleBuff_uV,dataBuffY_uV,dataBuffY_filtY_uV,fftBuff);
+  
+  //apply user processing
+  eegProcessing_user.process(yLittleBuff_uV,dataBuffY_uV,dataBuffY_filtY_uV,fftBuff);
+  
+  //look to see if the latest data is railed so that we can notify the user on the GUI
+  for (int Ichan=0;Ichan < nchan; Ichan++) is_railed[Ichan].update(dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
+
+  //compute the electrode impedance. Do it in a very simple way [rms to amplitude, then uVolt to Volt, then Volt/Amp to Ohm]
+  for (int Ichan=0;Ichan < nchan; Ichan++) data_elec_imp_ohm[Ichan] = (sqrt(2.0)*eegProcessing.data_std_uV[Ichan]*1.0e-6) / openBCI_impedanceDrive_amps;     
+      
+  //add your own processing steps here!
+  //for (int Ichan=0;Ichan < nchan; Ichan++) { 
+  // ...yLittleBuff_uV[Ichan] is the most recent raw data since the last call to this processing routine
+  // ...dataBuffY_filtY_uV[Ichan] is the full set of filtered data as shown in the time-domain plot in the GUI
+  // ...fftBuff[Ichan] is the FFT data structure holding the frequency spectrum as shown in the freq-domain plot in the GUI
+  //}
+
 }
 
 
@@ -1198,13 +1129,13 @@ void closeLogFile() {
 
 
 void incrementFilterConfiguration() {
-  //increment the index
-  currentFilt_ind++;
-  if (currentFilt_ind >= N_FILT_CONFIGS) currentFilt_ind = 0;
+  eegProcessing.incrementFilterConfiguration();
   
   //update the button strings
-  gui.filtBPButton.but_txt = "BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name;
-  gui.titleMontage.string = "EEG Data (" + filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name + ")"; 
+//  gui.filtBPButton.but_txt = "BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name;
+//  gui.titleMontage.string = "EEG Data (" + filtCoeff_bp[currentFilt_ind].name + ", " + filtCoeff_notch[currentFilt_ind].name + ")"; 
+  gui.filtBPButton.but_txt = "BP Filt\n" + eegProcessing.getShortFilterDescription();
+  gui.titleMontage.string = "EEG Data (" + eegProcessing.getFilterDescription() + ")"; 
   
 }
   

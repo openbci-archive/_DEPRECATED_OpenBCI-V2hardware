@@ -194,7 +194,7 @@ class Gui_Manager {
     int Ibut=0;    w = w_orig;    h = h;
     
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
-    filtBPButton = new Button(x,y,w,h,"BP Filt\n" + filtCoeff_bp[currentFilt_ind].short_name,fontInfo.buttonLabel_size);
+    filtBPButton = new Button(x,y,w,h,"BP Filt\n" + eegProcessing.getShortFilterDescription(),fontInfo.buttonLabel_size);
   
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     intensityFactorButton = new Button(x,y,w,h,"Vert Scale\n" + round(vertScale_uV) + "uV",fontInfo.buttonLabel_size);
