@@ -333,7 +333,9 @@ class ScatterTrace_FFT extends Blank2DTrace {
 //        wave.amplitude.setLastValue(0);  
 //      }    
 
-
+      //update the graphics for this plot based on the user's processing
+      eegProcessing_user.updateGUI_FFTPlot(pr);
+      
       pr.canvas.popStyle(); //restore whatever was the previous style
     }
   }

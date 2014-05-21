@@ -110,17 +110,17 @@ int lastReadDataPacketInd = -1;
 ///////////// Specific to OpenBCI_GUI_Simpler
 
 //signal detection constants
-boolean showFFTFilteringData = false;
-String signalDetectName = "Alpha";
-float inband_Hz[] = {9.0f, 12.0f};  //look at energy within these frequencies
-float guard_Hz[] = {13.5f, 23.5f};  //and compare to energy within these frequencies
-float fft_det_thresh_dB = 10.0;      //how much higher does the in-band signal have to be above the guard band?
-DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nchan]; //holds data describing any detections performed in the frequency domain
+//boolean showFFTFilteringData = false;
+//String signalDetectName = "Alpha";
+//float inband_Hz[] = {9.0f, 12.0f};  //look at energy within these frequencies
+//float guard_Hz[] = {13.5f, 23.5f};  //and compare to energy within these frequencies
+//float fft_det_thresh_dB = 10.0;      //how much higher does the in-band signal have to be above the guard band?
+//DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nchan]; //holds data describing any detections performed in the frequency domain
 
-//constants for sound generation for alpha detection
-Minim minim;
-AudioOutput audioOut;  //was just "out" in the Minim example
-Oscil wave;
+////constants for sound generation for alpha detection
+//Minim minim;
+//AudioOutput audioOut;  //was just "out" in the Minim example
+//Oscil wave;
 
 
 /////////////////////////////////////////////////////////////////////// functions
@@ -203,7 +203,7 @@ void setup() {
 //  defineFilters(filtCoeff_bp,filtCoeff_notch);
 
   //prepare some signal processing stuff
-  for (int Ichan=0; Ichan < nchan; Ichan++) { detData_freqDomain[Ichan] = new DetectionData_FreqDomain(); }
+  //for (int Ichan=0; Ichan < nchan; Ichan++) { detData_freqDomain[Ichan] = new DetectionData_FreqDomain(); }
 
   //initilize the GUI
   String filterDescription = eegProcessing.getFilterDescription();
