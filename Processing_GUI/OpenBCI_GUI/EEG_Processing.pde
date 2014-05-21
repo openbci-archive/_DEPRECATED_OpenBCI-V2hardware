@@ -1,19 +1,75 @@
 //import ddf.minim.analysis.*; //for FFT
-
+class DetectedPeak {
+    int bin=0;
+    float freq_Hz = 0.0f;
+    float rms_uV_perBin = 0.0f;
+    float background_rms_uV_perBin = 0.0f;
+}
 class EEG_Processing_User {
   private float fs_Hz;  //sample rate
   private int nchan;  
   
   //add your own variables here
-  
- 
+  final float min_allowed_peak_freq_Hz = 3.0f; //input, for peak frequency detection
+  final float max_allowed_peak_freq_Hz = 15.0f; //input, for peak frequency detection
+  DetectedPeak[] detectedPeak;  //output per channel, from peak frequency detection
+
   //class constructor
   EEG_Processing_User(int NCHAN, float sample_rate_Hz) {
       nchan = NCHAN;
     fs_Hz = sample_rate_Hz;
+    detectedPeak = new DetectedPeak[nchan];
+    for (int Ichan=0;Ichan<nchan;Ichan++) {
+      detectedPeak[Ichan]=new DetectedPeak();
+    }
   }
   
   //add some functions here...if you'd like
+  void findPeakFrequency(FFT[] fftData) {
+        //loop over each EEG channel and find the frequency with the peak amplitude
+    float FFT_freq_Hz, FFT_value_uV;
+    for (int Ichan=0;Ichan < nchan; Ichan++) {
+      //loop over each new sample
+      detectedPeak[Ichan].bin = 0;
+      detectedPeak[Ichan].freq_Hz = 0.0f;
+      detectedPeak[Ichan].rms_uV_perBin = 0.0f;
+      detectedPeak[Ichan].background_rms_uV_perBin = 0.0f;
+      int nBins =  fftData[Ichan].specSize();
+      for (int Ibin=0; Ibin < nBins; Ibin++){
+        FFT_freq_Hz = fftData[Ichan].indexToFreq(Ibin);
+          if ((FFT_freq_Hz >= min_allowed_peak_freq_Hz) && (FFT_freq_Hz <= max_allowed_peak_freq_Hz)) {
+          FFT_value_uV = fftData[Ichan].getBand(Ibin) / ((float)nBins);  //get the RMS per bin
+           
+          if (FFT_value_uV > detectedPeak[Ichan].rms_uV_perBin) {
+            detectedPeak[Ichan].bin  = Ibin;
+            detectedPeak[Ichan].freq_Hz = FFT_freq_Hz;
+            detectedPeak[Ichan].rms_uV_perBin = FFT_value_uV;
+          } //close if
+                  
+//          if ((Ichan == (7-1)) && (FFT_freq_Hz > 12.2f) && (FFT_freq_Hz <12.5f)) {
+//            println("EEG_Processing_User: freq = " + FFT_freq_Hz + ", value = " + FFT_value_uV + ", cur Max = " 
+//            + detectedPeak[Ichan].freq_Hz + " Hz " + detectedPeak[Ichan].rms_uV_perBin);
+//          }
+          
+        } //close if
+        
+        
+      } //close loop over bins
+   
+      //loop over the bins again to get the average background power, excluding the bins on either side of the peak
+      float sum_pow=0.0;
+      int count=0;
+      for (int Ibin=0; Ibin < nBins; Ibin++){
+        if ((Ibin < detectedPeak[Ichan].bin - 1) || (Ibin > detectedPeak[Ichan].bin + 1)) {
+          FFT_value_uV = fftData[Ichan].getBand(Ibin) / ((float)nBins);  //get the RMS per bin
+          sum_pow+=pow(FFT_value_uV,2.0f);
+          count++;
+        }
+      }
+      //compute mean
+      detectedPeak[Ichan].background_rms_uV_perBin = sqrt(sum_pow / count);
+    } // end loop over channels    
+  } //end method findPeakFrequency
   
   //here is the processing routine called by the OpenBCI main program...update this with whatever you'd like to do
   public void process(float[][] data_newest_uV, //holds raw EEG data that is new since the last call
@@ -21,39 +77,16 @@ class EEG_Processing_User {
         float[][] data_forDisplay_uV, //this data has been filtered and is ready for plotting on the screen
         FFT[] fftData) {              //holds the FFT (frequency spectrum) of the latest data
 
-    //for example, you could loop over each EEG channel to do some sort of time-domain processing 
-    //using the sample values that have already been filtered, as will be plotted on the display
-    float EEG_value_uV;
-    for (int Ichan=0;Ichan < nchan; Ichan++) {
-      //loop over each NEW sample
-      int indexOfNewData = data_forDisplay_uV[Ichan].length - data_newest_uV[Ichan].length;
-      for (int Isamp=indexOfNewData; Isamp < data_forDisplay_uV[Ichan].length; Isamp++) {
-        EEG_value_uV = data_forDisplay_uV[Ichan][Isamp];  // again, this is from the filtered data that is ready for display
+      //user functions here...
+      if (fftData != null) findPeakFrequency(fftData); //find the frequency for each channel with the peak amplitude
+      
+      //print some output
+      int Ichan=7-1;
+      println("EEG_Processing_User: Chan " + (Ichan+1) + ", peak = " + detectedPeak[Ichan].rms_uV_perBin + " uV at " 
+        + detectedPeak[Ichan].freq_Hz + " Hz with background at = " + detectedPeak[Ichan].background_rms_uV_perBin);
         
-        //add your processing here...
-        
-        
-        //println("EEG_Processing_User: Ichan = " + Ichan + ", Isamp = " + Isamp + ", EEG Value = " + EEG_value_uV + " uV");
-      }
-    }
-        
-    //OR, you could loop over each EEG channel and do some sort of frequency-domain processing from the FFT data
-    float FFT_freq_Hz, FFT_value_uV;
-    for (int Ichan=0;Ichan < nchan; Ichan++) {
-      //loop over each new sample
-      for (int Ibin=0; Ibin < fftBuff[Ichan].specSize(); Ibin++){
-        FFT_freq_Hz = fftData[Ichan].indexToFreq(Ibin);
-        FFT_value_uV = fftData[Ichan].getBand(Ibin);
-        
-        //add your processing here...
-        
-        
-        
-        //println("EEG_Processing_User: Ichan = " + Ichan + ", Freq = " + FFT_freq_Hz + "Hz, FFT Value = " + FFT_value_uV + "uV/bin");
-      }
-    }  
-  }
-}
+        }
+} // close class EEG_Process_User
    
 
 

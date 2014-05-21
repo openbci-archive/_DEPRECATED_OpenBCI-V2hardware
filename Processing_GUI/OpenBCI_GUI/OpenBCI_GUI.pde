@@ -42,7 +42,7 @@ final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
 final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
-int currentTableRowIndex = 0;
+int currentTableRowIndex = (80*250);
 Table_CSV playbackData_table;
 int nextPlayback_millis = -100; //any negative number
 
@@ -76,7 +76,7 @@ EEG_Processing eegProcessing;
 EEG_Processing_User eegProcessing_user;
 
 //fft constants
-int Nfft = 256; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
+int Nfft = 512; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
 //float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
 float[] smoothFac = new float[]{0.75, 0.9, 0.95, 0.98, 0.0, 0.5};

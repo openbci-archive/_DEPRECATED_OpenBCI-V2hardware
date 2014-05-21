@@ -189,21 +189,21 @@ class ScatterTrace_FFT extends Blank2DTrace {
     plotXlim[1]=val_high;
   }
 
-  public void setGoodBand(float band_Hz[]) {
-    for (int i=0; i<2; i++) { goodBand_Hz[i]=band_Hz[i]; };
-  }
-  public void setBadBand(float band_Hz[]) {
-    for (int i=0; i<2; i++) { badBand_Hz[i]=band_Hz[i]; };
-  }
-  public void showFFTFilteringData(boolean show) {
-    showFFTFilteringData = show;
-  }
-  public void setDetectionData_freqDomain(DetectionData_FreqDomain[] data) {
-    detectionData = data.clone();
-  }
-  public void setAudioOscillator(Oscil wave_given) {
-    wave = wave_given;
-  }
+//  public void setGoodBand(float band_Hz[]) {
+//    for (int i=0; i<2; i++) { goodBand_Hz[i]=band_Hz[i]; };
+//  }
+//  public void setBadBand(float band_Hz[]) {
+//    for (int i=0; i<2; i++) { badBand_Hz[i]=band_Hz[i]; };
+//  }
+//  public void showFFTFilteringData(boolean show) {
+//    showFFTFilteringData = show;
+//  }
+//  public void setDetectionData_freqDomain(DetectionData_FreqDomain[] data) {
+//    detectionData = data.clone();
+//  }
+//  public void setAudioOscillator(Oscil wave_given) {
+//    wave = wave_given;
+//  }
 
   public void TraceDraw(Blank2DTrace.PlotRenderer pr) {
     float x_val,spec_value;
