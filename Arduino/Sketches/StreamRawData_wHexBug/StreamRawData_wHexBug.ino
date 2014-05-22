@@ -70,8 +70,8 @@ Biquad_multiChan notch_filter2(MAX_N_CHANNELS,bq_type_notch,NOTCH_FREQ_HZ / SAMP
 boolean useFilters = false;  //enable or disable as you'd like...turn off if you're daisy chaining!
 
 //add code for the hex bug
-#include "dataTypes.h"
-HexBug_t hexBug;
+#include "HexBug.h"
+HexBug_t hexBug(A1,A5,A3,A4,A2); //define the pins to use for Hex Bug Control...based on how you wired up your hex bug remote control to your Arduino
 
 void setup() {
   //detect which version of OpenBCI we're using (is Pin2 jumped to Pin3?)

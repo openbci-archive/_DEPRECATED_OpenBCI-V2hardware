@@ -28,12 +28,12 @@
  
  */
 
-#define PIN_GROUND A1
+//define PIN_GROUND A1
 #define NPINS 4
-#define COMMAND_FOREWARD 3
+#define COMMAND_FOREWARD 0
 #define COMMAND_LEFT 1
 #define COMMAND_RIGHT 2
-#define COMMAND_FIRE 0
+#define COMMAND_FIRE 3
 
 class HexBug_t {
   public: 
@@ -42,7 +42,7 @@ class HexBug_t {
     unsigned long lastCommand_millis;
     int commandDuration_millis;
 
-    HexBug_t(void) {
+    HexBug_t(int pinGROUND, int pinFWD, int pinLEFT, int pinRIGHT, int pinFIRE) {
       // initialize serial:
       //Serial.begin(115200); assume already initialized
   
@@ -56,15 +56,15 @@ class HexBug_t {
 
     //init variables
     lastCommand_millis = 0;
-    commandDuration_millis = 500;
+    commandDuration_millis = 50;
   
     //initialize the pins
-    pins[0] = A2;
-    pins[1] = A3;
-    pins[2] = A4;
-    pins[3] = A5;
-    pinMode(PIN_GROUND,OUTPUT); 
-    digitalWrite(PIN_GROUND,LOW);
+    pins[0] = pinFWD;
+    pins[1] = pinLEFT;
+    pins[2] = pinRIGHT;
+    pins[3] = pinFIRE;
+    pinMode(pinGROUND,OUTPUT); 
+    digitalWrite(pinGROUND,LOW);
     stopAllPins();
   }
 
