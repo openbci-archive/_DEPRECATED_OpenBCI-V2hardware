@@ -117,7 +117,11 @@ void setup() {
   Serial.println(F("Press '?' to query and print ADS1299 register settings again")); //read it straight from flash
   Serial.println(F("Press 1-8 to disable EEG Channels, q-i to enable (all enabled by default)"));
   Serial.println(F("Press 'f' to enable filters.  'g' to disable filters"));
-  Serial.println(F("Press 'x' (text) or 'b' (binary) to begin streaming data..."));    
+  Serial.println(F("Press 'x' (text) or 'b' (binary) to begin streaming data..."));  
+  Serial.println(); 
+  Serial.println(F("Includes Hex Bug Extensions ('P' '{'  '}' '|')")); 
+  Serial.println(); 
+  Serial.println(F("Press 'x' (text) or 'b' (binary) to begin streaming data..."));   
  
 } // end of setup
 
@@ -373,7 +377,7 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         ADSManager.printAllRegisters();
         break;
       default:
-        hexBug.parseSerialChar(inChar);
+        hexBug.parseCommandCharacter(inChar);
         break;
     }
   }
