@@ -41,8 +41,11 @@ final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
-final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
-int currentTableRowIndex = (80*250);
+//final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
+final String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-08 Multi-Rate Visual Evoked Potentials\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt"; 
+
+//int currentTableRowIndex = (80*250);
+int currentTableRowIndex = (0*250);
 Table_CSV playbackData_table;
 int nextPlayback_millis = -100; //any negative number
 

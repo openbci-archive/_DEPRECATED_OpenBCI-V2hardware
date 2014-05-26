@@ -27,7 +27,7 @@ class EEG_Processing_User {
   //add your own variables here
   final float min_allowed_peak_freq_Hz = 4.0f; //input, for peak frequency detection
   final float max_allowed_peak_freq_Hz = 15.0f; //input, for peak frequency detection
-  final float detection_thresh_dB = 8.0f;
+  final float detection_thresh_dB = 8.0f; //how much bigger must the peak be relative to the background
   DetectedPeak[] detectedPeak;  //output per channel, from peak frequency detection
   boolean showDetectionOnGUI = true;
 
@@ -51,87 +51,65 @@ class EEG_Processing_User {
       if (fftData != null) findPeakFrequency(fftData); //find the frequency for each channel with the peak amplitude
       
       //print some output
-      int Ichan=7-1;
-//      println("EEG_Processing_User: Chan " + (Ichan+1) + ", peak = " + detectedPeak[Ichan].rms_uV_perBin + " uV at " 
-//        + detectedPeak[Ichan].freq_Hz + " Hz with background at = " + detectedPeak[Ichan].background_rms_uV_perBin);
-//        
-  }
-   
-  //routine to add detection graphics to the sceen
-  void updateGUI_FFTPlot(Blank2DTrace.PlotRenderer pr) {
-    //add detection-related graphics
-    if (showDetectionOnGUI) {
-      //add ellipse showing peak
-      int Ichan = 7-1;
-      float new_x2 = pr.valToX(detectedPeak[Ichan].freq_Hz);
-      float new_y2 = pr.valToY(detectedPeak[Ichan].rms_uV_perBin);
-      int diam = 8;
-      pr.canvas.strokeWeight(1);  //set the new line's linewidth
-      if (detectedPeak[Ichan].isDetected) { //if there is a detection, make more prominent
-        diam = 8;
-        pr.canvas.strokeWeight(4);  //set the new line's linewidth 
-      }
-      ellipseMode(CENTER);
-      pr.canvas.ellipse(new_x2,new_y2,diam,diam);
-      
-      //add horizontal lines indicating the detction threshold and guard level (use a dashed line)
-      float x1, x2,y;
-      x1 = pr.valToX(min_allowed_peak_freq_Hz);
-      x2 = pr.valToX(max_allowed_peak_freq_Hz);
-      y = pr.valToY(detectedPeak[Ichan].background_rms_uV_perBin);
-       
-      pr.canvas.strokeWeight(1.5);
-      float dx = 8; //how big is the dash+space
-      float nudge = 2;
-      float foo_x=min(x1+dx,x2); //start here
-      while (foo_x < x2) {
-        pr.canvas.line(foo_x-dx+nudge,y,foo_x-(5*dx)/8+nudge,y);
-        foo_x += dx;
-      }
-    }  
+      //int Ichan=2-1;
+      //println("EEG_Processing_User: Chan " + (Ichan+1) + ", peak = " + detectedPeak[Ichan].rms_uV_perBin + " uV at " 
+      //  + detectedPeak[Ichan].freq_Hz + " Hz with background at = " + detectedPeak[Ichan].background_rms_uV_perBin);    
+  
+      //issue new command to the Hex Bug    
   }
  
-  void draw() {
-   
-  } 
    
   //add some functions here...if you'd like
   void findPeakFrequency(FFT[] fftData) {
-        //loop over each EEG channel and find the frequency with the peak amplitude
+    
+    //loop over each EEG channel and find the frequency with the peak amplitude
     float FFT_freq_Hz, FFT_value_uV;
     for (int Ichan=0;Ichan < nchan; Ichan++) {
-      //loop over each new sample
+      
+      //clear the data structure that will hold the peak for this channel
       detectedPeak[Ichan].clear();
+      
+      //loop over each frequency bin
       int nBins =  fftData[Ichan].specSize();
       for (int Ibin=0; Ibin < nBins; Ibin++){
-        FFT_freq_Hz = fftData[Ichan].indexToFreq(Ibin);
-          if ((FFT_freq_Hz >= min_allowed_peak_freq_Hz) && (FFT_freq_Hz <= max_allowed_peak_freq_Hz)) {
-          FFT_value_uV = fftData[Ichan].getBand(Ibin) / ((float)nBins);  //get the RMS per bin
+        FFT_freq_Hz = fftData[Ichan].indexToFreq(Ibin); //here is the frequency of htis bin
+        
+        //is this bin within the frequency band of interest?
+        if ((FFT_freq_Hz >= min_allowed_peak_freq_Hz) && (FFT_freq_Hz <= max_allowed_peak_freq_Hz)) {
+          //we are within the frequency band of interest
+          
+          //get the RMS voltage (per bin)
+          FFT_value_uV = fftData[Ichan].getBand(Ibin) / ((float)nBins); 
            
+          //decide if this is the maximum, compared to previous bins for this channel
           if (FFT_value_uV > detectedPeak[Ichan].rms_uV_perBin) {
+            //this is bigger, so hold onto this value as the new "maximum"
             detectedPeak[Ichan].bin  = Ibin;
             detectedPeak[Ichan].freq_Hz = FFT_freq_Hz;
             detectedPeak[Ichan].rms_uV_perBin = FFT_value_uV;
-          } //close if
+          } 
                   
 //          if ((Ichan == (7-1)) && (FFT_freq_Hz > 12.2f) && (FFT_freq_Hz <12.5f)) {
 //            println("EEG_Processing_User: freq = " + FFT_freq_Hz + ", value = " + FFT_value_uV + ", cur Max = " 
 //            + detectedPeak[Ichan].freq_Hz + " Hz " + detectedPeak[Ichan].rms_uV_perBin);
 //          }
           
-        } //close if
+        } //close if within frequency band
         
         
       } //close loop over bins
    
-      //loop over the bins again to get the average background power, excluding the bins on either side of the peak
+      //loop over the bins again (within the sense band) to get the average background power, excluding the bins on either side of the peak
       float sum_pow=0.0;
       int count=0;
       for (int Ibin=0; Ibin < nBins; Ibin++){
-        if ((Ibin < detectedPeak[Ichan].bin - 1) || (Ibin > detectedPeak[Ichan].bin + 1)) {
-          FFT_value_uV = fftData[Ichan].getBand(Ibin) / ((float)nBins);  //get the RMS per bin
-          sum_pow+=pow(FFT_value_uV,2.0f);
-          count++;
+        FFT_freq_Hz = fftData[Ichan].indexToFreq(Ibin);
+        if ((FFT_freq_Hz >= min_allowed_peak_freq_Hz) && (FFT_freq_Hz <= max_allowed_peak_freq_Hz)) {
+          if ((Ibin < detectedPeak[Ichan].bin - 1) || (Ibin > detectedPeak[Ichan].bin + 1)) {
+            FFT_value_uV = fftData[Ichan].getBand(Ibin) / ((float)nBins);  //get the RMS per bin
+            sum_pow+=pow(FFT_value_uV,2.0f);
+            count++;
+          }
         }
       }
       //compute mean
@@ -145,6 +123,41 @@ class EEG_Processing_User {
       
     } // end loop over channels    
   } //end method findPeakFrequency
+  
+  //routine to add detection graphics to the sceen
+  void updateGUI_FFTPlot(Blank2DTrace.PlotRenderer pr) {
+    //add detection-related graphics
+    if (showDetectionOnGUI) {
+      //add ellipse showing peak
+      int Ichan = 2-1; //which channel to show on the GUI
+      
+      float new_x2 = pr.valToX(detectedPeak[Ichan].freq_Hz);
+      float new_y2 = pr.valToY(detectedPeak[Ichan].rms_uV_perBin);
+      int diam = 8;
+      pr.canvas.strokeWeight(1);  //set the new line's linewidth
+      if (detectedPeak[Ichan].isDetected) { //if there is a detection, make more prominent
+        diam = 8;
+        pr.canvas.strokeWeight(4);  //set the new line's linewidth 
+      }
+      ellipseMode(CENTER);
+      pr.canvas.ellipse(new_x2,new_y2,diam,diam);
+      
+      //add horizontal lines indicating the detction threshold and guard level (use a dashed line)
+      float x1, x2,y;
+      x1 = pr.valToX(min_allowed_peak_freq_Hz);  //starting coordinate, left
+      x2 = pr.valToX(max_allowed_peak_freq_Hz);  //start coordinate, right
+      y = pr.valToY(detectedPeak[Ichan].background_rms_uV_perBin); //y-coordinate
+       
+      pr.canvas.strokeWeight(1.5);
+      float dx = 8; //it'll be a dashed line, so here is how long is the dash+space, pixels
+      float nudge = 2;
+      float foo_x=min(x1+dx,x2); //start here
+      while (foo_x < x2) {  //loop to make each dash
+        pr.canvas.line(foo_x-dx+nudge,y,foo_x-(5*dx)/8+nudge,y);
+        foo_x += dx;  //increment for next time through the loop
+      }
+    }  
+  }
    
 } // close class EEG_Process_User
    
