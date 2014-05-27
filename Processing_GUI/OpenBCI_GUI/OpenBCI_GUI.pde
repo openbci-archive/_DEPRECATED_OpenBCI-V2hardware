@@ -879,6 +879,25 @@ void mousePressed() {
         gui.maxDisplayFreqButton.setIsActive(true);
         gui.incrementMaxDisplayFreq();
       }
+      break;
+    case Gui_Manager.GUI_PAGE_HEXBOT:
+      if (gui.forwardButton.isMouseHere()) {
+        gui.forwardButton.setIsActive(true);
+        hexBug.forward();
+      }
+      if (gui.leftButton.isMouseHere()) {
+        gui.leftButton.setIsActive(true);
+        hexBug.left();
+      }
+      if (gui.rightButton.isMouseHere()) {
+        gui.rightButton.setIsActive(true);
+        hexBug.right();
+      }
+      if (gui.fireButton.isMouseHere()) {
+        gui.fireButton.setIsActive(true);
+        hexBug.fire();
+      }      
+      
       
 //      //check the detection button
 //      if (gui.detectButton.updateIsMouseHere()) {
@@ -922,6 +941,11 @@ void mouseReleased() {
   gui.smoothingButton.setIsActive(false);
   gui.maxDisplayFreqButton.setIsActive(false);
   gui.biasButton.setIsActive(false);
+  gui.forwardButton.setIsActive(false);
+  gui.leftButton.setIsActive(false);
+  gui.rightButton.setIsActive(false);
+  gui.fireButton.setIsActive(false);
+  
   redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is released
 }
 

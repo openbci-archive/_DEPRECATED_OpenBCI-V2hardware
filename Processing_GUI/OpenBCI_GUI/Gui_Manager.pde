@@ -52,6 +52,7 @@ class Gui_Manager {
   Spectrogram spectrogram;
   boolean showSpectrogram;
   int whichChannelForSpectrogram;
+  Button forwardButton,leftButton,rightButton,fireButton;
   
   private float fftYOffset[];
   private float default_vertScale_uV=200.0; //this defines the Y-scale on the montage plots...this is the vertical space between traces
@@ -66,7 +67,8 @@ class Gui_Manager {
   public final static int GUI_PAGE_CHANNEL_ONOFF = 0;
   public final static int GUI_PAGE_IMPEDANCE_CHECK = 1;
   public final static int GUI_PAGE_HEADPLOT_SETUP = 2;
-  public final static int N_GUI_PAGES = 3;
+  public final static int GUI_PAGE_HEXBOT = 3;
+  public final static int N_GUI_PAGES = 4;
   
   public final static String stopButton_pressToStop_txt = "Press to Stop";
   public final static String stopButton_pressToStart_txt = "Press to Start";
@@ -190,6 +192,7 @@ class Gui_Manager {
     x = calcButtonXLocation(nchan, win_x, w1, xoffset, gutter_between_buttons);
     biasButton = new Button(x,y,w1,h1,"Bias\n" + "Auto",fontInfo.buttonLabel_size);
 
+
     //setup the buttons to control the processing and frequency displays
     int Ibut=0;    w = w_orig;    h = h;
     
@@ -212,6 +215,21 @@ class Gui_Manager {
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     maxDisplayFreqButton = new Button(x,y,w,h,"Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz",fontInfo.buttonLabel_size);
 
+
+    //setup the buttons to control the HexBug
+    Ibut=0;    w = w_orig;    h = h;
+    
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    forwardButton = new Button(x,y,w,h,"HexBug\n" + "Forward",fontInfo.buttonLabel_size);
+  
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    leftButton = new Button(x,y,w,h,"HexBug\n" + "Left",fontInfo.buttonLabel_size);
+    
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    rightButton = new Button(x,y,w,h,"HexBug\n" + "Right",fontInfo.buttonLabel_size);
+    
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    fireButton = new Button(x,y,w,h,"HexBug\n" + "Fire",fontInfo.buttonLabel_size);
     
     //set the signal detection button...left of center
     //w = stopButton.but_dx;
@@ -754,6 +772,12 @@ class Gui_Manager {
         //fftNButton.draw();
         smoothingButton.draw();
         maxDisplayFreqButton.draw();
+        break;
+      case GUI_PAGE_HEXBOT:
+        forwardButton.draw();
+        leftButton.draw();
+        rightButton.draw();
+        fireButton.draw();
         break;
       default:  //assume GUI_PAGE_CHANNEL_ONOFF:
         //show channel buttons
