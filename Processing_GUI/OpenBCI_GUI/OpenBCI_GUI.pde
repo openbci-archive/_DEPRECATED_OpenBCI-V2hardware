@@ -42,7 +42,8 @@ final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
-final String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-08 Multi-Rate Visual Evoked Potentials\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt"; 
+//final String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-08 Multi-Rate Visual Evoked Potentials\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt";
+final String playbackData_fname = "C:\\Users\\disco\\Documents\\Chips Docs\\EEG Hacker Blog\\2014-05-08 TwoScreen Blinky\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt";
 
 //int currentTableRowIndex = (80*250);
 int currentTableRowIndex = (0*250);
@@ -77,6 +78,8 @@ float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate]; //small buffer us
 //create objects that'll do the EEG signal processing
 EEG_Processing eegProcessing;
 EEG_Processing_User eegProcessing_user;
+Serial foo_serial = null;
+HexBug hexBug;
 
 //fft constants
 int Nfft = 512; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
@@ -84,7 +87,7 @@ int Nfft = 512; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
 float[] smoothFac = new float[]{0.75, 0.9, 0.95, 0.98, 0.0, 0.5};
 final int N_SMOOTHEFAC = 6;
-int smoothFac_ind = 0;
+int smoothFac_ind = 1;  //which index to start on
 
 
 //plotting constants
@@ -191,7 +194,6 @@ void setup() {
     dataPacketBuff[i] = new DataPacket_ADS1299(nchan+n_aux_ifEnabled);
   }
   eegProcessing = new EEG_Processing(nchan,fs_Hz);
-  eegProcessing_user = new EEG_Processing_User(nchan,fs_Hz);
 
   //initialize the data
   prepareData(dataBuffX, dataBuffY_uV, fs_Hz);
@@ -259,9 +261,6 @@ void setup() {
 
   //initialize the on/off state of the different channels...only if the user has specified fewer channels
   //than is on the OpenBCI board
-  //for (int Ichan=0; Ichan<OpenBCI_Nchannels;Ichan++) {  //what will happen here for the 16-channel board???
-  //  if (Ichan < nchan_active_at_startup) { activateChannel(Ichan); } else { deactivateChannel(Ichan);  }
-  //}
   for (int Ichan=nchan_active_at_startup; Ichan<OpenBCI_Nchannels;Ichan++) deactivateChannel(Ichan);  //deactivate unused channels
   
   // initialize the minim and audioOut objects...specific to OpenBCI_GUI_Simpler
@@ -270,6 +269,11 @@ void setup() {
   //wave = new Oscil( 200, 0.0, Waves.TRIANGLE );  // make the Oscil we will hear.  Arguments are frequency, amplitude, and waveform
   //wave.patch( audioOut );
   //gui.setAudioOscillator(wave);
+  
+  // initialize the user processing stuff as well as the HexBug
+  if (openBCI != null) foo_serial = openBCI.serial_openBCI;
+  hexBug = new HexBug(foo_serial);
+  eegProcessing_user = new EEG_Processing_User(nchan,fs_Hz,hexBug);
   
   //final config
   setBiasState(isBiasAuto);
