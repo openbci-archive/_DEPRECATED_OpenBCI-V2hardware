@@ -29,7 +29,7 @@ final int DATASOURCE_PLAYBACKFILE = 3; //Playback previously recorded data...see
 final int eegDataSource = DATASOURCE_PLAYBACKFILE;
 
 //Serial communications constants
-OpenBCI_ADS1299 openBCI;
+OpenBCI_ADS1299 openBCI = new OpenBCI_ADS1299(); //dummy creation to get access to constants, create real one later
 String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
@@ -45,14 +45,6 @@ final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt";
 int currentTableRowIndex = 0;
 Table_CSV playbackData_table;
 int nextPlayback_millis = -100; //any negative number
-
-//properties of the openBCI board
-float fs_Hz = 250.0f;  //sample rate used by OpenBCI board
-final float ADS1299_Vref = 4.5f;  //reference voltage for ADC in ADS1299
-final float ADS1299_gain = 24;  //assumed gain setting for ADS1299
-final float scale_fac_uVolts_per_count = ADS1299_Vref / (pow(2,23)-1) / ADS1299_gain  * 1000000.f; //ADS1299 datasheet Table 7, confirmed through experiment
-final float openBCI_impedanceDrive_amps = 6.0e-9;  //6 nA
-boolean isBiasAuto = true;
 
 //other data fields
 float dataBuffX[];
@@ -83,7 +75,6 @@ float[] smoothFac = new float[]{0.75, 0.9, 0.95, 0.98, 0.0, 0.5};
 final int N_SMOOTHEFAC = 6;
 int smoothFac_ind = 0;
 
-
 //plotting constants
 Gui_Manager gui;
 float default_vertScale_uV = 200.0f;
@@ -97,30 +88,29 @@ int openBCI_byteCount = 0;
 int inByte = -1;    // Incoming serial data
 
 //file writing variables
-//PrintWriter fileoutput;
 OutputFile_rawtxt fileoutput;
 String output_fname;
 
 //openBCI data packet
-final int nDataBackBuff = 3*(int)fs_Hz;
+final int nDataBackBuff = 3*(int)openBCI.fs_Hz;
 DataPacket_ADS1299 dataPacketBuff[] = new DataPacket_ADS1299[nDataBackBuff]; //allocate the array, but doesn't call constructor.  Still need to call the constructor!
 int curDataPacketInd = -1;
 int lastReadDataPacketInd = -1;
 
 ///////////// Specific to OpenBCI_GUI_Simpler
 
-//signal detection constants
-boolean showFFTFilteringData = false;
-String signalDetectName = "Alpha";
-float inband_Hz[] = {9.0f, 12.0f};  //look at energy within these frequencies
-float guard_Hz[] = {13.5f, 23.5f};  //and compare to energy within these frequencies
-float fft_det_thresh_dB = 10.0;      //how much higher does the in-band signal have to be above the guard band?
-DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nchan]; //holds data describing any detections performed in the frequency domain
-
-//constants for sound generation for alpha detection
-Minim minim;
-AudioOutput audioOut;  //was just "out" in the Minim example
-Oscil wave;
+////signal detection constants
+//boolean showFFTFilteringData = false;
+//String signalDetectName = "Alpha";
+//float inband_Hz[] = {9.0f, 12.0f};  //look at energy within these frequencies
+//float guard_Hz[] = {13.5f, 23.5f};  //and compare to energy within these frequencies
+//float fft_det_thresh_dB = 10.0;      //how much higher does the in-band signal have to be above the guard band?
+//DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nchan]; //holds data describing any detections performed in the frequency domain
+//
+////constants for sound generation for alpha detection
+//Minim minim;
+//AudioOutput audioOut;  //was just "out" in the Minim example
+//Oscil wave;
 
 
 /////////////////////////////////////////////////////////////////////// functions
@@ -177,7 +167,7 @@ void setup() {
   println("Starting setup...");
   
   //prepare data variables
-  dataBuffX = new float[(int)(dataBuff_len_sec * fs_Hz)];
+  dataBuffX = new float[(int)(dataBuff_len_sec * openBCI.fs_Hz)];
   dataBuffY_uV = new float[nchan][dataBuffX.length];
   dataBuffY_filtY_uV = new float[nchan][dataBuffX.length];
   //data_std_uV = new float[nchan];
@@ -187,23 +177,23 @@ void setup() {
   for (int i=0; i<nDataBackBuff;i++) { 
     dataPacketBuff[i] = new DataPacket_ADS1299(nchan+n_aux_ifEnabled);
   }
-  eegProcessing = new EEG_Processing(nchan,fs_Hz);
-  eegProcessing_user = new EEG_Processing_User(nchan,fs_Hz);
+  eegProcessing = new EEG_Processing(nchan,openBCI.fs_Hz);
+  eegProcessing_user = new EEG_Processing_User(nchan,openBCI.fs_Hz);
 
   //initialize the data
-  prepareData(dataBuffX, dataBuffY_uV, fs_Hz);
+  prepareData(dataBuffX, dataBuffY_uV,openBCI.fs_Hz);
 
   //initialize the FFT objects
   for (int Ichan=0; Ichan < nchan; Ichan++) { 
-    fftBuff[Ichan] = new FFT(Nfft, fs_Hz);
+    fftBuff[Ichan] = new FFT(Nfft, openBCI.fs_Hz);
   };  //make the FFT objects
-  initializeFFTObjects(fftBuff, dataBuffY_uV, Nfft, fs_Hz);
+  initializeFFTObjects(fftBuff, dataBuffY_uV, Nfft, openBCI.fs_Hz);
 
 //  //prepare the filters...must be anytime before the GUI
 //  defineFilters(filtCoeff_bp,filtCoeff_notch);
 
   //prepare some signal processing stuff
-  for (int Ichan=0; Ichan < nchan; Ichan++) { detData_freqDomain[Ichan] = new DetectionData_FreqDomain(); }
+  //for (int Ichan=0; Ichan < nchan; Ichan++) { detData_freqDomain[Ichan] = new DetectionData_FreqDomain(); }
 
   //initilize the GUI
   String filterDescription = eegProcessing.getFilterDescription();
@@ -230,7 +220,7 @@ void setup() {
       println("OpenBCI_GUI: Opening Serial " + openBCI_portName);
       int nDataValuesPerPacket = nchan;
       if (eegDataSource == DATASOURCE_NORMAL_W_AUX) nDataValuesPerPacket += n_aux_ifEnabled;
-      openBCI = new OpenBCI_ADS1299(this, openBCI_portName, openBCI_baud,nDataValuesPerPacket); //this also starts the data transfer after XX seconds
+      openBCI = new OpenBCI_ADS1299(this, openBCI_portName, openBCI_baud, nDataValuesPerPacket); //this also starts the data transfer after XX seconds
       break;
     case DATASOURCE_SYNTHETIC:
       //do nothing
@@ -246,7 +236,7 @@ void setup() {
         println("   : quitting...");
         exit();
       }
-      println("OpenBCI_GUI: loading complete.  " + playbackData_table.getRowCount() + " rows of data, which is " + round(float(playbackData_table.getRowCount())/fs_Hz) + " seconds of EEG data");
+      println("OpenBCI_GUI: loading complete.  " + playbackData_table.getRowCount() + " rows of data, which is " + round(float(playbackData_table.getRowCount())/openBCI.fs_Hz) + " seconds of EEG data");
       
       //removing first column of data from data file...the first column is a time index and not eeg data
       playbackData_table.removeColumn(0);
@@ -269,7 +259,7 @@ void setup() {
   //gui.setAudioOscillator(wave);
   
   //final config
-  setBiasState(isBiasAuto);
+  setBiasState(openBCI.isBiasAuto);
 
   //start
   startRunning();
@@ -330,13 +320,13 @@ void draw() {
     //update the title of the figure;
     switch (eegDataSource) {
       case DATASOURCE_NORMAL: case DATASOURCE_NORMAL_W_AUX:
-        frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", " + int(float(fileoutput.getRowsWritten())/fs_Hz) + " secs Saved, Writing to " + output_fname);
+        frame.setTitle(int(frameRate) + " fps, Byte Count = " + openBCI_byteCount + ", bit rate = " + byteRate_perSec*8 + " bps" + ", " + int(float(fileoutput.getRowsWritten())/openBCI.fs_Hz) + " secs Saved, Writing to " + output_fname);
         break;
       case DATASOURCE_SYNTHETIC:
         frame.setTitle(int(frameRate) + " fps, Using Synthetic EEG Data");
         break;
       case DATASOURCE_PLAYBACKFILE:
-        frame.setTitle(int(frameRate) + " fps, Playing " + int(float(currentTableRowIndex)/fs_Hz) + " of " + int(float(playbackData_table.getRowCount())/fs_Hz) + " secs, Reading from: " + playbackData_fname);
+        frame.setTitle(int(frameRate) + " fps, Playing " + int(float(currentTableRowIndex)/openBCI.fs_Hz) + " of " + int(float(playbackData_table.getRowCount())/openBCI.fs_Hz) + " secs, Reading from: " + playbackData_fname);
         break;
     } 
     
@@ -359,7 +349,7 @@ int getDataIfAvailable(int pointCounter) {
         lastReadDataPacketInd = (lastReadDataPacketInd+1) % dataPacketBuff.length;  //increment to read the next packet
         for (int Ichan=0; Ichan < nchan; Ichan++) {   //loop over each cahnnel
           //scale the data into engineering units ("microvolts") and save to the "little buffer"
-          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan] * scale_fac_uVolts_per_count;
+          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan] * openBCI.scale_fac_uVolts_per_count;
         } 
         pointCounter++; //increment counter for "little buffer"
       }
@@ -370,7 +360,7 @@ int getDataIfAvailable(int pointCounter) {
     int current_millis = millis();
     if (current_millis >= nextPlayback_millis) {
       //prepare for next time
-      int increment_millis = int(round(float(nPointsPerUpdate)*1000.f/fs_Hz));
+      int increment_millis = int(round(float(nPointsPerUpdate)*1000.f/openBCI.fs_Hz));
       if (nextPlayback_millis < 0) nextPlayback_millis = current_millis;
       nextPlayback_millis += increment_millis;
 
@@ -380,10 +370,10 @@ int getDataIfAvailable(int pointCounter) {
         dataPacketBuff[lastReadDataPacketInd].sampleIndex++;
         switch (eegDataSource) {
           case DATASOURCE_SYNTHETIC: //use synthetic data (for GUI debugging)   
-            synthesizeData(nchan, fs_Hz, scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
+            synthesizeData(nchan, openBCI.fs_Hz, openBCI.scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
             break;
           case DATASOURCE_PLAYBACKFILE: 
-            currentTableRowIndex=getPlaybackDataFromTable(playbackData_table,currentTableRowIndex,scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
+            currentTableRowIndex=getPlaybackDataFromTable(playbackData_table,currentTableRowIndex,openBCI.scale_fac_uVolts_per_count, dataPacketBuff[lastReadDataPacketInd]);
             break;
           default:
             //no action
@@ -391,7 +381,7 @@ int getDataIfAvailable(int pointCounter) {
         //gather the data into the "little buffer"
         for (int Ichan=0; Ichan < nchan; Ichan++) {
           //scale the data into engineering units..."microvolts"
-          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* scale_fac_uVolts_per_count;
+          yLittleBuff_uV[Ichan][pointCounter] = dataPacketBuff[lastReadDataPacketInd].values[Ichan]* openBCI.scale_fac_uVolts_per_count;
         }
         pointCounter++;
       } //close the loop over data points
@@ -482,7 +472,7 @@ void processNewData() {
   for (int Ichan=0;Ichan < nchan; Ichan++) is_railed[Ichan].update(dataPacketBuff[lastReadDataPacketInd].values[Ichan]);
 
   //compute the electrode impedance. Do it in a very simple way [rms to amplitude, then uVolt to Volt, then Volt/Amp to Ohm]
-  for (int Ichan=0;Ichan < nchan; Ichan++) data_elec_imp_ohm[Ichan] = (sqrt(2.0)*eegProcessing.data_std_uV[Ichan]*1.0e-6) / openBCI_impedanceDrive_amps;     
+  for (int Ichan=0;Ichan < nchan; Ichan++) data_elec_imp_ohm[Ichan] = (sqrt(2.0)*eegProcessing.data_std_uV[Ichan]*1.0e-6) / openBCI.leadOffDrive_amps;     
       
   //add your own processing steps here!
   //for (int Ichan=0;Ichan < nchan; Ichan++) { 
@@ -509,7 +499,7 @@ void serialEvent(Serial port) {
       openBCI.copyDataPacketTo(dataPacketBuff[curDataPacketInd]);  //resets isNewDataPacketAvailable to false
       
       //write this chunk of data to file
-      fileoutput.writeRawData_dataPacket(dataPacketBuff[curDataPacketInd],scale_fac_uVolts_per_count,nchan);
+      fileoutput.writeRawData_dataPacket(dataPacketBuff[curDataPacketInd],openBCI.scale_fac_uVolts_per_count,nchan);
     }
   } 
   else {
@@ -847,7 +837,7 @@ void mousePressed() {
       }
       if (gui.biasButton.isMouseHere()) { 
         gui.biasButton.setIsActive(true);
-        setBiasState(!isBiasAuto);
+        setBiasState(!openBCI.isBiasAuto);
       }      
       break;
     case Gui_Manager.GUI_PAGE_HEADPLOT_SETUP:
@@ -1096,13 +1086,13 @@ void setChannelImpedanceState(int Ichan,boolean newstate,int code_P_N_Both) {
 }
 
 void setBiasState(boolean state) {
-  isBiasAuto = state;
+  openBCI.isBiasAuto = state;
   
   //send message to openBCI
   if (openBCI != null) openBCI.setBiasAutoState(state);
   
   //change button text
-  if (isBiasAuto) {
+  if (openBCI.isBiasAuto) {
     gui.biasButton.but_txt = "Bias\nAuto";
   } else {
     gui.biasButton.but_txt = "Bias\nFixed";
@@ -1118,7 +1108,7 @@ void openNewLogFile() {
   }
   
   //open the new file
-  fileoutput = new OutputFile_rawtxt(fs_Hz);
+  fileoutput = new OutputFile_rawtxt(openBCI.fs_Hz);
   output_fname = fileoutput.fname;
   println("openBCI: openNewLogFile: opened output file: " + output_fname);
 }
