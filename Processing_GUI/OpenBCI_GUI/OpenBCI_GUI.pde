@@ -105,22 +105,14 @@ int lastReadDataPacketInd = -1;
 
 ///////////// Specific to OpenBCI_GUI_Simpler
 
-<<<<<<< HEAD
 //signal detection constants
-=======
-////signal detection constants
->>>>>>> origin/master
 //boolean showFFTFilteringData = false;
 //String signalDetectName = "Alpha";
 //float inband_Hz[] = {9.0f, 12.0f};  //look at energy within these frequencies
 //float guard_Hz[] = {13.5f, 23.5f};  //and compare to energy within these frequencies
 //float fft_det_thresh_dB = 10.0;      //how much higher does the in-band signal have to be above the guard band?
 //DetectionData_FreqDomain[] detData_freqDomain = new DetectionData_FreqDomain[nchan]; //holds data describing any detections performed in the frequency domain
-<<<<<<< HEAD
 
-=======
-//
->>>>>>> origin/master
 ////constants for sound generation for alpha detection
 //Minim minim;
 //AudioOutput audioOut;  //was just "out" in the Minim example
@@ -191,12 +183,9 @@ void setup() {
   for (int i=0; i<nDataBackBuff;i++) { 
     dataPacketBuff[i] = new DataPacket_ADS1299(nchan+n_aux_ifEnabled);
   }
-<<<<<<< HEAD
-  eegProcessing = new EEG_Processing(nchan,fs_Hz);
-=======
+
+  //for data processing
   eegProcessing = new EEG_Processing(nchan,openBCI.fs_Hz);
-  eegProcessing_user = new EEG_Processing_User(nchan,openBCI.fs_Hz);
->>>>>>> origin/master
 
   //initialize the data
   prepareData(dataBuffX, dataBuffY_uV,openBCI.fs_Hz);
@@ -276,7 +265,7 @@ void setup() {
   // initialize the user processing stuff as well as the HexBug
   if (openBCI != null) foo_serial = openBCI.serial_openBCI;
   hexBug = new HexBug(foo_serial);
-  eegProcessing_user = new EEG_Processing_User(nchan,fs_Hz,hexBug);
+  eegProcessing_user = new EEG_Processing_User(nchan,openBCI.fs_Hz,hexBug);
   
   //final config
   setBiasState(openBCI.isBiasAuto);
