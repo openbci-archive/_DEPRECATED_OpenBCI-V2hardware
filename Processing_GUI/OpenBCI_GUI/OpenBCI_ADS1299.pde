@@ -70,7 +70,16 @@ class OpenBCI_ADS1299 {
   int prevSampleIndex = 0;
   int serialErrorCounter = 0;
   
-  //constructor
+  final float fs_Hz = 250.0f;  //sample rate used by OpenBCI board...set by its Arduino code
+  final float ADS1299_Vref = 4.5f;  //reference voltage for ADC in ADS1299.  set by its hardware
+  final float ADS1299_gain = 24;  //assumed gain setting for ADS1299.  set by its Arduino code
+  final float scale_fac_uVolts_per_count = ADS1299_Vref / (pow(2,23)-1) / ADS1299_gain  * 1000000.f; //ADS1299 datasheet Table 7, confirmed through experiment
+  final float leadOffDrive_amps = 6.0e-9;  //6 nA, set by its Arduino code
+  
+  boolean isBiasAuto = true;
+  
+  //constructors
+  OpenBCI_ADS1299() {};  //only use this if you simply want access to some of the constants
   OpenBCI_ADS1299(PApplet applet, String comPort, int baud, int nValuesPerPacket) {
     
     //choose data mode
@@ -96,13 +105,13 @@ class OpenBCI_ADS1299 {
   }
   
   //manage the serial port  
-  int openSerialPort(PApplet applet, String comPort, int baud) {
+  private int openSerialPort(PApplet applet, String comPort, int baud) {
     serial_openBCI = new Serial(applet,comPort,baud); //open the com port
     serial_openBCI.clear(); // clear anything in the com port's buffer    
     changeState(STATE_COMINIT);
     return 0;
   }
-  int changeState(int newState) {
+  private int changeState(int newState) {
     state = newState;
     prevState_millis = millis();
     return 0;

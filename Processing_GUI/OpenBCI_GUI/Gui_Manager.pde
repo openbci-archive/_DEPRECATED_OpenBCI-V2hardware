@@ -120,17 +120,17 @@ class Gui_Manager {
     setupFFTPlot(gFFT, win_x, win_y, axisFFT_relPos,fontInfo);
         
     //setup the spectrogram plot
-    float[] axisSpectrogram_relPos = axisMontage_relPos;
-    axes_x = int(float(win_x)*axisSpectrogram_relPos[2]);
-    axes_y = int(float(win_y)*axisSpectrogram_relPos[3]);
-    gSpectrogram = new Graph2D(parent, axes_x, axes_y, false);  //last argument is wheter the axes cross at zero
-    setupSpectrogram(gSpectrogram, win_x, win_y, axisMontage_relPos,displayTime_sec,fontInfo);
-    int Nspec = 256;
-    int Nstep = 32;
-    spectrogram = new Spectrogram(Nspec,fs_Hz,Nstep,displayTime_sec);
-    spectrogram.clim[0] = java.lang.Math.log(gFFT.getYAxis().getMinValue());   //set the minium value for the color scale on the spectrogram
-    spectrogram.clim[1] = java.lang.Math.log(gFFT.getYAxis().getMaxValue()/10.0); //set the maximum value for the color scale on the spectrogram
-    updateMaxDisplayFreq();
+//    float[] axisSpectrogram_relPos = axisMontage_relPos;
+//    axes_x = int(float(win_x)*axisSpectrogram_relPos[2]);
+//    axes_y = int(float(win_y)*axisSpectrogram_relPos[3]);
+//    gSpectrogram = new Graph2D(parent, axes_x, axes_y, false);  //last argument is wheter the axes cross at zero
+//    setupSpectrogram(gSpectrogram, win_x, win_y, axisMontage_relPos,displayTime_sec,fontInfo);
+//    int Nspec = 256;
+//    int Nstep = 32;
+//    spectrogram = new Spectrogram(Nspec,openBCI.fs_Hz,Nstep,displayTime_sec);
+//    spectrogram.clim[0] = java.lang.Math.log(gFFT.getYAxis().getMinValue());   //set the minium value for the color scale on the spectrogram
+//    spectrogram.clim[1] = java.lang.Math.log(gFFT.getYAxis().getMaxValue()/10.0); //set the maximum value for the color scale on the spectrogram
+//    updateMaxDisplayFreq();
     
     //setup the head plot...top on the left side
     float[] axisHead_relPos = axisFFT_relPos.clone();
