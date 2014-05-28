@@ -59,8 +59,8 @@ int prev_time_millis = 0;
 final int nPointsPerUpdate = 50; //update screen after this many data points.  
 float yLittleBuff[] = new float[nPointsPerUpdate];
 DataStatus is_railed[];
-final int threshold_railed = int(pow(2,23)-1000);
-final int threshold_railed_warn = int(pow(2,23)*0.75);
+final int threshold_railed = int(pow(2,23)-1000);  //fully railed should be +/- 2^23, so set this threshold close to that value
+final int threshold_railed_warn = int(pow(2,23)*0.75); //set a somewhat smaller value as the warning threshold
 float yLittleBuff_uV[][] = new float[nchan][nPointsPerUpdate]; //small buffer used to send data to the filters
 
 //create objects that'll do the EEG signal processing
@@ -188,9 +188,6 @@ void setup() {
     fftBuff[Ichan] = new FFT(Nfft, openBCI.fs_Hz);
   };  //make the FFT objects
   initializeFFTObjects(fftBuff, dataBuffY_uV, Nfft, openBCI.fs_Hz);
-
-//  //prepare the filters...must be anytime before the GUI
-//  defineFilters(filtCoeff_bp,filtCoeff_notch);
 
   //prepare some signal processing stuff
   //for (int Ichan=0; Ichan < nchan; Ichan++) { detData_freqDomain[Ichan] = new DetectionData_FreqDomain(); }
@@ -688,7 +685,7 @@ void parseKey(char val) {
      break;
     default:
      println("OpenBCI_GUI: '" + key + "' Pressed...sending to OpenBCI...");
-     if (openBCI != null) openBCI.serial_openBCI.write(key + "\n"); //send the value as ascii with a newline character
+     if (openBCI.serial_openBCI != null) openBCI.serial_openBCI.write(key + "\n"); //send the value as ascii with a newline character
      break;
   }
 }
