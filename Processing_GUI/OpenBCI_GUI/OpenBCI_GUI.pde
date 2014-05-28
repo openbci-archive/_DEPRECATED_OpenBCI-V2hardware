@@ -692,7 +692,7 @@ void parseKey(char val) {
      break;
     default:
      println("OpenBCI_GUI: '" + key + "' Pressed...sending to OpenBCI...");
-     if (openBCI != null) openBCI.serial_openBCI.write(key + "\n"); //send the value as ascii with a newline character
+     if (openBCI.serial_openBCI != null) openBCI.serial_openBCI.write(key + "\n"); //send the value as ascii with a newline character
      break;
   }
 }
