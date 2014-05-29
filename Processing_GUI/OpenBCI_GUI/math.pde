@@ -39,6 +39,18 @@ int medianDestructive(int[] data) {
 //
 //////////////////////////////////////////////////
 
+int findMax(float[] data) {
+  float maxVal = data[0];
+  int maxInd = 0;
+  for (int I=1; I<data.length; I++) {
+    if (data[I] > maxVal) {
+      maxVal = data[I];
+      maxInd = I;
+    }
+  }
+  return maxInd;
+}
+
 float mean(float[] data, int Nback) {
   return sum(data,Nback)/Nback;
 }
@@ -56,6 +68,16 @@ float sum(float[] data, int Nback) {
   }
   return sum;
 }
+
+float calcDotProduct(float[] data1, float[] data2) {
+  int len = min(data1.length, data2.length);
+  float val=0.0;
+  for (int I=0;I<len;I++) {
+    val+=data1[I]*data2[I];
+  }
+  return val;
+}
+  
 
 float log10(float val) {
   return (float)Math.log10(val);

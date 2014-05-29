@@ -27,6 +27,7 @@ class HeadPlot {
   private int elec_diam;
   PFont font;
   public float[] intensity_data_uV;
+  public float[] polarity_data;
   private DataStatus[] is_railed;
   private float intense_min_uV=0.0f, intense_max_uV=1.0f, assumed_railed_voltage_uV=1.0f;
   private float log10_intense_min_uV = 0.0f, log10_intense_max_uV=1.0;
@@ -35,6 +36,7 @@ class HeadPlot {
   public boolean drawHeadAsContours;
   private boolean plot_color_as_log = true;
   public float smooth_fac = 0.0f;  
+  private boolean use_polarity = false;
 
   HeadPlot(float x,float y,float w,float h,int win_x,int win_y,int n) {
     final int n_elec = n;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
@@ -61,6 +63,11 @@ class HeadPlot {
     is_railed = is_rail;
   }
   
+  public void setPolarityData_byRef(float[] data) {
+    polarity_data = data;//simply alias the data held externally.  DOES NOT COPY THE DATA ITSEF!  IT'S SIMPLY LINKED!
+    if (polarity_data != null) use_polarity = true;
+  }
+      
   public void setMaxIntensity_uV(float val_uV) {
     intense_max_uV = val_uV;
     intense_min_uV = intense_max_uV / 200.0 * 5.0f;  //set to 200, get 5
@@ -819,6 +826,7 @@ class HeadPlot {
     }
   }    
 
+  int count_call=0;
   private float calcPixelVoltage(int pixel_Ix,int pixel_Iy,float prev_val) {
     float weight,elec_volt;
     int n_elec = electrode_xy.length;
@@ -829,6 +837,9 @@ class HeadPlot {
     for (int Ielec=0;Ielec<n_elec;Ielec++) {
       weight = electrode_color_weightFac[Ielec][pixel_Ix][pixel_Iy];
       elec_volt = max(low,min(intensity_data_uV[Ielec],high));
+      
+      if (use_polarity) elec_volt = elec_volt*polarity_data[Ielec];
+      
       if (is_railed[Ielec].is_railed) elec_volt = assumed_railed_voltage_uV;
       voltage += weight*elec_volt;
     }
@@ -841,10 +852,15 @@ class HeadPlot {
       
     
   private color calcPixelColor(float pixel_volt_uV) {
-    float new_rgb[] = {255.0,0.0,0.0}; //init to zeros
+    float new_rgb[] = {255.0,0.0,0.0}; //init to red
+    if ((!plot_color_as_log) && (pixel_volt_uV < 0.0)) {
+      //init to blue instead
+      new_rgb[0]=0.0;new_rgb[1]=0.0;new_rgb[2]=255.0;
+    }
     float val;
     
-    float intensity = constrain(pixel_volt_uV,intense_min_uV,intense_max_uV);
+    
+    float intensity = constrain(abs(pixel_volt_uV),intense_min_uV,intense_max_uV);
     if (plot_color_as_log) {
       intensity = map(log10(intensity), 
                       log10_intense_min_uV,

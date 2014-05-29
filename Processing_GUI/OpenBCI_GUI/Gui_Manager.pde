@@ -567,7 +567,7 @@ class Gui_Manager {
   }
     
     
-  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std, DataStatus[] is_railed) {      
+  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std, DataStatus[] is_railed, float[] dataBuffY_polarity) {      
     //initialize the time-domain montage-plot traces
     montageTrace = new ScatterTrace();
     montage_yoffsets = new float[nchan];
@@ -581,6 +581,7 @@ class Gui_Manager {
     
     //link the data to the head plot
     headPlot1.setIntensityData_byRef(dataBuffY_std,is_railed);
+    headPlot1.setPolarityData_byRef(dataBuffY_polarity);
   }
 
   public void setShowSpectrogram(boolean show) {
