@@ -117,7 +117,6 @@ void setup() {
   Serial.println(F("Press '?' to query and print ADS1299 register settings again")); //read it straight from flash
   Serial.println(F("Press 1-8 to disable EEG Channels, q-i to enable (all enabled by default)"));
   Serial.println(F("Press 'f' to enable filters.  'g' to disable filters"));
-  Serial.println(F("Press 'x' (text) or 'b' (binary) to begin streaming data..."));  
   Serial.println(); 
   Serial.println(F("Includes Hex Bug Extensions ('P' '{'  '}' '|')")); 
   Serial.println(); 
@@ -143,11 +142,17 @@ void loop(){
     }
   }
   
+  //update the HexBug
+  //Serial.println("loop: hexBug.update() 1");
+  hexBug.update();
+  
   if (is_running) {
  
-    //is data ready?      
+    //is data ready?   
     while(!(ADSManager.isDataAvailable())){            // watch the DRDY pin
       delayMicroseconds(100);
+      Serial.println("loop: hexBug.update() 2");
+      hexBug.update();
     }
     unsigned long start_micros = micros();
   
@@ -186,6 +191,7 @@ void loop(){
       default:
         ADSManager.printChannelDataAsText(MAX_N_CHANNELS,sampleCounter);  //print all channels, whether active or not
     }
+  
 
     
 //    totalMicrosBusy += (micros()-start_micros); //accumulate

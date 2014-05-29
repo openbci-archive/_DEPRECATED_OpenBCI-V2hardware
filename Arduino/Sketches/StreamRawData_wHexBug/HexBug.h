@@ -69,8 +69,8 @@ class HexBug_t {
       currentCommand = NO_COMMAND;
       bufferedCommand = NO_COMMAND;
       lastStateChange_millis = millis();
-      durationCommand_millis = 100;
-      durationIdle_millis = 100;
+      durationCommand_millis = 400;
+      durationIdle_millis = 400;
     
       //initialize the pins
       pins[COMMAND_FOREWARD] = pinFWD;
@@ -94,7 +94,8 @@ class HexBug_t {
       switch (state) {
         case (STATE_ACTIVE):
           //decide whether to go IDLE
-          if (lastStateChange_millis + durationCommand_millis > current_millis) {
+          if (current_millis > (lastStateChange_millis + durationCommand_millis)) {
+            //Serial.println(F("Update: Changing from ACTIVE to IDLE"));
             //stop the command
             stopAllPins();
             state = STATE_IDLE;
@@ -103,7 +104,8 @@ class HexBug_t {
           break;
         case (STATE_IDLE):
           //decide whether to go READY
-          if (lastStateChange_millis + durationIdle_millis > current_millis) {
+          if (current_millis > (lastStateChange_millis + durationIdle_millis) ) {
+            //Serial.println(F("Update: Changing from IDLE to READY"));
             state = STATE_READY;
             lastStateChange_millis = current_millis;
           }
@@ -113,11 +115,12 @@ class HexBug_t {
       //check to see if there is a buffered command waiting...and issue it, if possible
       if (bufferedCommand != NO_COMMAND) {
         //there is a buffered command. Can we issue it?
-        if ((state == STATE_READY) || ((state==STATE_IDLE) && (sequentialCommandsRequireIdle[bufferedCommand]==false))) {
+        if ((state == STATE_READY) || ((state==STATE_IDLE) && (sequentialCommandsRequireIdle[bufferedCommand]==false) && (currentCommand == bufferedCommand))) {
           //yes, issue the command
-          int command=bufferedCommand;
+          if (state==STATE_IDLE) state = STATE_READY;
+          currentCommand=bufferedCommand;
           bufferedCommand = NO_COMMAND;
-          issueCommand(command);
+          issueCommand(currentCommand);
         }
       }   
     }
@@ -144,7 +147,7 @@ class HexBug_t {
           digitalWrite(pins[command_pin_ind],LOW);  //ensure that the Arduino pin is set LOW to pull it to ground
           lastStateChange_millis = millis();  //time the command was issued
           currentCommand = command_pin_ind;  //record what this command is
-          
+          state = STATE_ACTIVE;
         } else {
           
           //we cannot accept a command right now...so buffer the command until we're ready for it
