@@ -42,8 +42,8 @@ final int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
-//final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_09-18-47_Chans_1-12_ref7.txt"; //12 channel, inject signal into individual channels in sequence
-final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_10-18-13_calibrated_Chan1-12_ref7.txt"; //12 channel, inject calibrated signal to get response at each sense electrode
+final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_09-18-47_Chans_1-12_ref7.txt"; //12 channel, inject signal into individual channels in sequence
+//final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_10-18-13_calibrated_Chan1-12_ref7.txt"; //12 channel, inject calibrated signal to get response at each sense electrode
 int currentTableRowIndex = 0;
 Table_CSV playbackData_table;
 int nextPlayback_millis = -100; //any negative number

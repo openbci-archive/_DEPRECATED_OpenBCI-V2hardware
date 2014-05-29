@@ -167,7 +167,7 @@ class Gui_Manager {
     for (int Ibut = 0; Ibut < nChanBut; Ibut++) {
       x = calcButtonXLocation(Ibut, win_x, w, xoffset,gutter_between_buttons);
       txt = "Chan\n" + Integer.toString(Ibut+1);
-      if (nchan > 8) txt = txt + "+" + Integer.toString(Ibut+1+8);
+      if (nchan > 8+Ibut) txt = txt + "+" + Integer.toString(Ibut+1+8);
       chanButtons[Ibut] = new Button(x,y,w,h,txt,fontInfo.buttonLabel_size);
     }
     
