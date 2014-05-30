@@ -150,8 +150,10 @@ class HexBug_t {
           state = STATE_ACTIVE;
         } else {
           
-          //we cannot accept a command right now...so buffer the command until we're ready for it
-          bufferedCommand = command_pin_ind;
+          //we cannot accept a command right now...so try to buffer the command until we're ready for it
+          //
+          //FIRE always takes precedence
+          if ((bufferedCommand != COMMAND_FIRE) bufferedCommand = command_pin_ind;
         }
       }
     }
