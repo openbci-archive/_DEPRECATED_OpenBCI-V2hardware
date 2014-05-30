@@ -16,7 +16,7 @@ class HexBug {
     private String name;
     private int counter;
     private Serial serial_h;
-    boolean printReceivedCommand = true;
+    public boolean printReceivedCommand = true;
     public int ID;
     
     Command(Serial _serial_h, String _str, String _name, int _ID) {
@@ -33,7 +33,7 @@ class HexBug {
       if (serial_h != null) serial_h.write(command_str + "\n");
       return ID;
     }
-  }
+  } //close definition of class Command
     
   private Command command_fire, command_forward, command_left, command_right; 
   private int prev_command = -1;
