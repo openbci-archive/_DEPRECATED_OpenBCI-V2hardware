@@ -42,7 +42,8 @@ class Gui_Manager {
   Button filtBPButton;
   Button fftNButton;
   Button smoothingButton;
-    Button maxDisplayFreqButton;
+  Button maxDisplayFreqButton;
+  Button showPolarityButton;
   TextBox titleMontage, titleFFT,titleSpectrogram;
   TextBox[] chanValuesMontage;
   TextBox[] impValuesMontage;
@@ -210,6 +211,9 @@ class Gui_Manager {
     smoothingButton = new Button(x,y,w,h,"Smooth\n" + headPlot1.smooth_fac,fontInfo.buttonLabel_size);
     
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    showPolarityButton = new Button(x,y,w,h,"Show Polarity\n" + headPlot1.getUsePolarityTrueFalse(),fontInfo.buttonLabel_size);
+ 
+     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     maxDisplayFreqButton = new Button(x,y,w,h,"Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz",fontInfo.buttonLabel_size);
 
     
@@ -754,6 +758,7 @@ class Gui_Manager {
         filtBPButton.draw();
         //fftNButton.draw();
         smoothingButton.draw();
+        showPolarityButton.draw();
         maxDisplayFreqButton.draw();
         break;
       default:  //assume GUI_PAGE_CHANNEL_ONOFF:

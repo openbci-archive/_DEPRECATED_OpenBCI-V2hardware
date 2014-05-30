@@ -36,7 +36,7 @@ class HeadPlot {
   public boolean drawHeadAsContours;
   private boolean plot_color_as_log = true;
   public float smooth_fac = 0.0f;  
-  private boolean use_polarity = false;
+  private boolean use_polarity = true;
 
   HeadPlot(float x,float y,float w,float h,int win_x,int win_y,int n) {
     final int n_elec = n;  //8 electrodes assumed....or 16 for 16-channel?  Change this!!!
@@ -65,7 +65,15 @@ class HeadPlot {
   
   public void setPolarityData_byRef(float[] data) {
     polarity_data = data;//simply alias the data held externally.  DOES NOT COPY THE DATA ITSEF!  IT'S SIMPLY LINKED!
-    if (polarity_data != null) use_polarity = true;
+    //if (polarity_data != null) use_polarity = true;
+  }
+  
+  public String getUsePolarityTrueFalse() {
+    if (use_polarity) {
+      return "True";
+    } else {
+      return "False";
+    }
   }
       
   public void setMaxIntensity_uV(float val_uV) {
@@ -163,8 +171,8 @@ class HeadPlot {
     //try loading the positions from a file
     int n_elec_to_load = n_elec+1;  //load the n_elec plus the reference electrode
     Table elec_relXY = new Table();
-    //String default_fname = "electrode_positions_default.txt";
-    String default_fname = "electrode_positions_12elec_scalp9.txt";
+    String default_fname = "electrode_positions_default.txt";
+    //String default_fname = "electrode_positions_12elec_scalp9.txt";
     try {
       elec_relXY = loadTable(default_fname,"header,csv"); //try loading the default file
     } catch (NullPointerException e) {};
@@ -853,7 +861,7 @@ class HeadPlot {
     
   private color calcPixelColor(float pixel_volt_uV) {
     float new_rgb[] = {255.0,0.0,0.0}; //init to red
-    if ((!plot_color_as_log) && (pixel_volt_uV < 0.0)) {
+    if (pixel_volt_uV < 0.0) {
       //init to blue instead
       new_rgb[0]=0.0;new_rgb[1]=0.0;new_rgb[2]=255.0;
     }

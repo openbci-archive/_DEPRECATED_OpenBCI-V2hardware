@@ -33,17 +33,17 @@ OpenBCI_ADS1299 openBCI = new OpenBCI_ADS1299(); //dummy creation to get access 
 String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
-//int openBCI_baud = 115200; //baud rate from the rArduino
-//final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
+int openBCI_baud = 115200; //baud rate from the rArduino
+final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //use this for when daisy-chaining two OpenBCI boards
-int openBCI_baud = 2*115200; //baud rate from the Arduino
-final int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
+//int openBCI_baud = 2*115200; //baud rate from the Arduino
+//final int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
 
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
-//final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
+final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
 //final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_09-18-47_Chans_1-12_ref7.txt"; //12 channel, inject signal into individual channels in sequence
-final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_10-18-13_calibrated_Chan1-12_ref7.txt"; //12 channel, inject calibrated signal to get response at each sense electrode
+//final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_10-18-13_calibrated_Chan1-12_ref7.txt"; //12 channel, inject calibrated signal to get response at each sense electrode
 int currentTableRowIndex = 0;
 Table_CSV playbackData_table;
 int nextPlayback_millis = -100; //any negative number
@@ -54,7 +54,8 @@ float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is
 float dataBuffY_filtY_uV[][];
 //float data_std_uV[];
 float data_elec_imp_ohm[];
-int nchan = 12; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
+//int nchan = 12; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
+int nchan = OpenBCI_Nchannels; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
 int nchan_active_at_startup = nchan;  //how many channels to be LIVE at startup
 int n_aux_ifEnabled = 1;  //if DATASOURCE_NORMAL_W_AUX then this is how many aux channels there will be
 int prev_time_millis = 0;
@@ -856,7 +857,10 @@ void mousePressed() {
         gui.smoothingButton.setIsActive(true);
         incrementSmoothing();
       }
-      
+      if (gui.showPolarityButton.isMouseHere()) {
+        gui.showPolarityButton.setIsActive(true);
+        toggleShowPolarity();
+      }
       if (gui.maxDisplayFreqButton.isMouseHere()) {
         gui.maxDisplayFreqButton.setIsActive(true);
         gui.incrementMaxDisplayFreq();
@@ -902,6 +906,7 @@ void mouseReleased() {
   gui.loglinPlotButton.setIsActive(false);
   gui.filtBPButton.setIsActive(false);
   gui.smoothingButton.setIsActive(false);
+  gui.showPolarityButton.setIsActive(false);
   gui.maxDisplayFreqButton.setIsActive(false);
   gui.biasButton.setIsActive(false);
   redrawScreenNow = true;  //command a redraw of the GUI whenever the mouse is released
@@ -1135,10 +1140,16 @@ void incrementSmoothing() {
   //tell the GUI
   gui.setSmoothFac(smoothFac[smoothFac_ind]);
   
-  //update the buttons
+  //update the button
   gui.smoothingButton.but_txt = "Smooth\n" + smoothFac[smoothFac_ind];
 }
+
+void toggleShowPolarity() {
+  gui.headPlot1.use_polarity = !gui.headPlot1.use_polarity;
   
+  //update the button
+  gui.showPolarityButton.but_txt = "Show Polarity\n" + gui.headPlot1.getUsePolarityTrueFalse();
+}
 
 // here's a function to catch whenever the window is being closed, so that
 // it stops OpenBCI
