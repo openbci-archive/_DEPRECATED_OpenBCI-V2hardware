@@ -184,12 +184,14 @@ class EEG_Processing {
   FilterConstants[] filtCoeff_notch = new FilterConstants[N_FILT_CONFIGS];
   private int currentFilt_ind = 0;
   float data_std_uV[];
+  float polarity[];
 
 
   EEG_Processing(int NCHAN, float sample_rate_Hz) {
     nchan = NCHAN;
     fs_Hz = sample_rate_Hz;
     data_std_uV = new float[nchan];
+    polarity = new float[nchan];
     
 
     //check to make sure the sample rate is acceptable and then define the filters
@@ -323,7 +325,28 @@ class EEG_Processing {
       float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
       fooData_filt = Arrays.copyOfRange(fooData_filt, fooData_filt.length-((int)fs_Hz), fooData_filt.length);   //just grab the most recent second of data
       data_std_uV[Ichan]=std(fooData_filt); //compute the standard deviation for the whole array "fooData_filt"
-    }
+     
+    } //close loop over channels
+    
+    //find strongest channel
+    int refChanInd = findMax(data_std_uV);
+    //println("EEG_Processing: strongest chan (one referenced) = " + (refChanInd+1));
+    float[] refData_uV = dataBuffY_filtY_uV[refChanInd];  //use the filtered data
+    refData_uV = Arrays.copyOfRange(refData_uV, refData_uV.length-((int)fs_Hz), refData_uV.length);   //just grab the most recent second of data
+      
+    
+    //compute polarity of each channel
+    for (int Ichan=0; Ichan < nchan; Ichan++) {
+      float[] fooData_filt = dataBuffY_filtY_uV[Ichan];  //use the filtered data
+      fooData_filt = Arrays.copyOfRange(fooData_filt, fooData_filt.length-((int)fs_Hz), fooData_filt.length);   //just grab the most recent second of data
+      float dotProd = calcDotProduct(fooData_filt,refData_uV);
+      if (dotProd >= 0.0f) {
+        polarity[Ichan]=1.0;
+      } else {
+        polarity[Ichan]=-1.0;
+      }
+      
+    }    
   }
 }
 

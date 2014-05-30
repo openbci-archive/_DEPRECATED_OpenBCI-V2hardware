@@ -42,6 +42,8 @@ final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
 //final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
+//final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_09-18-47_Chans_1-12_ref7.txt"; //12 channel, inject signal into individual channels in sequence
+//final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_10-18-13_calibrated_Chan1-12_ref7.txt"; //12 channel, inject calibrated signal to get response at each sense electrode
 //final String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-08 Multi-Rate Visual Evoked Potentials\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt";
 final String playbackData_fname = "C:\\Users\\disco\\Documents\\Chips Docs\\EEG Hacker Blog\\2014-05-08 TwoScreen Blinky\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt";
 
@@ -56,6 +58,7 @@ float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is
 float dataBuffY_filtY_uV[][];
 //float data_std_uV[];
 float data_elec_imp_ohm[];
+//int nchan = 12; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
 int nchan = OpenBCI_Nchannels; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
 int nchan_active_at_startup = nchan;  //how many channels to be LIVE at startup
 int n_aux_ifEnabled = 1;  //if DATASOURCE_NORMAL_W_AUX then this is how many aux channels there will be
@@ -203,7 +206,7 @@ void setup() {
   gui = new Gui_Manager(this, win_x, win_y, nchan,displayTime_sec,default_vertScale_uV,filterDescription, smoothFac[smoothFac_ind]);
   
   //associate the data to the GUI traces
-  gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, eegProcessing.data_std_uV, is_railed);
+  gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, eegProcessing.data_std_uV, is_railed,eegProcessing.polarity);
 
   //limit how much data is plotted...hopefully to speed things up a little
   gui.setDoNotPlotOutsideXlim(true);
@@ -861,7 +864,10 @@ void mousePressed() {
         gui.smoothingButton.setIsActive(true);
         incrementSmoothing();
       }
-      
+      if (gui.showPolarityButton.isMouseHere()) {
+        gui.showPolarityButton.setIsActive(true);
+        toggleShowPolarity();
+      }
       if (gui.maxDisplayFreqButton.isMouseHere()) {
         gui.maxDisplayFreqButton.setIsActive(true);
         gui.incrementMaxDisplayFreq();
@@ -926,6 +932,7 @@ void mouseReleased() {
   gui.loglinPlotButton.setIsActive(false);
   gui.filtBPButton.setIsActive(false);
   gui.smoothingButton.setIsActive(false);
+  gui.showPolarityButton.setIsActive(false);
   gui.maxDisplayFreqButton.setIsActive(false);
   gui.biasButton.setIsActive(false);
   gui.forwardButton.setIsActive(false);
@@ -1164,10 +1171,16 @@ void incrementSmoothing() {
   //tell the GUI
   gui.setSmoothFac(smoothFac[smoothFac_ind]);
   
-  //update the buttons
+  //update the button
   gui.smoothingButton.but_txt = "Smooth\n" + smoothFac[smoothFac_ind];
 }
+
+void toggleShowPolarity() {
+  gui.headPlot1.use_polarity = !gui.headPlot1.use_polarity;
   
+  //update the button
+  gui.showPolarityButton.but_txt = "Show Polarity\n" + gui.headPlot1.getUsePolarityTrueFalse();
+}
 
 // here's a function to catch whenever the window is being closed, so that
 // it stops OpenBCI

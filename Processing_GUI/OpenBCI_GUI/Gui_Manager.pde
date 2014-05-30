@@ -42,7 +42,8 @@ class Gui_Manager {
   Button filtBPButton;
   Button fftNButton;
   Button smoothingButton;
-    Button maxDisplayFreqButton;
+  Button maxDisplayFreqButton;
+  Button showPolarityButton;
   TextBox titleMontage, titleFFT,titleSpectrogram;
   TextBox[] chanValuesMontage;
   TextBox[] impValuesMontage;
@@ -169,7 +170,7 @@ class Gui_Manager {
     for (int Ibut = 0; Ibut < nChanBut; Ibut++) {
       x = calcButtonXLocation(Ibut, win_x, w, xoffset,gutter_between_buttons);
       txt = "Chan\n" + Integer.toString(Ibut+1);
-      if (nchan > 8) txt = txt + "+" + Integer.toString(Ibut+1+8);
+      if (nchan > 8+Ibut) txt = txt + "+" + Integer.toString(Ibut+1+8);
       chanButtons[Ibut] = new Button(x,y,w,h,txt,fontInfo.buttonLabel_size);
     }
     
@@ -213,6 +214,9 @@ class Gui_Manager {
     smoothingButton = new Button(x,y,w,h,"Smooth\n" + headPlot1.smooth_fac,fontInfo.buttonLabel_size);
     
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    showPolarityButton = new Button(x,y,w,h,"Show Polarity\n" + headPlot1.getUsePolarityTrueFalse(),fontInfo.buttonLabel_size);
+ 
+     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     maxDisplayFreqButton = new Button(x,y,w,h,"Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz",fontInfo.buttonLabel_size);
 
 
@@ -585,7 +589,7 @@ class Gui_Manager {
   }
     
     
-  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std, DataStatus[] is_railed) {      
+  public void initDataTraces(float[] dataBuffX,float[][] dataBuffY,FFT[] fftBuff,float[] dataBuffY_std, DataStatus[] is_railed, float[] dataBuffY_polarity) {      
     //initialize the time-domain montage-plot traces
     montageTrace = new ScatterTrace();
     montage_yoffsets = new float[nchan];
@@ -599,6 +603,7 @@ class Gui_Manager {
     
     //link the data to the head plot
     headPlot1.setIntensityData_byRef(dataBuffY_std,is_railed);
+    headPlot1.setPolarityData_byRef(dataBuffY_polarity);
   }
 
   public void setShowSpectrogram(boolean show) {
@@ -771,6 +776,7 @@ class Gui_Manager {
         filtBPButton.draw();
         //fftNButton.draw();
         smoothingButton.draw();
+        showPolarityButton.draw();
         maxDisplayFreqButton.draw();
         break;
       case GUI_PAGE_HEXBOT:
