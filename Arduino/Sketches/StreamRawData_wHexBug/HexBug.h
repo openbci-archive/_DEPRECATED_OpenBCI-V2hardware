@@ -153,7 +153,7 @@ class HexBug_t {
           //we cannot accept a command right now...so try to buffer the command until we're ready for it
           //
           //FIRE always takes precedence
-          if ((bufferedCommand != COMMAND_FIRE) bufferedCommand = command_pin_ind;
+          if (bufferedCommand != COMMAND_FIRE) bufferedCommand = command_pin_ind;
         }
       }
     }
