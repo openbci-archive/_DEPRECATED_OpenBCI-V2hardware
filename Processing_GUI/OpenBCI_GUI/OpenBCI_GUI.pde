@@ -218,7 +218,7 @@ void setup() {
       
       // Open the serial port to the Arduino that has the OpenBCI
       println("OpenBCI_GUI: Opening Serial " + openBCI_portName);
-      int nDataValuesPerPacket = nchan;
+      int nDataValuesPerPacket = OpenBCI_Nchannels;
       if (eegDataSource == DATASOURCE_NORMAL_W_AUX) nDataValuesPerPacket += n_aux_ifEnabled;
       openBCI = new OpenBCI_ADS1299(this, openBCI_portName, openBCI_baud, nDataValuesPerPacket); //this also starts the data transfer after XX seconds
       break;
