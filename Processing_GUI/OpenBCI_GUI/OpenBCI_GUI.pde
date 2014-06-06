@@ -183,7 +183,8 @@ void setup() {
   is_railed = new DataStatus[nchan];
   for (int i=0; i<nchan;i++) is_railed[i] = new DataStatus(threshold_railed,threshold_railed_warn);
   for (int i=0; i<nDataBackBuff;i++) { 
-    dataPacketBuff[i] = new DataPacket_ADS1299(nchan+n_aux_ifEnabled);
+    //dataPacketBuff[i] = new DataPacket_ADS1299(nchan+n_aux_ifEnabled);
+    dataPacketBuff[i] = new DataPacket_ADS1299(OpenBCI_Nchannels+n_aux_ifEnabled);
   }
 
   //for data processing
