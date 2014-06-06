@@ -29,6 +29,7 @@ class DataPacket_ADS1299 {
   }
   int copyTo(DataPacket_ADS1299 target) {
     target.sampleIndex = sampleIndex;
+    int nvalues = min(values.length, target.values.length); //handles case when nchan < OpenBCI_nchannels
     for (int i=0; i < values.length; i++) {
       target.values[i] = values[i];
     }

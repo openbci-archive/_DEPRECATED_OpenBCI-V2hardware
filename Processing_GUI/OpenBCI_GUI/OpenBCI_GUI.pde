@@ -32,6 +32,7 @@ final int eegDataSource = DATASOURCE_PLAYBACKFILE;
 OpenBCI_ADS1299 openBCI = new OpenBCI_ADS1299(); //dummy creation to get access to constants, create real one later
 String openBCI_portName = "COM14";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
+
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the rArduino
 final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
@@ -56,7 +57,6 @@ int nextPlayback_millis = -100; //any negative number
 float dataBuffX[];
 float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is a new channel so that dataBuffY[3][] is channel 4
 float dataBuffY_filtY_uV[][];
-//float data_std_uV[];
 float data_elec_imp_ohm[];
 //int nchan = 12; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
 int nchan = OpenBCI_Nchannels; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
@@ -165,7 +165,7 @@ int win_x = 1200;  //window width
 int win_y = 768; //window height
 //int win_y = 450;   //window height...for OpenBCI_GUI_Simpler
 void setup() {
-
+  
   //open window
   size(win_x, win_y, P2D);
   //if (frame != null) frame.setResizable(true);  //make window resizable
