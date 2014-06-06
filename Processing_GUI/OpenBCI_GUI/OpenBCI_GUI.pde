@@ -30,7 +30,7 @@ final int eegDataSource = DATASOURCE_PLAYBACKFILE;
 
 //Serial communications constants
 OpenBCI_ADS1299 openBCI = new OpenBCI_ADS1299(); //dummy creation to get access to constants, create real one later
-String openBCI_portName = "COM12";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
+String openBCI_portName = "COM4";   /************** CHANGE THIS TO MATCH THE COM PORT REPORTED ON *YOUR* COMPUTER *****************/
 
 //these settings are for a single OpenBCI board
 int openBCI_baud = 115200; //baud rate from the rArduino
@@ -52,7 +52,6 @@ int nextPlayback_millis = -100; //any negative number
 float dataBuffX[];
 float dataBuffY_uV[][]; //2D array to handle multiple data channels, each row is a new channel so that dataBuffY[3][] is channel 4
 float dataBuffY_filtY_uV[][];
-//float data_std_uV[];
 float data_elec_imp_ohm[];
 //int nchan = 12; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
 int nchan = OpenBCI_Nchannels; //normally, nchan = OpenBCI_Nchannels.  Choose a smaller number to show fewer on the GUI
@@ -72,7 +71,6 @@ EEG_Processing_User eegProcessing_user;
 
 //fft constants
 int Nfft = 256; //set resolution of the FFT.  Use N=256 for normal, N=512 for MU waves
-//float fft_smooth_fac = 0.75f; //use value between [0 and 1].  Bigger is more smoothing.  Use 0.9 for MU waves, 0.75 for Alpha, 0.0 for no smoothing
 FFT fftBuff[] = new FFT[nchan];   //from the minim library
 float[] smoothFac = new float[]{0.75, 0.9, 0.95, 0.98, 0.0, 0.5};
 final int N_SMOOTHEFAC = 6;
@@ -160,7 +158,7 @@ int win_x = 1200;  //window width
 int win_y = 768; //window height
 //int win_y = 450;   //window height...for OpenBCI_GUI_Simpler
 void setup() {
-
+  
   //open window
   size(win_x, win_y, P2D);
   //if (frame != null) frame.setResizable(true);  //make window resizable

@@ -214,62 +214,67 @@ class OpenBCI_ADS1299 {
   byte[] localByteBuffer = {0,0,0,0};
   void interpretBinaryStream(byte actbyte)
   { 
-    //println("OpenBCI_ADS1299: PACKET_readstate " + PACKET_readstate);
+    //println("OpenBCI_ADS1299: interpretBinaryStream: PACKET_readstate " + PACKET_readstate);
     switch (PACKET_readstate) {
       case 0:  
-           if (actbyte == byte(0xA0)) {          // look for start indicator
-            //println("OpenBCI_ADS1299: interpretBinaryStream: found 0xA0");
-            PACKET_readstate++;
-           } 
-           break;
-      case 1:  
-           nDataValuesInPacket = ((int)actbyte) / 4 - 1;   // get number of channels
-           //println("OpenBCI_ADS1299: interpretBinaryStream: nDataValuesInPacket = " + nDataValuesInPacket);
-           //if (nDataValuesInPacket != num_channels) { //old check, too restrictive
-           if ((nDataValuesInPacket < 0) || (nDataValuesInPacket > dataPacket.values.length)) {
-            serialErrorCounter++;
-            println("OpenBCI_ADS1299: interpretBinaryStream: given number of data values (" + nDataValuesInPacket + ") is not acceptable.  Ignoring packet. (" + serialErrorCounter + ")");
-            PACKET_readstate=0;
-           } else { 
-            localByteCounter=0; //prepare for next usage of localByteCounter
-            PACKET_readstate++;
-           }
-           break;
+         //look for header byte  
+         if (actbyte == byte(0xA0)) {          // look for start indicator
+          //println("OpenBCI_ADS1299: interpretBinaryStream: found 0xA0");
+          PACKET_readstate++;
+         } 
+         break;
+      case 1:
+         //look for byte that gives length of the payload  
+         nDataValuesInPacket = ((int)actbyte) / 4 - 1;   // get number of channels
+         //println("OpenBCI_ADS1299: interpretBinaryStream: nDataValuesInPacket = " + nDataValuesInPacket);
+         //if (nDataValuesInPacket != num_channels) { //old check, too restrictive
+         if ((nDataValuesInPacket < 0) || (nDataValuesInPacket > dataPacket.values.length)) {
+          serialErrorCounter++;
+          println("OpenBCI_ADS1299: interpretBinaryStream: given number of data values (" + nDataValuesInPacket + ") is not acceptable.  Ignoring packet. (" + serialErrorCounter + ")");
+          PACKET_readstate=0;
+         } else { 
+          localByteCounter=0; //prepare for next usage of localByteCounter
+          PACKET_readstate++;
+         }
+         break;
       case 2: 
-          //check the packet counter
-          localByteBuffer[localByteCounter] = actbyte;
-          localByteCounter++;
-          if (localByteCounter==4) {
-            dataPacket.sampleIndex = interpretAsInt32(localByteBuffer); //added WEA
-            if ((dataPacket.sampleIndex-prevSampleIndex) != 1) {
-              serialErrorCounter++;
-              println("OpenBCI_ADS1299: interpretBinaryStream: apparent sampleIndex jump from Serial data: " + prevSampleIndex + " to  " + dataPacket.sampleIndex + ".  Keeping packet. (" + serialErrorCounter + ")");
-            }
-            prevSampleIndex = dataPacket.sampleIndex;
-            localByteCounter=0;//prepare for next usage of localByteCounter
-            localChannelCounter=0; //prepare for next usage of localChannelCounter
-            PACKET_readstate++;
-          } 
-          break;
-      case 3: // get channel values 
-          localByteBuffer[localByteCounter] = actbyte;
-          localByteCounter++;
-          if (localByteCounter==4) {
-            dataPacket.values[localChannelCounter] = interpretAsInt32(localByteBuffer);
-            localChannelCounter++;
-            if (localChannelCounter==nDataValuesInPacket) {  
-              // all channels arrived !
-              //println("OpenBCI_ADS1299: interpretBinaryStream: localChannelCounter = " + localChannelCounter);
-              PACKET_readstate++;
-              //isNewDataPacketAvailable = true;  //tell the rest of the code that the data packet is complete
-            } else { 
-              //prepare for next data channel
-              localByteCounter=0; //prepare for next usage of localByteCounter
-            }
+        //check the packet counter
+        localByteBuffer[localByteCounter] = actbyte;
+        localByteCounter++;
+        if (localByteCounter==4) {
+          dataPacket.sampleIndex = interpretAsInt32(localByteBuffer); //added WEA
+          if ((dataPacket.sampleIndex-prevSampleIndex) != 1) {
+            serialErrorCounter++;
+            println("OpenBCI_ADS1299: interpretBinaryStream: apparent sampleIndex jump from Serial data: " + prevSampleIndex + " to  " + dataPacket.sampleIndex + ".  Keeping packet. (" + serialErrorCounter + ")");
           }
-          break;
+          prevSampleIndex = dataPacket.sampleIndex;
+          localByteCounter=0;//prepare for next usage of localByteCounter
+          localChannelCounter=0; //prepare for next usage of localChannelCounter
+          PACKET_readstate++;
+        } 
+        break;
+      case 3: 
+        // get channel values 
+        localByteBuffer[localByteCounter] = actbyte;
+        localByteCounter++;
+        if (localByteCounter==4) {
+          dataPacket.values[localChannelCounter] = interpretAsInt32(localByteBuffer);
+          localChannelCounter++;
+          if (localChannelCounter==nDataValuesInPacket) {  
+            // all channels arrived !
+            //println("OpenBCI_ADS1299: interpretBinaryStream: localChannelCounter = " + localChannelCounter);
+            PACKET_readstate++;
+            //isNewDataPacketAvailable = true;  //tell the rest of the code that the data packet is complete
+          } else { 
+            //prepare for next data channel
+            localByteCounter=0; //prepare for next usage of localByteCounter
+          }
+        }
+        break;
       case 4:
+        //look for end byte
         if (actbyte == byte(0xC0)) {    // if correct end delimiter found:
+          //println("OpenBCI_ADS1299: interpretBinaryStream: found end byte. Setting isNewDataPacketAvailable to TRUE");
           isNewDataPacketAvailable = true; //original place for this.  but why not put it in the previous case block
         } else {
           serialErrorCounter++;
@@ -279,7 +284,7 @@ class OpenBCI_ADS1299 {
         break;
       default: 
           //println("OpenBCI_ADS1299: Unknown byte: " + actbyte + " .  Continuing...");
-          println("OpenBCI_ADS1299: Unknown byte.  Continuing...");
+          println("OpenBCI_ADS1299: interpretBinaryStream: Unknown byte.  Continuing...");
           PACKET_readstate=0;  // look for next packet
     }
   } // end of interpretBinaryStream
