@@ -16,7 +16,7 @@ class HexBug {
     private String name;
     private int counter;
     private Serial serial_h;
-    public boolean printReceivedCommand = true;
+    public boolean printReceivedCommand = false;
     public int ID;
     
     Command(Serial _serial_h, String _str, String _name, int _ID) {

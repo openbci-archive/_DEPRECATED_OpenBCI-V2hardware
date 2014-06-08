@@ -27,7 +27,7 @@ class EEG_Processing_User {
   //add your own variables here
   final float min_allowed_peak_freq_Hz = 4.0f; //input, for peak frequency detection
   final float max_allowed_peak_freq_Hz = 15.0f; //input, for peak frequency detection
-  final float detection_thresh_dB = 8.0f; //how much bigger must the peak be relative to the background
+  final float detection_thresh_dB = 6.0f; //how much bigger must the peak be relative to the background
   DetectedPeak[] detectedPeak;  //output per channel, from peak frequency detection
   HexBug hexBug;
   boolean showDetectionOnGUI = true;
@@ -60,6 +60,9 @@ class EEG_Processing_User {
       //issue new command to the Hex Bug, if there is a peak that was detected
       int Ichan = 2-1;  //which channel to act on
       if (detectedPeak[Ichan].isDetected) {
+         println("EEG_Processing_User: Chan " + (Ichan+1) + ", peak = " + detectedPeak[Ichan].rms_uV_perBin + " uV at " 
+            + detectedPeak[Ichan].freq_Hz + " Hz with background at = " + detectedPeak[Ichan].background_rms_uV_perBin 
+            + ", SNR (dB) = " + detectedPeak[Ichan].SNR_dB);        
         if (detectedPeak[Ichan].freq_Hz < 6.5) {
           hexBug.left();
         } else if (detectedPeak[Ichan].freq_Hz < 9) {
