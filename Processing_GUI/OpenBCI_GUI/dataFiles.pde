@@ -39,6 +39,9 @@ public class OutputFile_rawtxt {
 
     //add the header
     writeHeader(fs_Hz);
+    
+    //init the counter
+    rowsWritten = 0;
   }
 
   public void writeHeader(float fs_Hz) {
@@ -56,7 +59,6 @@ public class OutputFile_rawtxt {
   }
   public void writeRawData_dataPacket(DataPacket_ADS1299 data, float scale_to_uV, int nValsUsingScaleFactor) {
     int nVal = data.values.length;
-    rowsWritten = 0;
 
     if (output != null) {
       output.print(Integer.toString(data.sampleIndex));
@@ -71,7 +73,7 @@ public class OutputFile_rawtxt {
           output.print(String.format("%.2f", scale_to_uV * float(data.values[Ival])));
         }
       }
-      output.println();
+      output.println(); rowsWritten++;
       //output.flush();
     }
   }
