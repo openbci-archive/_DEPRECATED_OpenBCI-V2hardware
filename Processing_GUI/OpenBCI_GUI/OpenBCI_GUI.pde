@@ -161,7 +161,7 @@ void setup() {
   //get playback file name, if necessary  
   if (eegDataSource == DATASOURCE_PLAYBACKFILE) {
       if ((playbackData_fname==null) || (playbackData_fname.length() == 0)) selectInput("Select an OpenBCI TXT file: ", "fileSelected");
-      while ((playbackData_fname==null) || (playbackData_fname.length() == 0)) { /* wait until selection is complete */ }
+      while ((playbackData_fname==null) || (playbackData_fname.length() == 0)) { delay(100); /* wait until selection is complete */ }
   }
   
   //open window
@@ -686,8 +686,9 @@ void parseKey(char val) {
 
       
     case 'm':
-     println("OpenBCI_GUI: 'm' was pressed...taking screenshot...");
-     saveFrame("OpenBCI-####.jpg");    // take a shot of that!
+     String picfname = "OpenBCI-" + getDateString() + ".jpg";
+     println("OpenBCI_GUI: 'm' was pressed...taking screenshot:" + picfname);
+     saveFrame(picfname);    // take a shot of that!
      break;
     default:
      println("OpenBCI_GUI: '" + key + "' Pressed...sending to OpenBCI...");
@@ -796,7 +797,23 @@ void parseKeycode(int val) {
       break;
   }
 }
-
+String getDateString() {
+    String fname = year() + "-";
+    if (month() < 10) fname=fname+"0";
+    fname = fname + month() + "-";
+    if (day() < 10) fname = fname + "0";
+    fname = fname + day(); 
+    
+    fname = fname + "_";
+    if (hour() < 10) fname = fname + "0";
+    fname = fname + hour() + "-";
+    if (minute() < 10) fname = fname + "0";
+    fname = fname + minute() + "-";
+    if (second() < 10) fname = fname + "0";
+    fname = fname + second();
+    return fname;
+}
+  
 //swtich yard if a click is detected
 void mousePressed() {
    
