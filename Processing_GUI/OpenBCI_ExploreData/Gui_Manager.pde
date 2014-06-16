@@ -24,45 +24,45 @@ import ddf.minim.analysis.*; //for FFT
 import java.util.*; //for Array.copyOfRange()
 
 class Gui_Manager {
-  //ScatterTrace montageTrace;
+  ScatterTrace montageTrace;
   ScatterTrace_FFT fftTrace;
-  //Graph2D gMontage, gFFT;
+  Graph2D gMontage, gFFT;
   Graph2D gSpectrogram;
-  //GridBackground gbMontage, gbFFT;
-  //Button stopButton;
+  GridBackground gbMontage, gbFFT;
+  Button stopButton;
   PlotFontInfo fontInfo;
-  //HeadPlot headPlot1;
-  //Button[] chanButtons;
-  //Button guiPageButton;
-  //boolean showImpedanceButtons;
-  //Button[] impedanceButtonsP;
-  //Button[] impedanceButtonsN;
-  //Button biasButton;
+  HeadPlot headPlot1;
+  Button[] chanButtons;
+  Button guiPageButton;
+  boolean showImpedanceButtons;
+  Button[] impedanceButtonsP;
+  Button[] impedanceButtonsN;
+  Button biasButton;
   Button intensityFactorButton;
   Button loglinPlotButton;
-  //Button filtBPButton;
+  Button filtBPButton;
   //Button fftNButton;
-  //Button smoothingButton;
+  Button smoothingButton;
   Button maxDisplayFreqButton;
-  //Button showPolarityButton;
-  //TextBox titleMontage, titleFFT;
+  Button showPolarityButton;
+  TextBox titleMontage, titleFFT;
   TextBox titleSpectrogram;
-  //TextBox[] chanValuesMontage;
-  //TextBox[] impValuesMontage;
-  //boolean showMontageValues;
+  TextBox[] chanValuesMontage;
+  TextBox[] impValuesMontage;
+  boolean showMontageValues;
   public int guiPage;
   boolean vertScaleAsLog = true;
   Spectrogram spectrogram;
   boolean showSpectrogram;
   int whichChannelForSpectrogram;
   
-  //private float fftYOffset[];
+  private float fftYOffset[];
   private float default_vertScale_uV=200.0; //this defines the Y-scale on the montage plots...this is the vertical space between traces
   private float[] vertScaleFactor = {1.0f, 2.0f, 5.0f, 50.0f, 0.25f, 0.5f};
   private int vertScaleFactor_ind = 0;
   float vertScale_uV=default_vertScale_uV;
   float vertScaleMin_uV_whenLog = 0.1f;
-  //float montage_yoffsets[];
+  float montage_yoffsets[];
   private float[] maxDisplayFreq_Hz = {20.0f, 40.0f, 60.0f, 120.0f};
   private int maxDisplayFreq_ind = 2;
   
@@ -71,8 +71,8 @@ class Gui_Manager {
   public final static int GUI_PAGE_HEADPLOT_SETUP = 2;
   public final static int N_GUI_PAGES = 3;
   
-  //public final static String stopButton_pressToStop_txt = "Press to Stop";
-  //public final static String stopButton_pressToStart_txt = "Press to Start";
+  public final static String stopButton_pressToStop_txt = "Press to Stop";
+  public final static String stopButton_pressToStart_txt = "Press to Start";
   
   Gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float default_yScale_uV, 
     String filterDescription, float smooth_fac) {  
@@ -96,16 +96,16 @@ class Gui_Manager {
   
     //setup the montage plot...the right side 
     default_vertScale_uV = default_yScale_uV;  //here is the vertical scaling of the traces
-//    float[] axisMontage_relPos = { 
-//      left_right_split+gutter_left, 
-//      gutter_topbot+title_gutter, 
-//      (1.0f-left_right_split)-gutter_left-gutter_right, 
-//      available_top2bot-title_gutter
-//    }; //from left, from top, width, height
-//    axes_x = int(float(win_x)*axisMontage_relPos[2]);  //width of the axis in pixels
-//    axes_y = int(float(win_y)*axisMontage_relPos[3]);  //height of the axis in pixels
-//    gMontage = new Graph2D(parent, axes_x, axes_y, false);  //last argument is whether the axes cross at zero
-//    setupMontagePlot(gMontage, win_x, win_y, axisMontage_relPos,displayTime_sec,fontInfo,filterDescription);
+    float[] axisMontage_relPos = { 
+      left_right_split+gutter_left, 
+      gutter_topbot+title_gutter, 
+      (1.0f-left_right_split)-gutter_left-gutter_right, 
+      available_top2bot-title_gutter
+    }; //from left, from top, width, height
+    axes_x = int(float(win_x)*axisMontage_relPos[2]);  //width of the axis in pixels
+    axes_y = int(float(win_y)*axisMontage_relPos[3]);  //height of the axis in pixels
+    gMontage = new Graph2D(parent, axes_x, axes_y, false);  //last argument is whether the axes cross at zero
+    setupMontagePlot(gMontage, win_x, win_y, axisMontage_relPos,displayTime_sec,fontInfo,filterDescription);
   
     //setup the FFT plot...bottom on left side
     //float height_subplot = 0.5f*(available_top2bot-2*gutter_topbot);
@@ -134,11 +134,11 @@ class Gui_Manager {
     updateMaxDisplayFreq();
     
     //setup the head plot...top on the left side
-//    float[] axisHead_relPos = axisFFT_relPos.clone();
-//    axisHead_relPos[1] = gutter_topbot;  //set y position to be at top of left side
-//    axisHead_relPos[3] = available_top2bot*up_down_split  - gutter_topbot;
-//    headPlot1 = new HeadPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y,nchan);
-//    setSmoothFac(smooth_fac);
+    float[] axisHead_relPos = axisFFT_relPos.clone();
+    axisHead_relPos[1] = gutter_topbot;  //set y position to be at top of left side
+    axisHead_relPos[3] = available_top2bot*up_down_split  - gutter_topbot;
+    headPlot1 = new HeadPlot(axisHead_relPos[0],axisHead_relPos[1],axisHead_relPos[2],axisHead_relPos[3],win_x,win_y,nchan);
+    setSmoothFac(smooth_fac);
     
     //setup the buttons
     int w,h,x,y;
@@ -149,12 +149,12 @@ class Gui_Manager {
     x = win_x - int(gutter_right*float(win_x)) - w;
     y = win_y - int(0.5*gutter_topbot*float(win_y)) - h;
     //int y = win_y - h;
-//    stopButton = new Button(x,y,w,h,stopButton_pressToStop_txt,fontInfo.buttonLabel_size);
+    stopButton = new Button(x,y,w,h,stopButton_pressToStop_txt,fontInfo.buttonLabel_size);
     
     //setup the gui page button
     w = 80; //button width
     x = (int)(3*gutter_between_buttons*win_x);
-//    guiPageButton = new Button(x,y,w,h,"Page\n" + (guiPage+1) + " of " + N_GUI_PAGES,fontInfo.buttonLabel_size);
+    guiPageButton = new Button(x,y,w,h,"Page\n" + (guiPage+1) + " of " + N_GUI_PAGES,fontInfo.buttonLabel_size);
         
     //setup the channel on/off buttons...only plot 8 buttons, even if there are more channels
     //because as of 4/3/2014, you can only turn on/off the higher channels (the ones above chan 8)
@@ -164,40 +164,40 @@ class Gui_Manager {
     w = w;   //button width
     int w_orig = w;
     //if (nchan > 10) w -= (nchan-8)*2; //make the buttons skinnier
-//    int nChanBut = min(nchan,8);
-//    chanButtons = new Button[nChanBut];
-//    String txt;
-//    for (int Ibut = 0; Ibut < nChanBut; Ibut++) {
-//      x = calcButtonXLocation(Ibut, win_x, w, xoffset,gutter_between_buttons);
-//      txt = "Chan\n" + Integer.toString(Ibut+1);
-//      if (nchan > 8+Ibut) txt = txt + "+" + Integer.toString(Ibut+1+8);
-//      chanButtons[Ibut] = new Button(x,y,w,h,txt,fontInfo.buttonLabel_size);
-//    }
+    int nChanBut = min(nchan,8);
+    chanButtons = new Button[nChanBut];
+    String txt;
+    for (int Ibut = 0; Ibut < nChanBut; Ibut++) {
+      x = calcButtonXLocation(Ibut, win_x, w, xoffset,gutter_between_buttons);
+      txt = "Chan\n" + Integer.toString(Ibut+1);
+      if (nchan > 8+Ibut) txt = txt + "+" + Integer.toString(Ibut+1+8);
+      chanButtons[Ibut] = new Button(x,y,w,h,txt,fontInfo.buttonLabel_size);
+    }
     
     //setup the impedance measurement (lead-off) control buttons
     //showImpedanceButtons = false; //by default, do not show the buttons
-//    int vertspace_pix = max(1,int(gutter_between_buttons*win_x/4));
-//    int w1 = w_orig;  //use same width as for buttons above
-//    int h1 = h/2-vertspace_pix;  //use buttons with half the height
-//    impedanceButtonsP = new Button[nchan];
-//    for (int Ibut = 0; Ibut < nchan; Ibut++) {
-//      x = calcButtonXLocation(Ibut, win_x, w1, xoffset, gutter_between_buttons);
-//      impedanceButtonsP[Ibut] = new Button(x,y,w1,h1,"Imp P" + (Ibut+1),fontInfo.buttonLabel_size);
-//    }    
-//    impedanceButtonsN = new Button[nchan];
-//    for (int Ibut = 0; Ibut < nchan; Ibut++) {
-//      x = calcButtonXLocation(Ibut, win_x, w1, xoffset, gutter_between_buttons);
-//      impedanceButtonsN[Ibut] = new Button(x,y+h-h1,w1,h1,"Imp N" + (Ibut+1),fontInfo.buttonLabel_size);
-//    }
-//    h1 = h;
-//    x = calcButtonXLocation(nchan, win_x, w1, xoffset, gutter_between_buttons);
-//    biasButton = new Button(x,y,w1,h1,"Bias\n" + "Auto",fontInfo.buttonLabel_size);
+    int vertspace_pix = max(1,int(gutter_between_buttons*win_x/4));
+    int w1 = w_orig;  //use same width as for buttons above
+    int h1 = h/2-vertspace_pix;  //use buttons with half the height
+    impedanceButtonsP = new Button[nchan];
+    for (int Ibut = 0; Ibut < nchan; Ibut++) {
+      x = calcButtonXLocation(Ibut, win_x, w1, xoffset, gutter_between_buttons);
+      impedanceButtonsP[Ibut] = new Button(x,y,w1,h1,"Imp P" + (Ibut+1),fontInfo.buttonLabel_size);
+    }    
+    impedanceButtonsN = new Button[nchan];
+    for (int Ibut = 0; Ibut < nchan; Ibut++) {
+      x = calcButtonXLocation(Ibut, win_x, w1, xoffset, gutter_between_buttons);
+      impedanceButtonsN[Ibut] = new Button(x,y+h-h1,w1,h1,"Imp N" + (Ibut+1),fontInfo.buttonLabel_size);
+    }
+    h1 = h;
+    x = calcButtonXLocation(nchan, win_x, w1, xoffset, gutter_between_buttons);
+    biasButton = new Button(x,y,w1,h1,"Bias\n" + "Auto",fontInfo.buttonLabel_size);
 
     //setup the buttons to control the processing and frequency displays
     int Ibut=0;    w = w_orig;    h = h;
     
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
-    //filtBPButton = new Button(x,y,w,h,"BP Filt\n" + eegProcessing.getShortFilterDescription(),fontInfo.buttonLabel_size);
+    filtBPButton = new Button(x,y,w,h,"BP Filt\n" + eegProcessing.getShortFilterDescription(),fontInfo.buttonLabel_size);
   
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     intensityFactorButton = new Button(x,y,w,h,"Vert Scale\n" + round(vertScale_uV) + "uV",fontInfo.buttonLabel_size);
@@ -210,10 +210,10 @@ class Gui_Manager {
     loglinPlotButton = new Button(x,y,w,h,"Vert Scale\n" + get_vertScaleAsLogText(),fontInfo.buttonLabel_size);
   
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
-    //smoothingButton = new Button(x,y,w,h,"Smooth\n" + headPlot1.smooth_fac,fontInfo.buttonLabel_size);
+    smoothingButton = new Button(x,y,w,h,"Smooth\n" + headPlot1.smooth_fac,fontInfo.buttonLabel_size);
     
     x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
-    //showPolarityButton = new Button(x,y,w,h,"Show Polarity\n" + headPlot1.getUsePolarityTrueFalse(),fontInfo.buttonLabel_size);
+    showPolarityButton = new Button(x,y,w,h,"Show Polarity\n" + headPlot1.getUsePolarityTrueFalse(),fontInfo.buttonLabel_size);
  
      x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     maxDisplayFreqButton = new Button(x,y,w,h,"Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz",fontInfo.buttonLabel_size);
@@ -259,9 +259,12 @@ class Gui_Manager {
     //println("Gui_Manager: updateVertScale: vertScale_uV = " + vertScale_uV);
     
     //update how the plots are scaled
+    println("Gui_Manager: updateVertScale: setYScale_uV...");
     if (montageTrace != null) montageTrace.setYScale_uV(vertScale_uV);  //the Y-axis on the montage plot is fixed...the data is simply scaled prior to plotting
+    println("Gui_Manager: updateVertScale: setYAxisMax...");
     if (gFFT != null) gFFT.setYAxisMax(vertScale_uV);
-    headPlot1.setMaxIntensity_uV(vertScale_uV);
+    //println("Gui_Manager: updateVertScale: headplot1...");
+    if (headPlot1 != null) headPlot1.setMaxIntensity_uV(vertScale_uV);
     intensityFactorButton.setString("Vert Scale\n" + round(vertScale_uV) + "uV");
     
     //update the Yticks on the FFT plot
