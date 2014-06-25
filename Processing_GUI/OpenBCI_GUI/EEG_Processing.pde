@@ -28,6 +28,8 @@ class EEG_Processing_User {
   final float min_allowed_peak_freq_Hz = 4.0f; //input, for peak frequency detection
   final float max_allowed_peak_freq_Hz = 15.0f; //input, for peak frequency detection
   final float detection_thresh_dB = 6.0f; //how much bigger must the peak be relative to the background
+  final float[] processing_band_low_Hz = {4.0,  6.5,  9,  13.5}; //lower bound for each frequency band of interest (2D classifier only)
+  final float[] processing_band_high_Hz = {6.5,  9,  12, 16.5};  //upper bound for each frequency band of interest
   DetectedPeak[] detectedPeak;  //output per channel, from peak frequency detection
   HexBug hexBug;
   boolean showDetectionOnGUI = true;
@@ -51,16 +53,20 @@ class EEG_Processing_User {
 
       //user functions here...
       if (fftData != null) findPeakFrequency(fftData); //find the frequency for each channel with the peak amplitude
-
+      if (true) {
+        //new processing for improved selectivity
+        if (fftData != null) findBestFrequency_2DTraining(fftData);      
+      }
+      
       //issue new command to the Hex Bug, if there is a peak that was detected
       int Ichan = 2-1;  //which channel to act on
       if (detectedPeak[Ichan].isDetected) {
         String txt = "";
-        if (detectedPeak[Ichan].freq_Hz < 6.5) {
+        if (detectedPeak[Ichan].freq_Hz < processing_band_high_Hz[1-1]) {
           hexBug.right();txt = "Right";
-        } else if (detectedPeak[Ichan].freq_Hz < 9) {
+        } else if (detectedPeak[Ichan].freq_Hz < processing_band_high_Hz[2-1]) {
           hexBug.left();txt = "Left";
-        } else if (detectedPeak[Ichan].freq_Hz < 12) {
+        } else if (detectedPeak[Ichan].freq_Hz < processing_band_high_Hz[3-1]) {
           hexBug.forward(); txt = "Forward";
         }
 
@@ -83,7 +89,7 @@ class EEG_Processing_User {
       //clear the data structure that will hold the peak for this channel
       detectedPeak[Ichan].clear();
       
-      //loop over each frequency bin
+      //loop over each frequency bin to find the one with the strongest peak
       int nBins =  fftData[Ichan].specSize();
       for (int Ibin=0; Ibin < nBins; Ibin++){
         FFT_freq_Hz = fftData[Ichan].indexToFreq(Ibin); //here is the frequency of htis bin
@@ -102,11 +108,6 @@ class EEG_Processing_User {
             detectedPeak[Ichan].freq_Hz = FFT_freq_Hz;
             detectedPeak[Ichan].rms_uV_perBin = FFT_value_uV;
           } 
-                  
-//          if ((Ichan == (7-1)) && (FFT_freq_Hz > 12.2f) && (FFT_freq_Hz <12.5f)) {
-//            println("EEG_Processing_User: freq = " + FFT_freq_Hz + ", value = " + FFT_value_uV + ", cur Max = " 
-//            + detectedPeak[Ichan].freq_Hz + " Hz " + detectedPeak[Ichan].rms_uV_perBin);
-//          }
           
         } //close if within frequency band
         
@@ -137,6 +138,51 @@ class EEG_Processing_User {
       
     } // end loop over channels    
   } //end method findPeakFrequency
+  
+  
+  void findBestFrequency_2DTraining(FFT[] fftData) {
+    
+    //loop over each EEG channel
+    float FFT_freq_Hz, FFT_value_uV;
+    for (int Ichan=0;Ichan < nchan; Ichan++) {
+      int nBins =  fftData[Ichan].specSize();
+      
+      //loop over all bins and comptue SNR for each bin
+      float[] SNR_dB = new float[nBins];
+      float noise_pow_uV = detectedPeak[Ichan].background_rms_uV_perBin;
+      for (int Ibin=0; Ibin < nBins; Ibin++) {
+        FFT_value_uV = fftData[Ichan].getBand(Ibin) / ((float)nBins);  //get the RMS per bin
+        SNR_dB[Ibin] = 20.0f*(float)java.lang.Math.log10(FFT_value_uV / noise_pow_uV);
+      }
+        
+      //find peak SNR in each freq band
+      int nBands = processing_band_high_Hz.length;
+      float[] peak_SNR_dB_perBand = new float[nBands];
+      float[] peak_freq_Hz_perBand = new float[nBands];
+      float this_SNR_dB=0.0;
+      for (int Iband=0; Iband<nBands; Iband++) {
+        //init variables for this frequency band
+        peak_SNR_dB_perBand[Iband] = -100.0;  //initialize to dummy value that is really low
+        peak_freq_Hz_perBand[Iband] = 0.0f;   //initialize to dummy value    
+        
+        //loop over all bins
+        for (int Ibin=0; Ibin < nBins; Ibin++) {
+          FFT_freq_Hz = fftData[Ichan].indexToFreq(Ibin); //here is the frequency of this bin
+          if (FFT_freq_Hz >= processing_band_low_Hz[Iband]) {
+            if (FFT_freq_Hz <= processing_band_high_Hz[Iband]) {
+              if (SNR_dB[Ibin] > peak_SNR_dB_perBand[Iband]) {
+                peak_SNR_dB_perBand[Iband] = SNR_dB[Ibin];
+                peak_freq_Hz_perBand[Iband] = FFT_freq_Hz;
+              }  
+            }
+          }
+        } //end loop over bins    
+      } //end loop over frequency bands
+    
+    } // end loop over channels
+  }
+  
+  
   
   //routine to add detection graphics to the sceen
   void updateGUI_FFTPlot(Blank2DTrace.PlotRenderer pr) {
