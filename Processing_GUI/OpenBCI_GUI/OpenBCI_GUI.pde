@@ -51,7 +51,7 @@ final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 final String playbackData_fname = "C:\\Users\\wea\\Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_Robot05.txt";
 
 //int currentTableRowIndex = (80*250);
-int currentTableRowIndex = (0*250);
+int currentTableRowIndex = (20*250);
 Table_CSV playbackData_table;
 int nextPlayback_millis = -100; //any negative number
 

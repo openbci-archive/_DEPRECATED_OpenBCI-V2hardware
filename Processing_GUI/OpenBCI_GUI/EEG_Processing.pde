@@ -179,9 +179,98 @@ class EEG_Processing_User {
         } //end loop over bins    
       } //end loop over frequency bands
     
+      //apply new 2D detection rules
+      applyDetectionRules_2D(peak_SNR_dB_perBand, peak_freq_Hz_perBand, detectedPeak[Ichan]);
+    
     } // end loop over channels
   }
   
+  void applyDetectionRules_2D(float[] peak_SNR_dB_perBand, float[] peak_freq_Hz_perBand, DetectedPeak detectedPeak) {
+    int BandA = 0, BandB = 1, BandC = 2, BandD = 3;
+    float[] value_from_each_rule = new float[3];
+    float primary_value_dB=0.0, secondary_value_dB=0.0;
+    int nDetect = 0;
+    
+    //check rule 1 applying to RIGHT command...here, we care about Band A and Band C
+    primary_value_dB = peak_SNR_dB_perBand[BandA];
+    if (primary_value_dB >= detection_thresh_dB) {
+      secondary_value_dB = peak_SNR_dB_perBand[BandC]; 
+      if (secondary_value_dB >= 3.0f) {
+        //detected!
+        nDetect++;
+        value_from_each_rule[0] = primary_value_dB;
+        println("applyDetectionRules_2D: detection_thresh_dB = " + detection_thresh_dB + ", primary val = " + primary_value_dB + " secondary = " + secondary_value_dB);
+        println("applyDetectionRules_2D: rule 0: nDetect = " + nDetect + ", value_from_each_rule[0] = " + value_from_each_rule[0]); 
+      }
+    }   
+    
+    //check rule 2 applying to LEFT command...here, we care about Band B and Band D
+    primary_value_dB = peak_SNR_dB_perBand[BandB];
+    secondary_value_dB = peak_SNR_dB_perBand[BandD]; 
+    if (primary_value_dB >= detection_thresh_dB) {
+      //for larger SNR values
+      if (secondary_value_dB >= 0.0f) {
+        //detected!
+        nDetect++;
+        value_from_each_rule[1] = primary_value_dB;
+        println("applyDetectionRules_2D: rule 1A: nDetect = " + nDetect + ", value_from_each_rule[1] = " + value_from_each_rule[1]); 
+      } 
+    } else if (primary_value_dB >= 0.0f) {
+      //for smaller SNR values
+      float second_threshold_dB = 4.5 * sqrt(abs(1.1 - pow(primary_value_dB/detection_thresh_dB,2.0)));
+      if (secondary_value_dB >= second_threshold_dB) {
+        //detected!
+        nDetect++;
+        value_from_each_rule[1] = (secondary_value_dB - second_threshold_dB) + detection_thresh_dB;  //create something that is comparable to the other metrics, which are based on detection_thresh_dB
+        println("applyDetectionRules_2D: rule 1B: nDetect = " + nDetect + ", value_from_each_rule[1] = " + value_from_each_rule[1]); 
+      }
+    }
+    
+    //check rule 3 applying to FORWARD command...here, we care about Band B and Band D    
+    primary_value_dB = peak_SNR_dB_perBand[BandC];
+    if (primary_value_dB >= 3.0) {
+      secondary_value_dB = peak_SNR_dB_perBand[BandD];
+      final float slope = (7.5-(-3))/(12-4);
+      final float yoffset = 7.5 - slope*12;
+      float second_threshold_dB = slope * primary_value_dB + yoffset;
+      if (secondary_value_dB <= second_threshold_dB) {  //must be below!  Alpha waves (Band C) should quiet the higher bands (Band D)
+        //detected!
+        nDetect++;
+        value_from_each_rule[2] = primary_value_dB;
+        println("applyDetectionRules_2D: rule 2: nDetect = " + nDetect + ", value_from_each_rule[2] = " + value_from_each_rule[2]); 
+
+      }
+    }    
+    
+        
+    //clear  previous detection
+    if (detectedPeak.isDetected == true) {
+      detectedPeak.isDetected = false;
+      detectedPeak.freq_Hz = 0.0;
+      detectedPeak.SNR_dB = 0.0;
+    }
+    
+    //see if we've had a detection
+    if (nDetect > 0) {
+      detectedPeak.isDetected = true;
+      detectedPeak.bin  = 0; //we'll never reset this.  Hopefully not an issue
+      
+      //find the best value
+      int rule_ind = 0;
+      float peak_value = -100.0f;
+      for (int Irule=0; Irule < 3; Irule++) {
+        if (value_from_each_rule[Irule] > peak_value) {
+          rule_ind = Irule;
+          peak_value = value_from_each_rule[rule_ind];
+        }
+      }
+      
+      //copy over the detection data for that rule/band
+      detectedPeak.freq_Hz = peak_freq_Hz_perBand[rule_ind];
+      detectedPeak.SNR_dB = peak_SNR_dB_perBand[rule_ind];
+      println("applyDetectionRules_2D: detected, rule_ind = " + rule_ind + ", freq = " + detectedPeak.freq_Hz + " Hz, SNR = " + detectedPeak.SNR_dB + " dB");
+    } 
+  } // end of applyDetectionRules_2D
   
   
   //routine to add detection graphics to the sceen
