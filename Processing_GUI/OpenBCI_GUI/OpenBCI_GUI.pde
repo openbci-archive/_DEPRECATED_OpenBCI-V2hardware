@@ -47,10 +47,11 @@ final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_10-18-13_calibrated_Chan1-12_ref7.txt"; //12 channel, inject calibrated signal to get response at each sense electrode
 //final String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-08 Multi-Rate Visual Evoked Potentials\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt";
 //final String playbackData_fname = "C:\\Users\\disco\\Documents\\Chips Docs\\EEG Hacker Blog\\2014-05-08 TwoScreen Blinky\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt";
-final String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_RobotControl2.txt";
+//final String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_Robot05.txt";
+final String playbackData_fname = "C:\\Users\\wea\\Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_Robot05.txt";
 
 //int currentTableRowIndex = (80*250);
-int currentTableRowIndex = (30*250);
+int currentTableRowIndex = (0*250);
 Table_CSV playbackData_table;
 int nextPlayback_millis = -100; //any negative number
 

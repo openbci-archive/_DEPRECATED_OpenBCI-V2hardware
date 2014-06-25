@@ -51,25 +51,23 @@ class EEG_Processing_User {
 
       //user functions here...
       if (fftData != null) findPeakFrequency(fftData); //find the frequency for each channel with the peak amplitude
-      
-      //print some output
-      //int Ichan=2-1;
-      //println("EEG_Processing_User: Chan " + (Ichan+1) + ", peak = " + detectedPeak[Ichan].rms_uV_perBin + " uV at " 
-      //  + detectedPeak[Ichan].freq_Hz + " Hz with background at = " + detectedPeak[Ichan].background_rms_uV_perBin);    
-  
+
       //issue new command to the Hex Bug, if there is a peak that was detected
       int Ichan = 2-1;  //which channel to act on
       if (detectedPeak[Ichan].isDetected) {
-         println("EEG_Processing_User: Chan " + (Ichan+1) + ", peak = " + detectedPeak[Ichan].rms_uV_perBin + " uV at " 
+        String txt = "";
+        if (detectedPeak[Ichan].freq_Hz < 6.5) {
+          hexBug.right();txt = "Right";
+        } else if (detectedPeak[Ichan].freq_Hz < 9) {
+          hexBug.left();txt = "Left";
+        } else if (detectedPeak[Ichan].freq_Hz < 12) {
+          hexBug.forward(); txt = "Forward";
+        }
+
+        //print some output
+        println("EEG_Processing_User: " + txt + "!, Chan " + (Ichan+1) + ", peak = " + detectedPeak[Ichan].rms_uV_perBin + " uV at " 
             + detectedPeak[Ichan].freq_Hz + " Hz with background at = " + detectedPeak[Ichan].background_rms_uV_perBin 
             + ", SNR (dB) = " + detectedPeak[Ichan].SNR_dB);        
-        if (detectedPeak[Ichan].freq_Hz < 6.5) {
-          hexBug.left();
-        } else if (detectedPeak[Ichan].freq_Hz < 9) {
-          hexBug.right();
-        } else if (detectedPeak[Ichan].freq_Hz < 12) {
-          hexBug.forward();
-        }
         
       }
   }
