@@ -201,7 +201,7 @@ class EEG_Processing_User {
   }
   
   void applyDetectionRules_2D(DetectedPeak[] peakPerBand, DetectedPeak detectedPeak) {
-    int BandA = 0, BandB = 1, BandC = 2, BandD = 3;
+    int band_A = 0, band_B = 1, band_C = 2, band_D = 3;
     int nRules = 3;
     float[] value_from_each_rule = new float[nRules];
     float primary_value_dB=0.0, secondary_value_dB=0.0;
@@ -214,10 +214,10 @@ class EEG_Processing_User {
     }
 
     //check rule 1 applying to RIGHT command...here, we care about Band A and Band C
-    primary_value_dB = peakPerBand[BandA].SNR_dB;
-    peakPerBand[BandA].copyTo(candidate_detection[0]);
+    primary_value_dB = peakPerBand[band_A].SNR_dB;
+    peakPerBand[band_A].copyTo(candidate_detection[0]);
     if (primary_value_dB >= detection_thresh_dB) {
-      secondary_value_dB = peakPerBand[BandC].SNR_dB; 
+      secondary_value_dB = peakPerBand[band_C].SNR_dB; 
       if (secondary_value_dB >= 3.0f) {
         //detected!
         nDetect++;
@@ -228,15 +228,15 @@ class EEG_Processing_User {
     }   
     
     //check rule 2 applying to LEFT command...here, we care about Band B and Band D
-    primary_value_dB = peakPerBand[BandB].SNR_dB;
-    secondary_value_dB = peakPerBand[BandD].SNR_dB; 
+    primary_value_dB = peakPerBand[band_B].SNR_dB;
+    secondary_value_dB = peakPerBand[band_D].SNR_dB; 
     if (primary_value_dB >= detection_thresh_dB) {
       //for larger SNR values
       if (secondary_value_dB >= 0.0f) {
         //detected!
         nDetect++;
         value_from_each_rule[1] = primary_value_dB;
-        peakPerBand[BandB].copyTo(candidate_detection[1]);
+        peakPerBand[band_B].copyTo(candidate_detection[1]);
         candidate_detection[1].isDetected=true;
         //println("applyDetectionRules_2D: rule 1A: nDetect = " + nDetect + ", value_from_each_rule[1] = " + value_from_each_rule[1]); 
       } 
@@ -247,17 +247,17 @@ class EEG_Processing_User {
         //detected!
         nDetect++;
         value_from_each_rule[1] = secondary_value_dB;  //create something that is comparable to the other metrics, which are based on detection_thresh_dB
-        peakPerBand[BandD].copyTo(candidate_detection[1]);
+        peakPerBand[band_D].copyTo(candidate_detection[1]);
         candidate_detection[1].isDetected=true;
         //println("applyDetectionRules_2D: rule 1B: nDetect = " + nDetect + ", value_from_each_rule[1] = " + value_from_each_rule[1]); 
       }
     }
 
     //check rule 3 applying to FORWARD command...here, we care about Band B and Band D    
-    primary_value_dB = peakPerBand[BandC].SNR_dB;
-    peakPerBand[BandC].copyTo(candidate_detection[2]);
+    primary_value_dB = peakPerBand[band_C].SNR_dB;
+    peakPerBand[band_C].copyTo(candidate_detection[2]);
     if (primary_value_dB >= 3.0) {
-      secondary_value_dB = peakPerBand[BandD].SNR_dB;
+      secondary_value_dB = peakPerBand[band_D].SNR_dB;
       final float slope = (7.5-(-3))/(12-4);
       final float yoffset = 7.5 - slope*12;
       float second_threshold_dB = slope * primary_value_dB + yoffset;
@@ -276,15 +276,9 @@ class EEG_Processing_User {
     //see if we've had a detection
     if (nDetect > 0) {
       
-      //find the best value
-      int rule_ind = 0;
-      float peak_value = -100.0f;
-      for (int Irule=0; Irule < 3; Irule++) {
-        if (value_from_each_rule[Irule] > peak_value) {
-          rule_ind = Irule;
-          peak_value = value_from_each_rule[rule_ind];
-        }
-      }
+      //find the best value (ie, find the maximum "value_from_each_rule" across all rules)
+      int rule_ind = findMax(value_from_each_rule);
+      //float peak_value = value_from_each_rule[rule_ind];
       
       //copy over the detection data for that rule/band
       candidate_detection[rule_ind].copyTo(detectedPeak);
