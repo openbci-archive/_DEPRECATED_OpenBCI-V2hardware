@@ -58,12 +58,12 @@ class Gui_Manager {
   private float fftYOffset[];
   private float default_vertScale_uV=200.0; //this defines the Y-scale on the montage plots...this is the vertical space between traces
   private float[] vertScaleFactor = {1.0f, 2.0f, 5.0f, 50.0f, 0.25f, 0.5f};
-  private int vertScaleFactor_ind = 0;
+  private int vertScaleFactor_ind = 5;
   float vertScale_uV=default_vertScale_uV;
   float vertScaleMin_uV_whenLog = 0.1f;
   float montage_yoffsets[];
   private float[] maxDisplayFreq_Hz = {20.0f, 40.0f, 60.0f, 120.0f};
-  private int maxDisplayFreq_ind = 2;
+  private int maxDisplayFreq_ind = 0;
   
   public final static int GUI_PAGE_CHANNEL_ONOFF = 0;
   public final static int GUI_PAGE_IMPEDANCE_CHECK = 1;
@@ -490,7 +490,11 @@ class Gui_Manager {
     //setup the x axis
     g.setXAxisMin(0f);
     g.setXAxisMax(maxDisplayFreq_Hz[maxDisplayFreq_ind]);
-    g.setXAxisTickSpacing(10f);
+    if (maxDisplayFreq_Hz[maxDisplayFreq_ind] > 30) {
+      g.setXAxisTickSpacing(10f);
+    } else {
+       g.setXAxisTickSpacing(5f);
+    }
     g.setXAxisMinorTicks(2);
     g.setXAxisLabelAccuracy(0);
     g.setXAxisLabel("Frequency (Hz)");
