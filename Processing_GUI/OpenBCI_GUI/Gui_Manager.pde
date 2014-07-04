@@ -505,6 +505,7 @@ class Gui_Manager {
     // switching on Grid, with differetn colours for X and Y lines
     gbFFT = new  GridBackground(new GWColour(255));
     gbFFT.setGridColour(180, 180, 180, 180, 180, 180);
+    gbFFT.setGridLines(false,true);  //turn off vertical grid lines when showing EEG_Proccessing bands
     g.setBackground(gbFFT);
     
     // add title

@@ -289,29 +289,52 @@ class EEG_Processing_User {
   
   //routine to add detection graphics to the sceen
   void updateGUI_FFTPlot(Blank2DTrace.PlotRenderer pr) {
+    float x1,y1,x2,y2;
+    
     //add detection-related graphics
     if (showDetectionOnGUI) {
       
-      //add symbol showing peak
-      int Ichan = 2-1; //which channel to show on the GUI
-      float new_x2 = pr.valToX(detectedPeak[Ichan].freq_Hz);
-      float new_y2 = pr.valToY(detectedPeak[Ichan].rms_uV_perBin);
-      boolean is_detected = detectedPeak[Ichan].isDetected;
-      addMarker(pr,new_x2,new_y2,is_detected);
-
+      //add vertical markers showing detection bands
+      int nBands = processing_band_low_Hz.length;
+      String[] band_txt = {"R", "L", "F", "L"};
+      for (int Iband=0; Iband<nBands; Iband++) {
+        x1 = pr.valToX(processing_band_low_Hz[Iband]); //lower bound for each frequency band of interest (2D classifier only)
+        y1 = pr.valToY(0.15f);
+        y2 = pr.valToY(50.0f);
+        addVertDashedLine(pr,x1,y1,y2,0);
+        
+        x1 = pr.valToX(processing_band_high_Hz[Iband]); //lower bound for each frequency band of interest (2D classifier only)
+        addVertDashedLine(pr,x1,y1,y2,1);
+        
+        //add label
+//        x1 = pr.valToX(0.5*(processing_band_low_Hz[Iband]+processing_band_high_Hz[Iband]));
+//        y1 = pr.valToY(50.0f);
+//        TextBox label = new TextBox(band_txt[Iband],(int)x1,(int)y1);
+//        label.textColor = color(255,255,255);
+//        label.setFontSize(12);
+//        label.alignH = CENTER;
+//        label.draw();
+      }
+ 
       //add horizontal lines indicating the background noise level
-      float x1, x2,y;
+      int Ichan = 2-1; //which channel to show on the GUI
       x1 = pr.valToX(min_allowed_peak_freq_Hz);  //starting coordinate, left
       x2 = pr.valToX(max_allowed_peak_freq_Hz);  //start coordinate, right
-      y = pr.valToY(detectedPeak[Ichan].background_rms_uV_perBin); //y-coordinate
-      addDashedLine(pr,x1,x2,y);
-       
+      y1 = pr.valToY(detectedPeak[Ichan].background_rms_uV_perBin); //y-coordinate
+      addHorizDashedLine(pr,x1,x2,y1);
+             
+      //add symbol showing peak
+      x1 = pr.valToX(detectedPeak[Ichan].freq_Hz);
+      y1 = pr.valToY(detectedPeak[Ichan].rms_uV_perBin);
+      boolean is_detected = detectedPeak[Ichan].isDetected;
+      addMarker(pr,x1,y1,is_detected); 
     }  
   }
    
   //draw a marker on the axes
   void addMarker(Blank2DTrace.PlotRenderer pr, float new_x2,float new_y2,boolean is_detected) {
     int diam = 8;
+    pr.canvas.stroke(0,0,0);  //black
     pr.canvas.strokeWeight(1);  //set the new line's linewidth
     if (is_detected) { //if there is a detection, make more prominent
       pr.canvas.strokeWeight(4);  //set the new line's linewidth 
@@ -320,8 +343,9 @@ class EEG_Processing_User {
     pr.canvas.ellipse(new_x2,new_y2,diam,diam);
   }
   
-  //draw a dashed line
-  void addDashedLine(Blank2DTrace.PlotRenderer pr,float x1,float x2,float y) {
+  //draw a horizontal dashed line on the given axes
+  void addHorizDashedLine(Blank2DTrace.PlotRenderer pr,float x1,float x2,float y) {
+    pr.canvas.stroke(0,0,0);  //black
     pr.canvas.strokeWeight(1.5);
     float dx = 8; //it'll be a dashed line, so here is how long is the dash+space, pixels
     float nudge = 2;
@@ -329,6 +353,29 @@ class EEG_Processing_User {
     while (foo_x < x2) {  //loop to make each dash
       pr.canvas.line(foo_x-dx+nudge,y,foo_x-(5*dx)/8+nudge,y);
       foo_x += dx;  //increment for next time through the loop
+    }
+  }
+  
+  //draw a dashed line on the given axes
+  void addVertDashedLine(Blank2DTrace.PlotRenderer pr,float x1,float y1,float y2,int colorCode) {
+    //println("EEG_processing: addVertDashedLine: x1, y1, y2: " + x1 + " " + y1 + " " + y2);
+    if (colorCode==0) {
+        //pr.canvas.stroke(0,190,0);  //dark green
+        pr.canvas.stroke(0);  //black
+    } else {
+        //pr.canvas.stroke(190,0,0);  //dark red
+       pr.canvas.stroke(0);  //black
+    }
+    pr.canvas.strokeWeight(1.0);
+    float dy = 4; //it'll be a dashed line, so here is how long is the dash+space, pixels
+    float nudge = 2; //correction factor?
+    float foo_y=min(y1+dy,y2); //start here
+    while (foo_y < y2) {  //loop to make each dash
+      float yy1 = foo_y-dy+nudge;
+      float yy2 = foo_y-(5*dy)/8+nudge;
+      //println("EEG_processing: addVertDashedLine: dash: x1 = " + x1 + ", y = [" + yy1 + " " + yy2 + "]");
+      pr.canvas.line(x1,yy1,x1,yy2);
+      foo_y += dy;  //increment for next time through the loop
     }
   }
    
