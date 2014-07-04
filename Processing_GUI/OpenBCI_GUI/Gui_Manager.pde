@@ -75,7 +75,7 @@ class Gui_Manager {
   public final static String stopButton_pressToStart_txt = "Press to Start";
   
   Gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float default_yScale_uV, 
-    String filterDescription, float smooth_fac) {  
+    String filterDescription, float smooth_fac, EEG_Processing_User eegProcessingUser) {  
 //  Gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float yScale_uV, float fs_Hz,
 //      String montageFilterText, String detectName) {
       showSpectrogram = false;  
@@ -118,7 +118,7 @@ class Gui_Manager {
     axes_x = int(float(win_x)*axisFFT_relPos[2]);  //width of the axis in pixels
     axes_y = int(float(win_y)*axisFFT_relPos[3]);  //height of the axis in pixels
     gFFT = new Graph2D(parent, axes_x, axes_y, false);  //last argument is whether the axes cross at zero
-    setupFFTPlot(gFFT, win_x, win_y, axisFFT_relPos,fontInfo);
+    setupFFTPlot(gFFT, win_x, win_y, axisFFT_relPos,fontInfo,eegProcessingUser);
         
     //setup the spectrogram plot
 //    float[] axisSpectrogram_relPos = axisMontage_relPos;
@@ -461,7 +461,7 @@ class Gui_Manager {
     showMontageValues = true;  // default to having them NOT displayed    
   }
   
-  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,PlotFontInfo fontInfo) {
+  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,PlotFontInfo fontInfo,EEG_Processing_User eegProcessingUser) {
   
     g.setAxisColour(220, 220, 220);
     g.setFontColour(255, 255, 255);
@@ -505,7 +505,7 @@ class Gui_Manager {
     // switching on Grid, with differetn colours for X and Y lines
     gbFFT = new  GridBackground(new GWColour(255));
     gbFFT.setGridColour(180, 180, 180, 180, 180, 180);
-    gbFFT.setGridLines(false,true);  //turn off vertical grid lines when showing EEG_Proccessing bands
+    if (eegProcessingUser.useClassfier_2DTraining) gbFFT.setGridLines(false,true);  //turn off vertical grid lines when showing EEG_Proccessing bands
     g.setBackground(gbFFT);
     
     // add title

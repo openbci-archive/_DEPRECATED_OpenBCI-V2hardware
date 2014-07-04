@@ -209,7 +209,8 @@ void setup() {
 
   //initilize the GUI
   String filterDescription = eegProcessing.getFilterDescription();
-  gui = new Gui_Manager(this, win_x, win_y, nchan,displayTime_sec,default_vertScale_uV,filterDescription, smoothFac[smoothFac_ind]);
+  EEG_Processing_User foo = new EEG_Processing_User();
+  gui = new Gui_Manager(this, win_x, win_y, nchan,displayTime_sec,default_vertScale_uV,filterDescription, smoothFac[smoothFac_ind],foo);
   
   //associate the data to the GUI traces
   gui.initDataTraces(dataBuffX, dataBuffY_filtY_uV, fftBuff, eegProcessing.data_std_uV, is_railed,eegProcessing.polarity);
