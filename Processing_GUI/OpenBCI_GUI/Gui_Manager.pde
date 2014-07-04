@@ -493,7 +493,7 @@ class Gui_Manager {
     if (maxDisplayFreq_Hz[maxDisplayFreq_ind] > 30) {
       g.setXAxisTickSpacing(10f);
     } else {
-       g.setXAxisTickSpacing(5f);
+      g.setXAxisTickSpacing(5f);
     }
     g.setXAxisMinorTicks(2);
     g.setXAxisLabelAccuracy(0);

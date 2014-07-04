@@ -41,18 +41,14 @@ final int OpenBCI_Nchannels = 8; //normal OpenBCI has 8 channels
 //final int OpenBCI_Nchannels = 16; //daisy chain has 16 channels
 
 //here are variables that are used if loading input data from a CSV text file...double slash ("\\") is necessary to make a single slash
-//final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
-//final String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
-//final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_09-18-47_Chans_1-12_ref7.txt"; //12 channel, inject signal into individual channels in sequence
-//final String playbackData_fname = "EEG_Data\\openBCI_raw_2014-05-29_10-18-13_calibrated_Chan1-12_ref7.txt"; //12 channel, inject calibrated signal to get response at each sense electrode
-//final String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-08 Multi-Rate Visual Evoked Potentials\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt";
-//final String playbackData_fname = "C:\\Users\\disco\\Documents\\Chips Docs\\EEG Hacker Blog\\2014-05-08 TwoScreen Blinky\\SavedData\\openBCI_raw_2014-05-08_20-52-43_Block1_15HzToggle_10HzToggle.txt";
-final String playbackData_fname = "C:\\Users\\disco\\Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_Robot05.txt";
-//final String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_Robot05.txt";
-//final String playbackData_fname = "C:\\Users\\wea\\Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_Robot05.txt";
-
-//int currentTableRowIndex = (80*250);
+//String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_meditation.txt"; //only used if loading input data from a file
+//String playbackData_fname = "EEG_Data\\openBCI_2013-12-24_relaxation.txt"; //only used if loading input data from a file
+String playbackData_fname = "C:\\Users\\disco\\Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_Robot05.txt";
+//String playbackData_fname = "C:\\Documents and Settings\\Generic\\My Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_Robot05.txt";
+//String playbackData_fname = "C:\\Users\\wea\\Documents\\GitHub\\EEGHacker\\Data\\2014-05-31 RobotControl\\SavedData\\openBCI_raw_2014-05-31_20-57-51_Robot05.txt";
+//String playbackData_fname;  //leave blank to cause an "Open File" dialog box to appear at startup.  USEFUL!
 int currentTableRowIndex = (20*250);
+float playback_speed_fac = 1.0f;  //make 1.0 for real-time.  larger for faster playback
 Table_CSV playbackData_table;
 int nextPlayback_millis = -100; //any negative number
 
@@ -168,6 +164,12 @@ int win_x = 1200;  //window width
 int win_y = 768; //window height
 //int win_y = 450;   //window height...for OpenBCI_GUI_Simpler
 void setup() {
+
+  //get playback file name, if necessary  
+  if (eegDataSource == DATASOURCE_PLAYBACKFILE) {
+      if ((playbackData_fname==null) || (playbackData_fname.length() == 0)) selectInput("Select an OpenBCI TXT file: ", "fileSelected");
+      while ((playbackData_fname==null) || (playbackData_fname.length() == 0)) { delay(100); /* wait until selection is complete */ }
+  }
   
   //open window
   size(win_x, win_y, P2D);
@@ -238,7 +240,6 @@ void setup() {
     case DATASOURCE_PLAYBACKFILE:
       //open and load the data file
       println("OpenBCI_GUI: loading playback data from " + playbackData_fname);
-      //playbackData_table = loadTable(playbackData_fname, "header,csv");
       try {
         playbackData_table = new Table_CSV(playbackData_fname);
       } catch (Exception e) {
@@ -371,7 +372,7 @@ int getDataIfAvailable(int pointCounter) {
     int current_millis = millis();
     if (current_millis >= nextPlayback_millis) {
       //prepare for next time
-      int increment_millis = int(round(float(nPointsPerUpdate)*1000.f/openBCI.fs_Hz));
+      int increment_millis = int(round(float(nPointsPerUpdate)*1000.f/openBCI.fs_Hz)/playback_speed_fac);
       if (nextPlayback_millis < 0) nextPlayback_millis = current_millis;
       nextPlayback_millis += increment_millis;
 
@@ -694,8 +695,9 @@ void parseKey(char val) {
 
       
     case 'm':
-     println("OpenBCI_GUI: 'm' was pressed...taking screenshot...");
-     saveFrame("OpenBCI-####.jpg");    // take a shot of that!
+     String picfname = "OpenBCI-" + getDateString() + ".jpg";
+     println("OpenBCI_GUI: 'm' was pressed...taking screenshot:" + picfname);
+     saveFrame(picfname);    // take a shot of that!
      break;
     default:
      println("OpenBCI_GUI: '" + key + "' Pressed...sending to OpenBCI...");
@@ -804,7 +806,23 @@ void parseKeycode(int val) {
       break;
   }
 }
-
+String getDateString() {
+    String fname = year() + "-";
+    if (month() < 10) fname=fname+"0";
+    fname = fname + month() + "-";
+    if (day() < 10) fname = fname + "0";
+    fname = fname + day(); 
+    
+    fname = fname + "_";
+    if (hour() < 10) fname = fname + "0";
+    fname = fname + hour() + "-";
+    if (minute() < 10) fname = fname + "0";
+    fname = fname + minute() + "-";
+    if (second() < 10) fname = fname + "0";
+    fname = fname + second();
+    return fname;
+}
+  
 //swtich yard if a click is detected
 void mousePressed() {
    
@@ -1184,6 +1202,15 @@ void toggleShowPolarity() {
   
   //update the button
   gui.showPolarityButton.but_txt = "Show Polarity\n" + gui.headPlot1.getUsePolarityTrueFalse();
+}
+
+void fileSelected(File selection) {  //called by the Open File dialog box after a file has been selected
+  if (selection == null) {
+    println("no selection so far...");
+  } else {
+    //inputFile = selection;
+    playbackData_fname = selection.getAbsolutePath();
+  }
 }
 
 // here's a function to catch whenever the window is being closed, so that
