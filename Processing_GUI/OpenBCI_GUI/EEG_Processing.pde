@@ -291,35 +291,45 @@ class EEG_Processing_User {
   void updateGUI_FFTPlot(Blank2DTrace.PlotRenderer pr) {
     //add detection-related graphics
     if (showDetectionOnGUI) {
-      //add ellipse showing peak
-      int Ichan = 2-1; //which channel to show on the GUI
       
+      //add symbol showing peak
+      int Ichan = 2-1; //which channel to show on the GUI
       float new_x2 = pr.valToX(detectedPeak[Ichan].freq_Hz);
       float new_y2 = pr.valToY(detectedPeak[Ichan].rms_uV_perBin);
-      int diam = 8;
-      pr.canvas.strokeWeight(1);  //set the new line's linewidth
-      if (detectedPeak[Ichan].isDetected) { //if there is a detection, make more prominent
-        diam = 8;
-        pr.canvas.strokeWeight(4);  //set the new line's linewidth 
-      }
-      ellipseMode(CENTER);
-      pr.canvas.ellipse(new_x2,new_y2,diam,diam);
-      
-      //add horizontal lines indicating the detction threshold and guard level (use a dashed line)
+      boolean is_detected = detectedPeak[Ichan].isDetected;
+      addMarker(pr,new_x2,new_y2,is_detected);
+
+      //add horizontal lines indicating the background noise level
       float x1, x2,y;
       x1 = pr.valToX(min_allowed_peak_freq_Hz);  //starting coordinate, left
       x2 = pr.valToX(max_allowed_peak_freq_Hz);  //start coordinate, right
       y = pr.valToY(detectedPeak[Ichan].background_rms_uV_perBin); //y-coordinate
+      addDashedLine(pr,x1,x2,y);
        
-      pr.canvas.strokeWeight(1.5);
-      float dx = 8; //it'll be a dashed line, so here is how long is the dash+space, pixels
-      float nudge = 2;
-      float foo_x=min(x1+dx,x2); //start here
-      while (foo_x < x2) {  //loop to make each dash
-        pr.canvas.line(foo_x-dx+nudge,y,foo_x-(5*dx)/8+nudge,y);
-        foo_x += dx;  //increment for next time through the loop
-      }
     }  
+  }
+   
+  //draw a marker on the axes
+  void addMarker(Blank2DTrace.PlotRenderer pr, float new_x2,float new_y2,boolean is_detected) {
+    int diam = 8;
+    pr.canvas.strokeWeight(1);  //set the new line's linewidth
+    if (is_detected) { //if there is a detection, make more prominent
+      pr.canvas.strokeWeight(4);  //set the new line's linewidth 
+    }
+    ellipseMode(CENTER);
+    pr.canvas.ellipse(new_x2,new_y2,diam,diam);
+  }
+  
+  //draw a dashed line
+  void addDashedLine(Blank2DTrace.PlotRenderer pr,float x1,float x2,float y) {
+    pr.canvas.strokeWeight(1.5);
+    float dx = 8; //it'll be a dashed line, so here is how long is the dash+space, pixels
+    float nudge = 2;
+    float foo_x=min(x1+dx,x2); //start here
+    while (foo_x < x2) {  //loop to make each dash
+      pr.canvas.line(foo_x-dx+nudge,y,foo_x-(5*dx)/8+nudge,y);
+      foo_x += dx;  //increment for next time through the loop
+    }
   }
    
 } // close class EEG_Process_User
