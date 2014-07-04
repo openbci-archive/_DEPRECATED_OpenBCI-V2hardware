@@ -225,10 +225,11 @@ class EEG_Processing_User {
     //check rule 1 applying to RIGHT command...here, we care about Band A and Band C
     primary_value_dB = peakPerBand[band_A].SNR_dB;
     peakPerBand[band_A].copyTo(candidate_detection[0]);
-    peakPerBand[band_A].threshold_dB = detection_thresh_dB;
+    secondary_value_dB = peakPerBand[band_C].SNR_dB;
+    float secondary_threshold_dB = 3.0f; 
+    peakPerBand[band_A].threshold_dB = max(detection_thresh_dB, 
+         max(primary_value_dB,detection_thresh_dB) + max(0,secondary_threshold_dB - secondary_value_dB)); //for plotting purposes only
     if (primary_value_dB >= detection_thresh_dB) {
-      secondary_value_dB = peakPerBand[band_C].SNR_dB;
-      float secondary_threshold_dB = 3.0f; 
       if (secondary_value_dB >= secondary_threshold_dB) {
         //detected!
         nDetect++;
@@ -236,9 +237,6 @@ class EEG_Processing_User {
         peakPerBand[band_A].isDetected=true;
         candidate_detection[0].isDetected=true;
         //println("applyDetectionRules_2D: rule 0: nDetect = " + nDetect + ", value_from_each_rule[0] = " + value_from_each_rule[0]); 
-      } else {
-        //failed. for plotting purposes, adjust the apparent threshold
-        peakPerBand[band_A].threshold_dB = primary_value_dB + (secondary_threshold_dB - secondary_value_dB);
       }
     }   
     
