@@ -42,6 +42,7 @@ int analogVal = 0;
 
 #define OUTPUT_NOTHING (0)
 #define OUTPUT_TEXT (1)
+#define OUTPUT_TEXT_1CHAN (9)
 #define OUTPUT_BINARY (2)
 #define OUTPUT_BINARY_SYNTHETIC (3)
 #define OUTPUT_BINARY_4CHAN (4)
@@ -172,7 +173,10 @@ void loop(){
         break; 
       case OUTPUT_BINARY_OPENEEG_SYNTHETIC:
         ADSManager.writeChannelDataAsOpenEEG_P2(sampleCounter,true);  //his format accepts 6 channels, so that's what it does
-        break;           
+        break;  
+      case OUTPUT_TEXT_1CHAN:  
+        ADSManager.printChannelDataAsText(1,sampleCounter);  //print all channels, whether active or not
+        break;      
       default:
         ADSManager.printChannelDataAsText(MAX_N_CHANNELS,sampleCounter);  //print all channels, whether active or not
     }
@@ -345,6 +349,11 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         startBecauseOfSerial = is_running;
         if (is_running) Serial.println(F("Arduino: Starting binary 4-chan..."));
         break;
+     case 'c':
+        toggleRunState(OUTPUT_BINARY_SYNTHETIC);
+        startBecauseOfSerial = is_running;
+        if (is_running) Serial.println(F("Arduino: Starting binary (synthetic)..."));
+        break;
      case 's':
         stopRunning();
         startBecauseOfSerial = is_running;
@@ -354,6 +363,11 @@ void serialEvent(){            // send an 'x' on the serial line to trigger ADSt
         startBecauseOfSerial = is_running;
         if (is_running) Serial.println(F("Arduino: Starting text..."));
         break;
+     case 'z':
+       toggleRunState(OUTPUT_TEXT_1CHAN);
+       startBecauseOfSerial = is_running;
+       if (is_running) Serial.println(F("Arduino: Starting text, 1 channel..."));
+       break;       
      case 'f':
         useFilters = true;
         Serial.println(F("Arduino: enabaling filters"));
