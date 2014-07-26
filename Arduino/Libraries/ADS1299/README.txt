@@ -1,7 +1,7 @@
 This Library opens communication between Arduino UNO and the ADS1299
 SPI register fuses are directly set to match the ADS1299 interface requirements.
 SCK rates: 1MHz, 4MHz, 8MHz. 
-All registers and commands are fully accessable.
+All registers and commands are fully accessible.
 Here is a list of the functions and parameters available from the Library.
 
 
