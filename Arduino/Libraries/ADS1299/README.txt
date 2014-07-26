@@ -27,7 +27,7 @@ ADS1299.Initialize(int _DRDY, int _RST, int _CS, int _FREQ)
 
     byte regData [24];		// array is used to mirror register data
 	this array is used to write multiple locations of ADS register data using WREGS()
-	user must first assign target values to the corresponding locations in regData aray
+	user must first assign target values to the corresponding locations in regData array
 	a call to RREGS() will read multiple locations and update regData array
   
     long channelData [9];	// array used when reading channel data
@@ -36,13 +36,13 @@ ADS1299.Initialize(int _DRDY, int _RST, int _CS, int _FREQ)
 
 //System Commands   
 
-    void WAKEUP();	// wakeup from standby mode
+    void WAKEUP();	// wake up from standby mode
     void STANDBY();	// go into standby mode
     void RESET();	// reset all registers to default values
     void START();	// start a data conversion session
     void STOP();	// stop data conversion
 
-	timed delays are taken where required in the above funcitons. 
+	timed delays are taken where required in the above functions. 
 	bear in mind the timing of your byte to byte transmission.
 	clk on ADS is ~2MHz, so that is a limit.
     
@@ -72,7 +72,7 @@ ADS1299.Initialize(int _DRDY, int _RST, int _CS, int _FREQ)
 
     byte RREG(byte _address);
 	returns the value of one register address, specified
-	the funcion also updates regData at _address
+	the function also updates regData at _address
 
     void RREGS(byte _address, byte _numRegistersMinusOne);     
 	updates the public regData array with current values
@@ -117,7 +117,7 @@ ADS1299.Initialize(int _DRDY, int _RST, int _CS, int _FREQ)
 	For daisy-chaining in the future, we will route a GPIO to the START pin and 
 	header socket.
 
-	You must remeber to get out of Read Data Continuous mode if you want 
+	You must remember to get out of Read Data Continuous mode if you want 
 	to read/write, and do other register things.
 
 
