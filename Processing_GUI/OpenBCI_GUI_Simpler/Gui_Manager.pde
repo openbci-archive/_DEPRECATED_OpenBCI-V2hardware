@@ -211,17 +211,17 @@ class Gui_Manager {
     maxDisplayFreqButton = new Button(x,y,w,h,"Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz",fontInfo.buttonLabel_size);
 
 
-    //set the signal detection button...left of center
+    //set the signal detection button...left of spectrogram button
     w = stopButton.but_dx;
     h = stopButton.but_dy;
-    x = (int)(((float)win_x) / 2.0f - (float)w - (gutter_between_buttons*win_x)/2.0f);
+    x = win_x - int(gutter_right*float(win_x)) - 3*w - (int)(2*gutter_between_buttons*win_x);
     y = stopButton.but_y;
     detectButton = new Button(x,y,w,h,"Detect " + signalDetectName,fontInfo.buttonLabel_size);
     
-    //set the show spectrogram button...right of center
+    //set the show spectrogram button...left of stop button
     w = stopButton.but_dx;
     h = stopButton.but_dy;
-    x = (int)(((float)win_x) / 2.0f + (gutter_between_buttons*win_x)/2.0f);
+    x = win_x - int(gutter_right*float(win_x)) - 2*w - (int)(gutter_between_buttons*win_x);
     y = stopButton.but_y;
     spectrogramButton = new Button(x,y,w,h,"Spectrogram",fontInfo.buttonLabel_size);
        
