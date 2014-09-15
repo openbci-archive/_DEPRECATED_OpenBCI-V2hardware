@@ -538,6 +538,7 @@ void processNewData() {
     ///add raw data to spectrogram...if the correct channel...
     //...look for the first channel that is active (meaning button is not active) or, if it
     //     hasn't yet sent any data, send the last channel even if the channel is off
+    boolean sendToSpectrogram = true;
     if (sendToSpectrogram & (isChannelActive(Ichan) | (Ichan == (nchan-1)))) { //send data to spectrogram
       sendToSpectrogram = false;  //prevent us from sending more data after this time through
       gui.tellGUIWhichChannelForSpectrogram(Ichan);
