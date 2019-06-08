@@ -53,27 +53,29 @@ class Gui_Manager {
   Spectrogram spectrogram;
   boolean showSpectrogram;
   int whichChannelForSpectrogram;
+  Button forwardButton,leftButton,rightButton,fireButton;
   
   private float fftYOffset[];
   private float default_vertScale_uV=200.0; //this defines the Y-scale on the montage plots...this is the vertical space between traces
   private float[] vertScaleFactor = {1.0f, 2.0f, 5.0f, 50.0f, 0.25f, 0.5f};
-  private int vertScaleFactor_ind = 0;
+  private int vertScaleFactor_ind = 5;
   float vertScale_uV=default_vertScale_uV;
   float vertScaleMin_uV_whenLog = 0.1f;
   float montage_yoffsets[];
   private float[] maxDisplayFreq_Hz = {20.0f, 40.0f, 60.0f, 120.0f};
-  private int maxDisplayFreq_ind = 2;
+  private int maxDisplayFreq_ind = 0;
   
   public final static int GUI_PAGE_CHANNEL_ONOFF = 0;
   public final static int GUI_PAGE_IMPEDANCE_CHECK = 1;
   public final static int GUI_PAGE_HEADPLOT_SETUP = 2;
-  public final static int N_GUI_PAGES = 3;
+  public final static int GUI_PAGE_HEXBOT = 3;
+  public final static int N_GUI_PAGES = 4;
   
   public final static String stopButton_pressToStop_txt = "Press to Stop";
   public final static String stopButton_pressToStart_txt = "Press to Start";
   
   Gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float default_yScale_uV, 
-    String filterDescription, float smooth_fac) {  
+    String filterDescription, float smooth_fac, EEG_Processing_User eegProcessingUser) {  
 //  Gui_Manager(PApplet parent,int win_x, int win_y,int nchan,float displayTime_sec, float yScale_uV, float fs_Hz,
 //      String montageFilterText, String detectName) {
       showSpectrogram = false;  
@@ -116,7 +118,7 @@ class Gui_Manager {
     axes_x = int(float(win_x)*axisFFT_relPos[2]);  //width of the axis in pixels
     axes_y = int(float(win_y)*axisFFT_relPos[3]);  //height of the axis in pixels
     gFFT = new Graph2D(parent, axes_x, axes_y, false);  //last argument is whether the axes cross at zero
-    setupFFTPlot(gFFT, win_x, win_y, axisFFT_relPos,fontInfo);
+    setupFFTPlot(gFFT, win_x, win_y, axisFFT_relPos,fontInfo,eegProcessingUser);
         
     //setup the spectrogram plot
 //    float[] axisSpectrogram_relPos = axisMontage_relPos;
@@ -191,6 +193,7 @@ class Gui_Manager {
     x = calcButtonXLocation(nchan, win_x, w1, xoffset, gutter_between_buttons);
     biasButton = new Button(x,y,w1,h1,"Bias\n" + "Auto",fontInfo.buttonLabel_size);
 
+
     //setup the buttons to control the processing and frequency displays
     int Ibut=0;    w = w_orig;    h = h;
     
@@ -216,6 +219,21 @@ class Gui_Manager {
      x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
     maxDisplayFreqButton = new Button(x,y,w,h,"Max Freq\n" + round(maxDisplayFreq_Hz[maxDisplayFreq_ind]) + " Hz",fontInfo.buttonLabel_size);
 
+
+    //setup the buttons to control the HexBug
+    Ibut=0;    w = w_orig;    h = h;
+    
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    forwardButton = new Button(x,y,w,h,"HexBug\n" + "Forward",fontInfo.buttonLabel_size);
+  
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    leftButton = new Button(x,y,w,h,"HexBug\n" + "Left",fontInfo.buttonLabel_size);
+    
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    rightButton = new Button(x,y,w,h,"HexBug\n" + "Right",fontInfo.buttonLabel_size);
+    
+    x = calcButtonXLocation(Ibut++, win_x, w, xoffset,gutter_between_buttons);
+    fireButton = new Button(x,y,w,h,"HexBug\n" + "Fire",fontInfo.buttonLabel_size);
     
     //set the signal detection button...left of center
     //w = stopButton.but_dx;
@@ -443,7 +461,7 @@ class Gui_Manager {
     showMontageValues = true;  // default to having them NOT displayed    
   }
   
-  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,PlotFontInfo fontInfo) {
+  public void setupFFTPlot(Graph2D g, int win_x, int win_y, float[] axis_relPos,PlotFontInfo fontInfo,EEG_Processing_User eegProcessingUser) {
   
     g.setAxisColour(220, 220, 220);
     g.setFontColour(255, 255, 255);
@@ -472,7 +490,11 @@ class Gui_Manager {
     //setup the x axis
     g.setXAxisMin(0f);
     g.setXAxisMax(maxDisplayFreq_Hz[maxDisplayFreq_ind]);
-    g.setXAxisTickSpacing(10f);
+    if (maxDisplayFreq_Hz[maxDisplayFreq_ind] > 30) {
+      g.setXAxisTickSpacing(10f);
+    } else {
+      g.setXAxisTickSpacing(5f);
+    }
     g.setXAxisMinorTicks(2);
     g.setXAxisLabelAccuracy(0);
     g.setXAxisLabel("Frequency (Hz)");
@@ -483,6 +505,7 @@ class Gui_Manager {
     // switching on Grid, with differetn colours for X and Y lines
     gbFFT = new  GridBackground(new GWColour(255));
     gbFFT.setGridColour(180, 180, 180, 180, 180, 180);
+    if (eegProcessingUser.useClassfier_2DTraining) gbFFT.setGridLines(false,true);  //turn off vertical grid lines when showing EEG_Proccessing bands
     g.setBackground(gbFFT);
     
     // add title
@@ -760,6 +783,12 @@ class Gui_Manager {
         smoothingButton.draw();
         showPolarityButton.draw();
         maxDisplayFreqButton.draw();
+        break;
+      case GUI_PAGE_HEXBOT:
+        forwardButton.draw();
+        leftButton.draw();
+        rightButton.draw();
+        fireButton.draw();
         break;
       default:  //assume GUI_PAGE_CHANNEL_ONOFF:
         //show channel buttons

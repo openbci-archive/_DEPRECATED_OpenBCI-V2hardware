@@ -94,6 +94,8 @@ class Spectrogram {
     //do the FFT on the data block
     float[] localCopy = new float[dataHere.length];
     localCopy = Arrays.copyOfRange(dataHere,0, dataHere.length);
+    float meanVal = mean(localCopy);
+    for (int I=0; I<localCopy.length;I++) localCopy[I] -= meanVal;  //remove mean before doing FFT
     localFftData.forward(localCopy);
     
     //convert fft data to uV_per_sqrtHz
