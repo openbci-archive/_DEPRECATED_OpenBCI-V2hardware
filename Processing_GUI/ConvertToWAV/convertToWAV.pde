@@ -20,6 +20,7 @@ void setup() {
   // select input file
   selectInput("Select an OpenBCI TXT file: ", "fileSelected");
   while (inputFile_str == null) {//wait
+    delay(1);
   }
 
   // load the data
